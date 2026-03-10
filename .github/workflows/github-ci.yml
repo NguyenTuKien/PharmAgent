@@ -1,0 +1,275 @@
+name: CI pipeline for pilllen
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  unit_test_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+          
+      - name: Run Unit Tests with Maven
+        working-directory: ./backend
+        run: mvn -B clean test
+        
+      - name: Generate JaCoCo Coverage Report
+        if: always()
+        working-directory: ./backend
+        run: mvn jacoco:report
+        
+      - name: Calculate Coverage Percentage
+        if: always()
+        working-directory: ./backend
+        run: |
+          if [ -f target/site/jacoco/jacoco.csv ]; then
+            awk -F"," '{ instructions += $4 + $5; covered += $5 } END { print covered, "/", instructions, " instructions covered"; print 100*covered/instructions "% covered" }' target/site/jacoco/jacoco.csv
+          else
+            echo "No JaCoCo report generated (no tests ran)"
+          fi
+        
+      - name: Upload JaCoCo Coverage Report & Classes for Sonar
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-coverage-report
+          path: |
+            backend/target/site/jacoco/
+            backend/target/surefire-reports/
+            backend/target/classes/
+          retention-days: 7
+          
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: backend/target/surefire-reports/TEST-*.xml
+          
+      - name: Test Report Summary
+        if: always()
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- JaCoCo coverage report uploaded as artifact" >> $GITHUB_STEP_SUMMARY
+          echo "- Test results available in artifacts" >> $GITHUB_STEP_SUMMARY
+
+  tag_job:
+    runs-on: ubuntu-latest 
+    if: >
+      github.ref == 'refs/heads/dev' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/')
+    outputs:
+      docker_tag: ${{ steps.calc_tag.outputs.tag }} 
+    steps:
+      - name: Tính toán Tag tự động
+        id: calc_tag
+        run: |
+          if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == 'refs/heads/dev' ]]; then
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+            echo "tag=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          fi
+
+  build_job:
+    runs-on: ubuntu-latest 
+    needs: [unit_test_job, tag_job]  
+    if: >
+      github.ref == 'refs/heads/dev' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/')
+    env:
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      REGISTRY_IMAGE: ${{ vars.DOCKER_REGISTRY }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and Push Backend
+        run: |
+          docker pull $REGISTRY_IMAGE/pilllen-backend:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/pilllen-backend:$TAG -t $REGISTRY_IMAGE/pilllen-backend:$TAG ./backend
+          docker push $REGISTRY_IMAGE/pilllen-backend:$TAG
+
+      - name: Build and Push Frontend
+        run: |
+          docker pull $REGISTRY_IMAGE/pilllen-frontend:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/pilllen-frontend:$TAG -t $REGISTRY_IMAGE/pilllen-frontend:$TAG ./frontend
+          docker push $REGISTRY_IMAGE/pilllen-frontend:$TAG
+
+      - name: Cleanup Docker System
+        if: always() 
+        run: docker system prune -af
+
+  integration_test_job:
+    runs-on: ubuntu-latest
+    needs: [unit_test_job, tag_job, build_job]  
+    if: >
+      github.ref == 'refs/heads/dev' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/')
+    env:
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      REGISTRY_IMAGE: ${{ vars.DOCKER_REGISTRY }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Setup Environment Variables
+        run: |
+          if [ -z "${{ secrets.ENV_FILE }}" ]; then
+            echo "ERROR: ENV_FILE secret is not set in GitHub"
+            exit 1
+          fi
+          
+          echo "${{ secrets.ENV_FILE }}" > .env
+          
+          echo "TAG=$TAG" >> .env
+          echo "DOCKER_REGISTRY=$REGISTRY_IMAGE" >> .env
+
+      - name: Start services with Docker Compose
+        run: |
+          docker compose pull
+          docker compose up -d --no-build
+          
+      - name: Wait and Check Logs
+        run: |
+          sleep 20
+          docker compose ps
+          docker compose logs --tail=200 backend || true
+          docker compose logs --tail=200 frontend || true
+
+      - name: Check Backend Health and Frontend Accessibility
+        run: |
+          curl -f http://localhost:8080/actuator/health || (echo "Backend unreachable" && exit 1)
+          curl -f http://localhost:80/ || (echo "Frontend unreachable" && exit 1)
+
+      - name: Cleanup Docker System
+        if: always()
+        run: |
+          docker compose down --volumes --rmi local
+          docker system prune -a -f
+
+  code_quality_scan:
+    runs-on: ubuntu-latest
+    needs: [unit_test_job]
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21 # Cần Java để chạy Maven
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Download JaCoCo Report # Chỉ cần tải file XML báo cáo, không cần cả thư mục classes
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: backend/target/site/jacoco/
+
+      - name: Run SonarCloud Scan with Maven
+        working-directory: ./backend
+        run: |
+          mvn sonar:sonar \
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+
+  security_scan:
+    runs-on: ubuntu-latest
+    needs: [tag_job, build_job]
+    if: >
+      github.ref == 'refs/heads/dev' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/')
+    continue-on-error: true  
+    env:
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      REGISTRY_IMAGE: ${{ vars.DOCKER_REGISTRY }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          
+      - name: Run Trivy vulnerability scanner - Filesystem
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+          
+      - name: Run Trivy vulnerability scanner - Backend Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.REGISTRY_IMAGE }}/pilllen-backend:${{ env.TAG }}'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+  notify_success:
+    runs-on: ubuntu-latest
+    needs: [unit_test_job, tag_job, build_job, integration_test_job, code_quality_scan, security_scan]
+    if: >
+      success() &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+    steps:
+      - name: Send Discord Notification - Success
+        run: |
+          curl -H "Content-Type: application/json" \
+          -d "{\"content\": \"✅ **DEPLOY SUCCESS!** 🚀\\n**Project:** ${{ github.repository }}\\n**Branch:** ${{ github.ref_name }}\\n**User:** ${{ github.actor }}\\n**Status:** 🟢 Thành công\\n👉 [Xem Pipeline](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\"}" \
+          ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  notify_fail:
+    runs-on: ubuntu-latest
+    needs: [unit_test_job, tag_job, build_job, integration_test_job, code_quality_scan, security_scan]
+    if: >
+      failure() &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+    steps:
+      - name: Send Discord Notification - Failed
+        run: |
+          curl -H "Content-Type: application/json" \
+          -d "{\"content\": \"🚨 **PIPELINE FAILED!** 💥\\n**Project:** ${{ github.repository }}\\n**Branch:** ${{ github.ref_name }}\\n**User:** ${{ github.actor }}\\n**Status:** 🔴 Thất bại\\n👉 [Xem lỗi tại đây](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\"}" \
+          ${{ secrets.DISCORD_WEBHOOK_URL }}
