@@ -3,10 +3,9 @@ spring:
     banner-mode: "off"
   application:
     name: backend
-  data:
-    mongodb:
-      uri: mongodb://${MONGO_INITDB_USERNAME}:${MONGO_INITDB_PASSWORD}@${DB_HOST}:${DB_PORT}/${MONGO_INITDB_DATABASE}?authSource=${MONGO_INITDB_DATABASE}
+  mongodb:
+    uri: mongodb+srv://admin:Nhom06_LTW@clustertest.xg7jkii.mongodb.net/PharmAgentDB?retryWrites=true&w=majority&authSource=admin
 
 logging:
   level:
-    root: warn
+    root: info

@@ -7,11 +7,11 @@
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>4.0.3</version>
         <relativePath/> </parent>
-    <groupId>ct01.sslink</groupId>
+    <groupId>ct01.pharmagent</groupId>
     <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>backend</name>
-    <description>A new slink for big system</description>
+    <description>A medicine management system</description>
     <url/>
     <licenses>
         <license/>
