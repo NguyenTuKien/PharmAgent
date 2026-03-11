@@ -10,10 +10,10 @@ services:
       - ./database/mongo-data:/data/db
       - ./database/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD-SHELL", "echo > /dev/tcp/localhost/8080" ]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
     networks:
       - pharmagent
   
