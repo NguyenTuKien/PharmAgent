@@ -1,14 +1,41 @@
 spring:
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:./backend/.env[.properties]
+
   main:
     banner-mode: "off"
   application:
     name: backend
   mongodb:
-    uri: mongodb+srv://n07:LTW_2026@clustertest.xg7jkii.mongodb.net/pharmagentdb.ct01?appName=ClusterTest
+    uri: ${MONGODB_URI}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+
+jwt:
+  secret: ${JWT_SECRET:VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE=}
+  expiration-ms: ${JWT_EXPIRATION_MS:900000}
+  refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
+
+server:
+  servlet:
+    context-path: /api
+  port: 8080
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
 
 logging:
   level:
     root: warn
+    org.springframework.data.mongodb: info
+    org.mongodb.driver: info
 
 management:
   endpoints:

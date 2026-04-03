@@ -1,4 +1,4 @@
-package ct01.pharmagent.backend;
+package ct01.web.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
