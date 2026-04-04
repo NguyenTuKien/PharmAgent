@@ -60,10 +60,15 @@ public class AuthFacade {
     // API 2: CHỌN HỒ SƠ (CẤP QUYỀN)
     // ==========================================
     public String selectProfile(String authorizationHeader, String profileId) {
-        String accessToken = extractBearerToken(authorizationHeader);
-        String currentUserId = jwtService.extractUserId(accessToken);
-
-        if (!jwtService.isTokenValid(accessToken, currentUserId) || !jwtService.isAccessToken(accessToken)) {
+        String accessToken = normalizeToken(extractBearerToken(authorizationHeader));
+        String currentUserId;
+        try {
+            currentUserId = jwtService.extractUserId(accessToken);
+            if (!jwtService.isTokenValid(accessToken, currentUserId) || !jwtService.isAccessToken(accessToken)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token");
+            }
+        } catch (Exception ex) {
+            log.warn("selectProfile rejected due to invalid/expired access token: {}", ex.getClass().getSimpleName());
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token");
         }
 
@@ -90,11 +95,17 @@ public class AuthFacade {
     // API 3: REFRESH TOKEN (STATELESS ROTATION)
     // ==========================================
     public TokenRefreshResponse refresh(TokenRefreshRequest request) {
-        String token = request.getRefreshToken();
+        String token = normalizeToken(request.getRefreshToken());
 
         // 1. Kiểm tra tính hợp lệ và loại Token
-        String userId = jwtService.extractUserId(token);
-        if (!jwtService.isTokenValid(token, userId) || !jwtService.isRefreshToken(token)) {
+        String userId;
+        try {
+            userId = jwtService.extractUserId(token);
+            if (!jwtService.isTokenValid(token, userId) || !jwtService.isRefreshToken(token)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+            }
+        } catch (Exception ex) {
+            log.warn("refresh rejected due to invalid refresh token: {}", ex.getClass().getSimpleName());
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
         }
 
@@ -104,7 +115,8 @@ public class AuthFacade {
             throw new AccessDeniedException("Dữ liệu không khớp. Vui lòng đăng nhập lại.");
         }
 
-        // 3. Rotation: Cấp mới cả 2 Token
+        // 3. Rotation: Cấp mới đủ 3 token để client tiếp tục gọi cả account-level và profile-level APIs
+        String newAccessToken = jwtService.generateAccessToken(userId);
         String newProfileToken = jwtService.generateProfileToken(userId, profile.getId(), profile.getRole().name());
         String newRefreshToken = jwtService.generateRefreshToken(userId);
 
@@ -112,9 +124,10 @@ public class AuthFacade {
         jwtService.blacklistTokens(List.of(token));
 
         return TokenRefreshResponse.builder()
-                .profileToken(newProfileToken)
-                .refreshToken(newRefreshToken)
-                .build();
+            .accessToken(newAccessToken)
+            .profileToken(newProfileToken)
+            .refreshToken(newRefreshToken)
+            .build();
     }
 
     // ==========================================
@@ -126,7 +139,8 @@ public class AuthFacade {
                         request.getAccessToken(),
                         request.getRefreshToken(),
                         request.getProfileToken()
-                ).filter(token -> token != null && !token.isBlank())
+                ).map(this::normalizeToken)
+                .filter(token -> token != null && !token.isBlank())
                 .toList();
 
         // Tống toàn bộ vào danh sách đen
@@ -160,6 +174,17 @@ public class AuthFacade {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing Bearer token");
         }
         return authorizationHeader.substring(BEARER_PREFIX.length());
+    }
+
+    private String normalizeToken(String rawToken) {
+        if (rawToken == null) {
+            return null;
+        }
+        String token = rawToken.trim();
+        if (token.startsWith(BEARER_PREFIX)) {
+            return token.substring(BEARER_PREFIX.length()).trim();
+        }
+        return token;
     }
 
     
