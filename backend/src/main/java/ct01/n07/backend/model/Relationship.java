@@ -31,7 +31,8 @@ public class Relationship {
     @Field(targetType = FieldType.OBJECT_ID)
     private String elderlyId;
 
-    private String relationshipName;
+    private String caregiverTitle;
+    private String elderlyTitle;
     private PermissionLevel permissionLevel;
     private RelationStatus status;
     private LocalDate startDate;

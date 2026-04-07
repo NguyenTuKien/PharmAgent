@@ -2,13 +2,12 @@ package ct01.n07.backend.dto.auth;
 
 import ct01.n07.backend.model.enums.Gender;
 import ct01.n07.backend.model.enums.PermissionLevel;
-import ct01.n07.backend.model.enums.Role;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.jspecify.annotations.Nullable;
 
 import java.time.LocalDate;
 
@@ -29,65 +28,78 @@ public class SignupRequest {
     @NotBlank(message = "Xác nhận mật khẩu không được để trống")
     private String confirmPassword;
 
-    // Caregiver information
-    @NotBlank(message = "Tên không được để trống")
-    @Size(max = 50, message = "Tên không được vượt quá 50 ký tự")
-    private String caregiverFirstName;
+    @NotNull(message = "Caregiver information is required")
+    @Valid
+    private CaregiverSignupRequest caregiver;
 
-    @NotBlank(message = "Họ không được để trống")
-    @Size(max = 50, message = "Họ không được vượt quá 50 ký tự")
-    private String caregiverLastName;
+    @Valid
+    private ElderlySignupRequest elderly;
 
-    @NotBlank(message = "Số điện thoại không được để trống")
-    @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$", message = "Số điện thoại không đúng định dạng (Ví dụ: 0912345678)")
-    private String caregivePhone;
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CaregiverSignupRequest {
+        @NotBlank(message = "Tên không được để trống")
+        @Size(max = 50, message = "Tên không được vượt quá 50 ký tự")
+        private String firstName;
 
-    @NotNull(message = "Ngày sinh không được để trống")
-    @Past(message = "Ngày sinh phải là một ngày trong quá khứ")
-    private LocalDate caregiverDateOfBirth;
+        @NotBlank(message = "Họ không được để trống")
+        @Size(max = 50, message = "Họ không được vượt quá 50 ký tự")
+        private String lastName;
 
-    @NotNull(message = "Giới tính không được để trống")
-    private Gender caregiverGender;
+        @NotBlank(message = "Số điện thoại không được để trống")
+        @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$", message = "Số điện thoại không đúng định dạng (Ví dụ: 0912345678)")
+        private String phone;
 
-    @Size(max = 255, message = "Địa chỉ không được vượt quá 255 ký tự")
-    private String caregiverAddress;
+        @NotNull(message = "Ngày sinh không được để trống")
+        @Past(message = "Ngày sinh phải là một ngày trong quá khứ")
+        private LocalDate dateOfBirth;
 
-    @Pattern(regexp = "^(http|https)://.*$", message = "Avatar URL phải bắt đầu bằng http hoặc https")
-    private String caregiverAvatarUrl;
+        @NotNull(message = "Giới tính không được để trống")
+        private Gender gender;
 
-    // Elderly information
-    @NotBlank(message = "Tên không được để trống")
-    @Size(max = 50, message = "Tên không được vượt quá 50 ký tự")
-    private String elderlyFirstName;
+        @Size(max = 255, message = "Địa chỉ không được vượt quá 255 ký tự")
+        private String address;
 
-    @NotBlank(message = "Họ không được để trống")
-    @Size(max = 50, message = "Họ không được vượt quá 50 ký tự")
-    private String elderlyLastName;
+        @Pattern(regexp = "^(http|https)://.*$", message = "Avatar URL phải bắt đầu bằng http hoặc https")
+        private String avatarUrl;
+    }
 
-    @NotBlank(message = "Số điện thoại không được để trống")
-    @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$", message = "Số điện thoại không đúng định dạng (Ví dụ: 0912345678)")
-    private String elderlyphone;
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ElderlySignupRequest {
+        @NotBlank(message = "Tên không được để trống")
+        @Size(max = 50, message = "Tên không được vượt quá 50 ký tự")
+        private String firstName;
 
-    @NotNull(message = "Ngày sinh không được để trống")
-    @Past(message = "Ngày sinh phải là một ngày trong quá khứ")
-    private LocalDate elderlyDateOfBirth;
+        @NotBlank(message = "Họ không được để trống")
+        @Size(max = 50, message = "Họ không được vượt quá 50 ký tự")
+        private String lastName;
 
-    @NotNull(message = "Giới tính không được để trống")
-    private Gender elderlyGender;
+        @NotBlank(message = "Số điện thoại không được để trống")
+        @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$", message = "Số điện thoại không đúng định dạng (Ví dụ: 0912345678)")
+        private String phone;
 
-    @Size(max = 255, message = "Địa chỉ không được vượt quá 255 ký tự")
-    private String elderlyAddress;
+        @NotNull(message = "Ngày sinh không được để trống")
+        @Past(message = "Ngày sinh phải là một ngày trong quá khứ")
+        private LocalDate dateOfBirth;
 
-    @Pattern(regexp = "^(http|https)://.*$", message = "Avatar URL phải bắt đầu bằng http hoặc https")
-    private String elderlyAvatarUrl;
+        @NotNull(message = "Giới tính không được để trống")
+        private Gender gender;
 
-    // Relationship information
-    /**
-     * Tên gợi nhớ cho người già (Không bắt buộc)
-     */
-    @Nullable // (Chỉ viết @Nullable không thôi, không có ngoặc)
-    private String relationshipName;
+        @Size(max = 255, message = "Địa chỉ không được vượt quá 255 ký tự")
+        private String address;
 
-    @NotNull(message = "Permission level is required")
-    private PermissionLevel permissionLevel;
+        @Pattern(regexp = "^(http|https)://.*$", message = "Avatar URL phải bắt đầu bằng http hoặc https")
+        private String avatarUrl;
+
+        private String caregiverTitle;
+        private String elderlyTitle;
+
+        @NotNull(message = "Permission level is required")
+        private PermissionLevel permissionLevel;
+    }
 }

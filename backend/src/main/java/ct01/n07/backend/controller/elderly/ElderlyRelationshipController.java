@@ -20,7 +20,7 @@ public class ElderlyRelationshipController {
 
     @GetMapping
     public ResponseEntity<List<CaregiverProfileResponse>> getRelativeCaregiverProfiles() {
-        return ResponseEntity.ok(relationshipService.getRelativeCaregiverProfiles());
+        return ResponseEntity.ok(relationshipService.getAcceptedCaregiverProfiles());
     }
 
     @GetMapping("/pending")

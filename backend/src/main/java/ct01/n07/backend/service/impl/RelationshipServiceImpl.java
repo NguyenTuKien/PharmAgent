@@ -30,7 +30,7 @@ public class RelationshipServiceImpl implements RelationshipService {
     private final UserProfileService userProfileService;
 
     @Override
-    public List<ElderlyProfileResponse> getRelativeElderlyProfiles() {
+    public List<ElderlyProfileResponse> getAcceptedElderlyProfiles() {
         UserProfile currentProfile = userProfileService.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
 
@@ -54,19 +54,22 @@ public class RelationshipServiceImpl implements RelationshipService {
                 .map(rel -> {
                     UserProfile profile = profileMap.get(rel.getElderlyId());
                     return ElderlyProfileResponse.builder()
-                            .id(profile.getId())
+                            .relationshipId(rel.getId())
+                            .profileId(profile.getId())
                             .firstName(profile.getFirstName())
                             .lastName(profile.getLastName())
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
                             .avatarUrl(profile.getAvatarUrl())
+                            .status(rel.getStatus())
+                            .permissionLevel(rel.getPermissionLevel())
                             .build();
                 })
                 .toList();
     }
 
     @Override
-    public List<CaregiverProfileResponse> getRelativeCaregiverProfiles() {
+    public List<CaregiverProfileResponse> getAcceptedCaregiverProfiles() {
         UserProfile currentProfile = userProfileService.getCurrentUserProfile();
         requireRole(currentProfile, Role.ELDERLY);
 
@@ -90,12 +93,17 @@ public class RelationshipServiceImpl implements RelationshipService {
                 .map(rel -> {
                     UserProfile profile = profileMap.get(rel.getCaregiverId());
                     return CaregiverProfileResponse.builder()
-                            .id(profile.getId())
+                            .relationshipId(rel.getId())
+                            .profileId(profile.getId())
                             .firstName(profile.getFirstName())
                             .lastName(profile.getLastName())
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
-                            .relationshipName(rel.getRelationshipName())
+                            .caregiverTitle(rel.getCaregiverTitle())
+                            .address(profile.getAddress())
+                            .avatarUrl(profile.getAvatarUrl())
+                            .status(rel.getStatus())
+                            .permissionLevel(rel.getPermissionLevel())
                             .build();
                 })
                 .toList();
@@ -126,12 +134,15 @@ public class RelationshipServiceImpl implements RelationshipService {
                 .map(rel -> {
                     UserProfile profile = profileMap.get(rel.getElderlyId());
                     return ElderlyProfileResponse.builder()
-                            .id(profile.getId())
+                            .relationshipId(rel.getId())
+                            .profileId(profile.getId())
                             .firstName(profile.getFirstName())
                             .lastName(profile.getLastName())
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
                             .avatarUrl(profile.getAvatarUrl())
+                            .status(rel.getStatus())
+                            .permissionLevel(rel.getPermissionLevel())
                             .build();
                 })
                 .toList();
@@ -162,13 +173,16 @@ public class RelationshipServiceImpl implements RelationshipService {
                 .map(rel -> {
                     UserProfile profile = profileMap.get(rel.getCaregiverId());
                     return CaregiverProfileResponse.builder()
-                            .id(profile.getId())
+                            .relationshipId(rel.getId())
+                            .profileId(profile.getId())
                             .firstName(profile.getFirstName())
                             .lastName(profile.getLastName())
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
                             .avatarUrl(profile.getAvatarUrl())
-                            .relationshipName(rel.getRelationshipName())
+                            .caregiverTitle(rel.getCaregiverTitle())
+                            .status(rel.getStatus())
+                            .permissionLevel(rel.getPermissionLevel())
                             .build();
                 })
                 .toList();
@@ -183,14 +197,16 @@ public class RelationshipServiceImpl implements RelationshipService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target profile is not a valid elderly profile");
         }
 
-        if (relationshipRepository.existsByCaregiverIdAndElderlyId(currentProfile.getId(), request.getTargetElderlyId())) {
+        if (relationshipRepository.existsByCaregiverIdAndElderlyId(currentProfile.getId(),
+                request.getTargetElderlyId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Relationship already exists");
         }
 
         Relationship relationship = Relationship.builder()
                 .caregiverId(currentProfile.getId())
                 .elderlyId(request.getTargetElderlyId())
-                .relationshipName(request.getRelationshipName())
+                .caregiverTitle(request.getCaregiverTitle())
+                .elderlyTitle(request.getElderlyTitle())
                 .permissionLevel(request.getPermissionLevel())
                 .status(RelationStatus.PENDING)
                 .build();
@@ -204,7 +220,8 @@ public class RelationshipServiceImpl implements RelationshipService {
         requireRole(currentProfile, Role.ELDERLY);
 
         Relationship relationship = relationshipRepository.findByIdAndElderlyId(relationshipId, currentProfile.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Relationship invitation not found"));
+                .orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Relationship invitation not found"));
 
         if (relationship.getStatus() != RelationStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending invitations can be accepted");
@@ -214,9 +231,9 @@ public class RelationshipServiceImpl implements RelationshipService {
         relationshipRepository.save(relationship);
 
         // Delete any existing ACCEPTED relationship between this pair
-        relationshipRepository.findByCaregiverIdAndElderlyIdAndStatus(
-                        relationship.getCaregiverId(), relationship.getElderlyId(), RelationStatus.ACCEPTED)
-                .ifPresent(oldRel -> {
+        relationshipRepository.findAllByCaregiverIdAndElderlyIdAndStatus(
+                relationship.getCaregiverId(), relationship.getElderlyId(), RelationStatus.ACCEPTED)
+                .forEach(oldRel -> {
                     if (!oldRel.getId().equals(relationship.getId())) {
                         relationshipRepository.delete(oldRel);
                     }
@@ -229,7 +246,8 @@ public class RelationshipServiceImpl implements RelationshipService {
         requireRole(currentProfile, Role.ELDERLY);
 
         Relationship relationship = relationshipRepository.findByIdAndElderlyId(relationshipId, currentProfile.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Relationship invitation not found"));
+                .orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Relationship invitation not found"));
 
         if (relationship.getStatus() != RelationStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending invitations can be refused");
@@ -239,38 +257,44 @@ public class RelationshipServiceImpl implements RelationshipService {
     }
 
     @Override
-    public void updateRelationship(String elderlyId, RelationshipInviteRequest request) {
+    public void updateRelationship(String elderlyId, PermissionLevel permissionLevel) {
         UserProfile currentProfile = userProfileService.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
 
-        // Ensure an accepted relationship already exists
+        String caregiverId = currentProfile.getId();
+
+        // 1. Đảm bảo mối quan hệ gốc (ACCEPTED) đang tồn tại
         if (!relationshipRepository.existsByCaregiverIdAndElderlyIdAndStatus(
-                currentProfile.getId(), elderlyId, RelationStatus.ACCEPTED)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No active relationship found to update");
+                caregiverId, elderlyId, RelationStatus.ACCEPTED)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không tìm thấy mối quan hệ hợp lệ để cập nhật");
         }
 
-        // If a pending update already exists, delete it first to replace with new one
-        relationshipRepository.findByCaregiverIdAndElderlyIdAndStatus(
-                        currentProfile.getId(), elderlyId, RelationStatus.PENDING)
-                .ifPresent(relationshipRepository::delete);
+        // 2. Tìm yêu cầu PENDING cũ (nếu có) để GHI ĐÈ, hoặc tạo mới nếu chưa có
+        Relationship pendingRelationship = relationshipRepository
+                .findAllByCaregiverIdAndElderlyIdAndStatus(caregiverId, elderlyId, RelationStatus.PENDING)
+                .stream().findFirst()
+                .orElse(Relationship.builder()
+                        .caregiverId(caregiverId)
+                        .elderlyId(elderlyId)
+                        .status(RelationStatus.PENDING)
+                        // Tên gợi nhớ sẽ được lấy từ bản ghi cũ (nếu có) hoặc để null
+                        .build());
 
-        Relationship newRequest = Relationship.builder()
-                .caregiverId(currentProfile.getId())
-                .elderlyId(elderlyId)
-                .relationshipName(request.getRelationshipName())
-                .permissionLevel(request.getPermissionLevel())
-                .status(RelationStatus.PENDING)
-                .build();
+        // 3. Cập nhật quyền hạn (permissionLevel) từ tham số truyền vào
+        pendingRelationship.setPermissionLevel(permissionLevel);
 
-        relationshipRepository.save(newRequest);
+        // 4. Lưu lại vào DB
+        relationshipRepository.save(pendingRelationship);
     }
 
     @Override
-    public void createRelationship(String caregiverId, String elderlyId, String relationshipName, PermissionLevel permissionLevel) {
+    public void createRelationship(String caregiverId, String elderlyId, String caregiverTitle, String elderlyTitle,
+            PermissionLevel permissionLevel) {
         Relationship relationship = Relationship.builder()
                 .caregiverId(caregiverId)
                 .elderlyId(elderlyId)
-                .relationshipName(relationshipName)
+                .caregiverTitle(caregiverTitle)
+                .elderlyTitle(elderlyTitle)
                 .permissionLevel(permissionLevel)
                 .status(RelationStatus.ACCEPTED)
                 .build();
@@ -279,8 +303,8 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     private void requireRole(UserProfile profile, Role expectedRole) {
         if (profile.getRole() != expectedRole) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to perform this action");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You do not have permission to perform this action");
         }
     }
 }
-

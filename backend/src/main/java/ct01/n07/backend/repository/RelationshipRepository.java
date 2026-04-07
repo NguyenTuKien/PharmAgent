@@ -20,5 +20,5 @@ public interface RelationshipRepository extends MongoRepository<Relationship, St
 
 	Optional<Relationship> findByIdAndElderlyId(String id, String elderlyId);
 
-	Optional<Relationship> findByCaregiverIdAndElderlyIdAndStatus(String caregiverId, String elderlyId, RelationStatus status);
+	List<Relationship> findAllByCaregiverIdAndElderlyIdAndStatus(String caregiverId, String elderlyId, RelationStatus status);
 }

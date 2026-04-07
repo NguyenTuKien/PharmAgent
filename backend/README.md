@@ -1,283 +1,140 @@
-# PharmAgent Backend API
+# PharmAgent Backend API Reference (36 Endpoints)
 
-Tai lieu nay mo ta cac API hien tai trong backend (dua tren code controller hien co).
-
-## Base URL
-
-- Local: `http://localhost:8080`
-- Context path: `/api`
-- Vi du full path: `http://localhost:8080/api/auth/login`
-
-## Auth/Security
-
-Theo `SecurityConfiguration`:
-
-- Public (khong can JWT): `/api/auth/**`
-- Can xac thuc JWT: tat ca route con lai (`/api/pills/**`, `/api/patient-medications/**`, ...)
+Tài liệu này cung cấp chi tiết kỹ thuật cho toàn bộ 36 API của hệ thống PharmAgent, chia theo các module nghiệp vụ.
 
 ---
 
-## 1) Auth APIs (`/api/auth`)
+## 1. Authentication & Security (`/auth`)
 
-### 1.1 Login account
+### [API 1] Signup (`POST /auth/signup`)
+Đăng ký tài khoản hệ thống.
+- **Request Body**:
+  | Field | Type | Validation | Description |
+  | :--- | :--- | :--- | :--- |
+  | `email` | String | Email Format, NotBlank | Email dùng để đăng nhập |
+  | `password` | String | Min 8 chars, NotBlank | Mật khẩu |
+  | `caregiver` | Object | NotNull | Thông tin Profile của người đăng ký |
+- **Output**: `LoginResponse` (accessToken, refreshToken, profiles list).
 
-- **Endpoint**: `POST /api/auth/login`
-- **Chuc nang**: Dang nhap bang email/password, tra `accessToken`, `refreshToken`, va danh sach profile (phan trang).
-- **Query params (pagination)**:
-  - `page` (default `0`)
-  - `size` (default `10`)
-  - `sort` (optional)
-- **Input body** (`LoginRequest`):
+### [API 2] Login (`POST /auth/login`)
+Đăng nhập tài khoản.
+- **Request Body**: `{ "email": "...", "password": "..." }`
+- **Output**: `LoginResponse`.
 
-```json
-{
-  "email": "user@example.com",
-  "password": "Secret@123"
-}
-```
+### [API 3] Select Profile (`POST /auth/profiles/{id}/select`)
+Hoán đổi Account Token lấy Profile Token.
+- **Path Variable**: `id` - ID của Profile muốn chọn (profileId).
+- **Output**: `{ "profileToken": "ey..." }`
 
-- **Output** (`LoginResponse`):
+### [API 4] Refresh Token (`POST /auth/refresh`)
+Làm mới phiên làm việc.
+- **Request Body**: `{ "refreshToken": "...", "profileId": "..." }`
+- **Output**: `TokenRefreshResponse` (accessToken, profileToken, refreshToken).
 
-```json
-{
-  "accessToken": "...",
-  "refreshToken": "...",
-  "profiles": {
-    "content": [
-      {
-        "id": "profileId",
-        "phone": "090...",
-        "firstName": "An",
-        "lastName": "Nguyen",
-        "avatarUrl": "https://...",
-        "role": "ELDERLY"
-      }
-    ],
-    "number": 0,
-    "size": 10,
-    "totalElements": 1,
-    "totalPages": 1
-  }
-}
-```
-
-### 1.2 Select profile (token exchange)
-
-- **Endpoint**: `POST /api/auth/select-profile`
-- **Chuc nang**: Doi `accessToken` cap account thanh `profileToken` theo profile duoc chon.
-- **Headers**:
-  - `Authorization: Bearer <accessToken>`
-- **Input body**:
-
-```json
-{
-  "profileId": "string"
-}
-```
-
-- **Output**:
-
-```json
-{
-  "profileToken": "..."
-}
-```
-
-### 1.3 Refresh token
-
-- **Endpoint**: `POST /api/auth/refresh`
-- **Chuc nang**: Rotate refresh token va cap lai `profileToken`.
-- **Input body** (`TokenRefreshRequest`):
-
-```json
-{
-  "refreshToken": "string",
-  "profileId": "string"
-}
-```
-
-- **Output** (`TokenRefreshResponse`):
-
-```json
-{
-  "profileToken": "...",
-  "refreshToken": "..."
-}
-```
-
-### 1.4 Logout
-
-- **Endpoint**: `POST /api/auth/logout`
-- **Chuc nang**: Huy refresh token hien tai (set null trong DB).
-- **Input body**:
-
-```json
-{
-  "refreshToken": "string"
-}
-```
-
-- **Output**: `204 No Content`
+### [API 5] Logout (`POST /auth/logout`)
+Đăng xuất tài khoản.
+- **Request Body**: `{ "refreshToken": "..." }`
+- **Output**: `204 No Content`.
 
 ---
 
-## 2) Pill APIs (`/api/pills`)
+## 2. User Profile Module (`/profiles`)
 
-### 2.1 Get all pills (pagination)
+### [API 6] List Account Profiles (`GET /profiles`)
+Lấy danh sách Profile thuộc tài khoản hiện tại.
+- **Query Params**: `page`, `size`.
+- **Output**: `Page<UserProfileSummaryResponse>`.
 
-- **Endpoint**: `GET /api/pills`
-- **Chuc nang**: Lay danh sach thuoc dang active theo trang.
-- **Query params**:
-  - `page` (default `0`)
-  - `size` (default `10`)
-  - `sort` (optional)
-- **Output**: `Page<Pill>`
+### [API 7] Get My Profile (`GET /profiles/me`)
+Lấy thông tin chi tiết Profile đang truy cập.
+- **Output**: `UserProfileResponse` (bao gồm contacts và devices).
 
-### 2.2 Add new pill
+### [API 8] Update My Profile (`PUT /profiles/me`)
+Cập nhật thông tin cá nhân.
+- **Input Fields**: `firstName`, `lastName`, `phone`, `dateOfBirth`, `gender`, `address`.
+- **Output**: `UserProfileResponse`.
 
-- **Endpoint**: `POST /api/pills`
-- **Chuc nang**: Tao thuoc moi.
-- **Input body** (`PillRequest`):
-  - `name`, `genericName`, `brandName`, `strength`, `dosageForm`, `color`, `shape`, `description`, `usageInstructions`, `warning`, `sideEffects`, `manufacturer`
-- **Output**: `201 Created` + message
+### [API 9-12] Emergency Contacts (CRUD)
+- `GET /profiles/me/contacts`: Lấy danh sách người liên hệ.
+- `POST /profiles/me/contacts`: Thêm mới (Body: `name`, `phone`).
+- `PUT /profiles/me/contacts/{id}`: Cập nhật (Body: `name`, `phone`).
+- `DELETE /profiles/me/contacts/{id}`: Xóa người liên hệ.
 
-### 2.3 Get pill by id
+### [API 13-16] User Devices (CRUD)
+- `GET /profiles/me/devices`: Xem danh sách thiết bị nhận thông báo.
+- `POST /profiles/me/devices`: Đăng ký thiết bị (Body: `deviceName`, `deviceToken`, `deviceType`).
+- `PUT /profiles/me/devices/{id}`: Cập nhật cấu hình.
+- `DELETE /profiles/me/devices/{id}`: Hủy đăng ký.
 
-- **Endpoint**: `GET /api/pills/{id}`
-- **Chuc nang**: Lay chi tiet thuoc theo id.
-- **Output**: `Pill`
+### [API 17] Create Sub-Profile (`POST /caregiver/profiles`)
+**Caregiver** tạo profile Elderly mới trong cùng tài khoản.
+- **Input**: `CreateProfileRequest` (firstName, lastName, phone, role, gender...).
 
-### 2.4 Search pills
+### [API 18] Delete Sub-Profile (`DELETE /caregiver/profiles/{id}`)
+**Caregiver** xóa một profile phụ. `id` là profileId.
 
-- **Endpoint**: `GET /api/pills/search?keyword=...`
-- **Chuc nang**: Tim thuoc theo tu khoa.
-- **Output**: `List<Pill>`
-
-### 2.5 Update pill
-
-- **Endpoint**: `PUT /api/pills/{id}`
-- **Chuc nang**: Cap nhat thong tin thuoc.
-- **Input body**: `PillRequest`
-- **Output**: message thanh cong
-
-### 2.6 Delete pill
-
-- **Endpoint**: `DELETE /api/pills/{id}`
-- **Chuc nang**: Xoa (hoac deactive) thuoc theo service implementation.
-- **Output**: message thanh cong
-
-### 2.7 Add image for pill
-
-- **Endpoint**: `POST /api/pills/{pillId}/images`
-- **Chuc nang**: Them hinh anh cho thuoc.
-- **Input body** (`PillImageRequest`):
-
-```json
-{
-  "imageUrl": "https://...",
-  "viewType": "FRONT",
-  "isPrimary": true
-}
-```
-
-- **Output**: `201 Created` + message
+### [API 19] Search Profiles (`POST /caregiver/profiles/search`)
+Tìm kiếm Profile khác trong hệ thống để kết nối.
+- **Input**: `{ "query": "string", "role": "ELDERLY/CAREGIVER" }`
 
 ---
 
-## 3) Patient Medication APIs (`/api/patient-medications`)
+## 3. Relationship Module (`/relationship`)
 
-### 3.1 Get all patient medications
+### [API 20] My Elderly (Accepted) (`GET /caregiver/relationship`)
+Danh sách người cao tuổi đang chăm sóc (đã chấp nhận).
+- **Output**: `List<ElderlyProfileResponse>` (chứa `relationshipId`, `profileId`, `status`, `permissionLevel`, `firstName`...).
 
-- **Endpoint**: `GET /api/patient-medications`
-- **Chuc nang**: Lay tat ca don thuoc benh nhan.
-- **Output**: `List<PatientMedication>`
+### [API 21] Pending Invites Out (`GET /caregiver/relationship/pending`)
+Danh sách lời mời đã gửi đi (đang chờ phản hồi).
+- **Output**: `List<ElderlyProfileResponse>` (chứa `relationshipId`, `profileId`, `status`, `permissionLevel`...).
 
-### 3.2 Get patient medication by id
+### [API 22] Send Invite (`POST /caregiver/relationship/invite`)
+Gửi lời mời kết nối tới Elderly ID qua `profileId`.
+- **Input**: `{ "targetElderlyId": "...", "caregiverTitle": "Con trai", "permissionLevel": "EDIT_SCHEDULE" }`
+- **Output**: Trả về `relationshipId` (String).
 
-- **Endpoint**: `GET /api/patient-medications/{id}`
-- **Chuc nang**: Lay chi tiet don thuoc.
-- **Output**: `PatientMedication`
+### [API 23] Update Permission (`PATCH /caregiver/relationship/{id}`)
+Cập nhật quyền hạn cho mối quan hệ hiện tại. `id` ở đây là `targetElderlyId`.
 
-### 3.3 Get medications by patientId
+### [API 24] My Caregivers (Accepted) (`GET /elderly/relationship`)
+Danh sách người đang chăm sóc mình (đã chấp nhận).
+- **Output**: `List<CaregiverProfileResponse>` (chứa `relationshipId`, `profileId`, `status`, `permissionLevel`...).
 
-- **Endpoint**: `GET /api/patient-medications/patient/{patientId}`
-- **Chuc nang**: Lay cac don thuoc cua mot benh nhan.
-- **Output**: `List<PatientMedication>`
+### [API 25] Pending Invites In (`GET /elderly/relationship/pending`)
+Danh sách lời mời từ phía Caregiver đang chờ Elderly phê duyệt.
+- **Output**: `List<CaregiverProfileResponse>` (chứa `relationshipId`, `profileId`, `status`, `permissionLevel`...).
 
-### 3.4 Create patient medication
+### [API 26] Accept Invite (`PUT /elderly/relationship/{id}/accept`)
+Đồng ý lời mời kết nối từ Caregiver. `id` của Path là `relationshipId`.
 
-- **Endpoint**: `POST /api/patient-medications`
-- **Chuc nang**: Tao don thuoc moi cho benh nhan.
-- **Input body** (`PatientMedicationRequest`):
-  - `patientId`, `pillId`, `nickname`, `dosageAmount`, `dosageUnit`, `route`, `mealRelation`, `instruction`, `prescribedBy`, `purpose`, `startDate`, `endDate`, `isPrn`, `maxPerDay`
-- **Output**: `201 Created` + `PatientMedication`
-
-### 3.5 Update patient medication
-
-- **Endpoint**: `PUT /api/patient-medications/{id}`
-- **Chuc nang**: Cap nhat don thuoc.
-- **Input body**: `PatientMedicationRequest`
-- **Output**: `PatientMedication`
-
-### 3.6 Delete patient medication
-
-- **Endpoint**: `DELETE /api/patient-medications/{id}`
-- **Chuc nang**: Xoa don thuoc.
-- **Output**: `204 No Content`
-
-### 3.7 Add schedule
-
-- **Endpoint**: `POST /api/patient-medications/{id}/schedules`
-- **Chuc nang**: Them lich uong thuoc vao don thuoc.
-- **Input body** (`MedicationScheduleRequest`):
-  - `scheduleType`, `frequencyInterval`, `daysOfWeek`, `reminderEnabled`, `reminderMinutesBefore`, `note`, `startDate`, `endDate`, `scheduleTimeRequests`
-- **Output**: `PatientMedication`
-
-### 3.8 Update schedule
-
-- **Endpoint**: `PUT /api/patient-medications/{id}/schedules/{scheduleId}`
-- **Chuc nang**: Cap nhat 1 lich trong don thuoc.
-- **Input body**: `MedicationScheduleRequest`
-- **Output**: `PatientMedication`
-
-### 3.9 Delete schedule
-
-- **Endpoint**: `DELETE /api/patient-medications/{id}/schedules/{scheduleId}`
-- **Chuc nang**: Xoa 1 lich trong don thuoc.
-- **Output**: `PatientMedication`
-
-### 3.10 Add schedule time
-
-- **Endpoint**: `POST /api/patient-medications/{id}/schedules/{scheduleId}/times`
-- **Chuc nang**: Them moc gio uong thuoc vao lich.
-- **Input body** (`ScheduleTimeRequest`):
-
-```json
-{
-  "takenTime": "08:00:00",
-  "quantity": 1
-}
-```
-
-- **Output**: `PatientMedication`
-
-### 3.11 Update schedule time
-
-- **Endpoint**: `PUT /api/patient-medications/{id}/schedules/{scheduleId}/times/{timeId}`
-- **Chuc nang**: Cap nhat moc gio trong lich.
-- **Input body**: `ScheduleTimeRequest`
-- **Output**: `PatientMedication`
-
-### 3.12 Delete schedule time
-
-- **Endpoint**: `DELETE /api/patient-medications/{id}/schedules/{scheduleId}/times/{timeId}`
-- **Chuc nang**: Xoa moc gio trong lich.
-- **Output**: `PatientMedication`
+### [API 27] Refuse Invite (`PUT /elderly/relationship/{id}/refuse`)
+Từ chối lời mời. `id` của Path là `relationshipId`.
 
 ---
 
-## Ghi chu
+## 4. Pill Catalog Module (`/pills`)
 
-- Cac API co `@Valid` se validate theo annotation trong DTO (NotBlank, NotNull, Size, Min/Max...).
-- Response loi chi tiet phu thuoc vao `ResponseStatusException` va global exception handling (neu co).
-- Neu can, co the tach them `docs/API-EXAMPLES.md` de luu sample request/response day du cho FE test.
+### [API 28] Get Pill Catalog (`GET /pills`)
+Danh mục thuốc có phân trang và tìm kiếm theo tên.
+
+### [API 29] Get Pill Detail (`GET /pills/{id}`)
+Thông tin chi tiết thuốc (Thành phần, HDSD, Cảnh báo).
+
+### [API 30] Keyword Search (`GET /pills/search`)
+Tìm kiếm nhanh theo keyword.
+
+### [API 31] Scan Pill (`POST /pills/scan`)
+Nhận diện thuốc qua hình ảnh (MultipartFile).
+
+### [API 32-36] Admin Pill Management
+- `POST /admin/pills`: Thêm thuốc mới (PillCreateRequest).
+- `PUT /admin/pills/{id}`: Sửa thông tin thuốc.
+- `DELETE /admin/pills/{id}`: Xóa thuốc.
+- `POST /admin/pills/{id}/images`: Thêm ảnh (PillImageRequest).
+- `DELETE /admin/pills/{id}/images/{imgId}`: Xóa ảnh.
+
+---
+
+## 5. Medication & Dose APIs (To Be Finalized)
+Các API về đơn thuốc cá nhân (`/medications`), lịch uống thuốc của Caregiver (`/caregiver/medications`) và quản lý liều dùng (`/medications/doses`) hiện đang được xem xét kĩ thuật cuối cùng.

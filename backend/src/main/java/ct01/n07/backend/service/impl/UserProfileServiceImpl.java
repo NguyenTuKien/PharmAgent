@@ -12,6 +12,7 @@ import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.EmergencyContact;
 import ct01.n07.backend.model.UserDevice;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.UserProfileRepository;
 import ct01.n07.backend.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +29,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static ct01.n07.backend.model.enums.Role.ELDERLY;
 
 @Service
 @RequiredArgsConstructor
@@ -300,5 +303,20 @@ public class UserProfileServiceImpl implements UserProfileService {
     public List<UserDevice> getMyDevices() {
         UserProfile profile = getCurrentUserProfile();
         return profile.getUserDevices() != null ? profile.getUserDevices() : new ArrayList<>();
+    }
+
+    @Override
+    public Page<UserProfileSummaryResponse> searchProfiles(String keyword, Role role, Pageable pageable) {
+        String currentProfileId = getProfileIdFromRequest();
+        String excludedId = currentProfileId != null ? currentProfileId : "";
+
+        Page<UserProfile> profilePage;
+        if (role == null) {
+            profilePage = userProfileRepository.searchProfilesExcludingCurrent(keyword, excludedId, pageable);
+        } else {
+            profilePage = userProfileRepository.searchProfilesByRoleExcludingCurrent(keyword, excludedId, String.valueOf(role), pageable);
+        }
+
+        return profilePage.map(userProfileMapper::toProfileSummary);
     }
 }

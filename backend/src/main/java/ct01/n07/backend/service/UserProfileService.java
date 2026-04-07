@@ -9,6 +9,7 @@ import ct01.n07.backend.dto.userProfile.UserProfileSummaryResponse;
 import ct01.n07.backend.model.EmergencyContact;
 import ct01.n07.backend.model.UserDevice;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.Role;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.data.domain.Page;
@@ -54,4 +55,6 @@ public interface UserProfileService {
     UserProfileResponse deleteDevice(String deviceId);
 
     List<UserDevice> getMyDevices();
+
+    Page<UserProfileSummaryResponse> searchProfiles(String keyword, Role role, Pageable pageable);
 }

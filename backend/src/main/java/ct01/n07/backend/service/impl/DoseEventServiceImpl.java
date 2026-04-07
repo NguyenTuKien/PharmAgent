@@ -2,9 +2,9 @@ package ct01.n07.backend.service.impl;
 
 import ct01.n07.backend.dto.doseEvent.DoseEventResponse;
 import ct01.n07.backend.dto.doseEvent.DoseStatusUpdateRequest;
+import ct01.n07.backend.dto.patientMedication.MedicationResponse;
 import ct01.n07.backend.mapper.DoseEventMapper;
 import ct01.n07.backend.model.DoseEvent;
-import ct01.n07.backend.model.PatientMedication;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.repository.DoseEventRepository;
 import ct01.n07.backend.service.DoseEventService;
@@ -12,6 +12,7 @@ import ct01.n07.backend.service.PatientMedicationService;
 import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -58,13 +59,13 @@ public class DoseEventServiceImpl implements DoseEventService {
         log.info("Fetching dose timeline for patientId={} on date={}", patientId, date);
 
         // Lấy danh sách ID của tất cả thuốc của bệnh nhân qua PatientMedicationService
-        List<PatientMedication> medications = patientMedicationService.getPatientMedicationsByPatientId(patientId);
+        List<MedicationResponse> medications = patientMedicationService.getMedications(patientId, null, Pageable.unpaged()).getContent();
         if (medications == null || medications.isEmpty()) {
             return List.of();
         }
 
         List<String> medicationIds = medications.stream()
-                .map(PatientMedication::getId)
+                .map(MedicationResponse::getId)
                 .toList();
 
         // Truy vấn DoseEvents trong khung giờ của ngày được chỉ định
@@ -97,7 +98,8 @@ public class DoseEventServiceImpl implements DoseEventService {
         switch (request.getStatus()) {
             case TAKEN -> doseEvent.setTakenAt(LocalDateTime.now());
             case SKIPPED, MISSED -> doseEvent.setTakenAt(null);
-            default -> { /* PENDING / OVERDUE: không thay đổi takenAt */ }
+            default -> {
+                /* PENDING / OVERDUE: không thay đổi takenAt */ }
         }
 
         DoseEvent saved = doseEventRepository.save(doseEvent);

@@ -15,20 +15,17 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 
-@Mapper(
-        componentModel = "spring",
-        unmappedTargetPolicy = ReportingPolicy.IGNORE
-)
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface UserProfileMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", source = "userId")
-    @Mapping(target = "firstName", source = "req.caregiverFirstName")
-    @Mapping(target = "lastName", source = "req.caregiverLastName")
-    @Mapping(target = "phone", source = "req.caregivePhone")
-    @Mapping(target = "dateOfBirth", source = "req.caregiverDateOfBirth")
-    @Mapping(target = "gender", source = "req.caregiverGender")
-    @Mapping(target = "address", source = "req.caregiverAddress")
-    @Mapping(target = "avatarUrl", source = "req.caregiverAvatarUrl")
+    @Mapping(target = "firstName", source = "req.caregiver.firstName")
+    @Mapping(target = "lastName", source = "req.caregiver.lastName")
+    @Mapping(target = "phone", source = "req.caregiver.phone")
+    @Mapping(target = "dateOfBirth", source = "req.caregiver.dateOfBirth")
+    @Mapping(target = "gender", source = "req.caregiver.gender")
+    @Mapping(target = "address", source = "req.caregiver.address")
+    @Mapping(target = "avatarUrl", source = "req.caregiver.avatarUrl")
     @Mapping(target = "role", constant = "CAREGIVER")
     @Mapping(target = "emergencyContacts", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "userDevices", expression = "java(new java.util.ArrayList<>())")
@@ -38,13 +35,13 @@ public interface UserProfileMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", source = "userId")
-    @Mapping(target = "firstName", source = "req.elderlyFirstName")
-    @Mapping(target = "lastName", source = "req.elderlyLastName")
-    @Mapping(target = "phone", source = "req.elderlyphone")
-    @Mapping(target = "dateOfBirth", source = "req.elderlyDateOfBirth")
-    @Mapping(target = "gender", source = "req.elderlyGender")
-    @Mapping(target = "address", source = "req.elderlyAddress")
-    @Mapping(target = "avatarUrl", source = "req.elderlyAvatarUrl")
+    @Mapping(target = "firstName", source = "req.elderly.firstName")
+    @Mapping(target = "lastName", source = "req.elderly.lastName")
+    @Mapping(target = "phone", source = "req.elderly.phone")
+    @Mapping(target = "dateOfBirth", source = "req.elderly.dateOfBirth")
+    @Mapping(target = "gender", source = "req.elderly.gender")
+    @Mapping(target = "address", source = "req.elderly.address")
+    @Mapping(target = "avatarUrl", source = "req.elderly.avatarUrl")
     @Mapping(target = "role", constant = "ELDERLY")
     @Mapping(target = "emergencyContacts", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "userDevices", expression = "java(new java.util.ArrayList<>())")

@@ -10,7 +10,8 @@ public class RelationshipInviteRequest {
     @NotBlank(message = "Target elderly ID is required")
     private String targetElderlyId;
 
-    private String relationshipName;
+    private String caregiverTitle;
+    private String elderlyTitle;
 
     @NotNull(message = "Permission level is required")
     private PermissionLevel permissionLevel;

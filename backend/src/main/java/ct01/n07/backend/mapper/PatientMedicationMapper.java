@@ -1,10 +1,8 @@
 package ct01.n07.backend.mapper;
 
-import ct01.n07.backend.dto.doseEvent.MedicationScheduleRequest;
-import ct01.n07.backend.dto.doseEvent.PatientMedicationRequest;
-import ct01.n07.backend.dto.doseEvent.ScheduleTimeRequest;
+import ct01.n07.backend.dto.patientMedication.MedicationScheduleRequest;
+import ct01.n07.backend.dto.patientMedication.ScheduleTimeRequest;
 import ct01.n07.backend.model.MedicationSchedule;
-import ct01.n07.backend.model.PatientMedication;
 import ct01.n07.backend.model.ScheduleTime;
 import java.util.List;
 import org.mapstruct.AfterMapping;
@@ -14,14 +12,6 @@ import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface PatientMedicationMapper {
-
-    @Mapping(target = "isActive", constant = "true")
-    @Mapping(target = "medicationSchedules", expression = "java(new java.util.ArrayList<>())")
-    PatientMedication toModel(PatientMedicationRequest request);
-
-    void updateModel(@MappingTarget PatientMedication target, PatientMedicationRequest request);
-
-    PatientMedicationRequest toRequest(PatientMedication model);
 
     @Mapping(source = "scheduleTimeRequests", target = "scheduleTimeList")
     @Mapping(target = "isActive", constant = "true")
@@ -50,4 +40,3 @@ public interface PatientMedicationMapper {
         }
     }
 }
-

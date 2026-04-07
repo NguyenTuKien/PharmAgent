@@ -1,4 +1,4 @@
-package ct01.n07.backend.dto.doseEvent;
+package ct01.n07.backend.dto.patientMedication;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;

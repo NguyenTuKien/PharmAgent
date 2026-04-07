@@ -2,13 +2,14 @@ package ct01.n07.backend.facade;
 
 import ct01.n07.backend.dto.doseEvent.AdherenceResponse;
 import ct01.n07.backend.dto.doseEvent.InventoryWarningResponse;
-import ct01.n07.backend.model.PatientMedication;
+import ct01.n07.backend.dto.patientMedication.MedicationResponse;
 import ct01.n07.backend.model.enums.DoseStatus;
 import ct01.n07.backend.repository.DoseEventRepository;
 import ct01.n07.backend.service.PatientMedicationService;
 import ct01.n07.backend.service.PillService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -84,7 +85,7 @@ public class StatsFacade {
     public List<InventoryWarningResponse> getInventoryWarnings(String patientId) {
         log.info("StatsFacade: fetching inventory warnings for patientId={}", patientId);
 
-        List<PatientMedication> medications = patientMedicationService.getPatientMedicationsByPatientId(patientId);
+        List<MedicationResponse> medications = patientMedicationService.getMedications(patientId, null, Pageable.unpaged()).getContent();
 
         if (medications == null || medications.isEmpty()) {
             return List.of();
@@ -113,8 +114,9 @@ public class StatsFacade {
 
     // Helper: lấy danh sách medication IDs qua PatientMedicationService
     private List<String> getMedicationIds(String patientId) {
-        List<PatientMedication> medications = patientMedicationService.getPatientMedicationsByPatientId(patientId);
-        if (medications == null) return List.of();
-        return medications.stream().map(PatientMedication::getId).toList();
+        List<MedicationResponse> medications = patientMedicationService.getMedications(patientId, null, Pageable.unpaged()).getContent();
+        if (medications == null)
+            return List.of();
+        return medications.stream().map(MedicationResponse::getId).toList();
     }
 }

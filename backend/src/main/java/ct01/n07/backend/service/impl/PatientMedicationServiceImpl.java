@@ -1,11 +1,10 @@
 package ct01.n07.backend.service.impl;
 
-import ct01.n07.backend.dto.doseEvent.MedicationCreateRequest;
-import ct01.n07.backend.dto.doseEvent.MedicationResponse;
-import ct01.n07.backend.dto.doseEvent.MedicationScheduleRequest;
-import ct01.n07.backend.dto.doseEvent.MedicationUpdateRequest;
-import ct01.n07.backend.dto.doseEvent.PatientMedicationRequest;
-import ct01.n07.backend.dto.doseEvent.ScheduleTimeRequest;
+import ct01.n07.backend.dto.patientMedication.MedicationCreateRequest;
+import ct01.n07.backend.dto.patientMedication.MedicationResponse;
+import ct01.n07.backend.dto.patientMedication.MedicationScheduleRequest;
+import ct01.n07.backend.dto.patientMedication.MedicationUpdateRequest;
+import ct01.n07.backend.dto.patientMedication.ScheduleTimeRequest;
 import ct01.n07.backend.mapper.PatientMedicationMapper;
 import ct01.n07.backend.model.MedicationSchedule;
 import ct01.n07.backend.model.PatientMedication;
@@ -49,7 +48,8 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         requireRole(currentProfile, Role.CAREGIVER, Role.ELDERLY);
 
         if (currentProfile.getRole() == Role.ELDERLY && !currentProfile.getId().equals(request.getPatientId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Elderly can only create medication for their own profile");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Elderly can only create medication for their own profile");
         }
 
         if (!userProfileRepository.existsByIdAndRole(request.getPatientId(), Role.ELDERLY)) {
@@ -60,13 +60,23 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pill not found");
         }
 
-        if (currentProfile.getRole() == Role.CAREGIVER) {
-            verifyCaregiverPermission(currentProfile.getId(), request.getPatientId());
-        }
+        verifySchedulePermission(currentProfile, request.getPatientId());
 
         PatientMedication medication = PatientMedication.builder()
                 .patientId(request.getPatientId())
                 .pillId(request.getPillId())
+                .nickname(request.getNickname())
+                .dosageAmount(request.getDosageAmount())
+                .dosageUnit(request.getDosageUnit())
+                .route(request.getRoute())
+                .mealRelation(request.getMealRelation())
+                .instruction(request.getInstruction())
+                .prescribedBy(request.getPrescribedBy())
+                .purpose(request.getPurpose())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .isPrn(request.isPrn())
+                .maxPerDay(request.getMaxPerDay())
                 .totalQuantity(request.getTotalQuantity())
                 .isActive(true)
                 .medicationSchedules(List.of(toSimpleDailySchedule(request.getSchedules())))
@@ -94,7 +104,8 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         requireRole(currentProfile, Role.CAREGIVER, Role.ELDERLY);
 
         PatientMedication medication = requirePatientMedication(id);
-        verifyAccessToPatient(currentProfile, medication.getPatientId());
+
+        verifySchedulePermission(currentProfile, medication.getPatientId());
 
         if (request.getPillId() != null) {
             if (!pillRepository.existsById(request.getPillId())) {
@@ -115,71 +126,72 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
             medication.setActive(request.getIsActive());
         }
 
+        if (request.getNickname() != null)
+            medication.setNickname(request.getNickname());
+        if (request.getDosageAmount() != null)
+            medication.setDosageAmount(request.getDosageAmount());
+        if (request.getDosageUnit() != null)
+            medication.setDosageUnit(request.getDosageUnit());
+        if (request.getRoute() != null)
+            medication.setRoute(request.getRoute());
+        if (request.getMealRelation() != null)
+            medication.setMealRelation(request.getMealRelation());
+        if (request.getInstruction() != null)
+            medication.setInstruction(request.getInstruction());
+        if (request.getPrescribedBy() != null)
+            medication.setPrescribedBy(request.getPrescribedBy());
+        if (request.getPurpose() != null)
+            medication.setPurpose(request.getPurpose());
+        if (request.getStartDate() != null)
+            medication.setStartDate(request.getStartDate());
+        if (request.getEndDate() != null)
+            medication.setEndDate(request.getEndDate());
+        if (request.getIsPrn() != null)
+            medication.setPrn(request.getIsPrn());
+        if (request.getMaxPerDay() != null)
+            medication.setMaxPerDay(request.getMaxPerDay());
+
         return toMedicationResponse(patientMedicationRepository.save(medication));
     }
 
     @Override
-    public List<PatientMedication> getAllPatientMedications() {
-        return patientMedicationRepository.findAll();
+    public MedicationResponse getPatientMedicationById(String id) {
+        return toMedicationResponse(requirePatientMedication(id));
     }
 
     @Override
-    public PatientMedication getPatientMedicationById(String id) {
-        return requirePatientMedication(id);
-    }
+    public MedicationResponse addMedicationSchedule(MedicationScheduleRequest medicationScheduleRequest) {
+        PatientMedication patientMedication = requirePatientMedication(
+                medicationScheduleRequest.getPatientMedicationId());
 
-    @Override
-    public List<PatientMedication> getPatientMedicationsByPatientId(String patientId) {
-        return patientMedicationRepository.findByPatientId(patientId, Pageable.unpaged()).getContent();
-    }
-
-    @Override
-    public PatientMedication createPatientMedication(PatientMedicationRequest request) {
-        if (!userProfileRepository.existsByIdAndRole(request.getPatientId(), Role.ELDERLY)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Patient not found");
-        }
-        if (!pillRepository.existsById(request.getPillId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pill not found");
-        }
-
-        return patientMedicationRepository.save(patientMedicationMapper.toModel(request));
-    }
-
-    @Override
-    public PatientMedication updatePatientMedication(String id, PatientMedicationRequest request) {
-        PatientMedication existing = requirePatientMedication(id);
-
-        if (!userProfileRepository.existsByIdAndRole(request.getPatientId(), Role.ELDERLY)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Patient not found");
-        }
-        if (!pillRepository.existsById(request.getPillId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pill not found");
-        }
-
-        patientMedicationMapper.updateModel(existing, request);
-        return patientMedicationRepository.save(existing);
-    }
-
-    @Override
-    public PatientMedication addMedicationSchedule(MedicationScheduleRequest medicationScheduleRequest) {
-        PatientMedication patientMedication = requirePatientMedication(medicationScheduleRequest.getPatientMedicationId());
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        verifySchedulePermission(currentProfile, patientMedication.getPatientId());
 
         if (patientMedication.getMedicationSchedules() == null) {
             patientMedication.setMedicationSchedules(new ArrayList<>());
         }
 
         patientMedication.getMedicationSchedules().add(patientMedicationMapper.toModel(medicationScheduleRequest));
-        return patientMedicationRepository.save(patientMedication);
+        return toMedicationResponse(patientMedicationRepository.save(patientMedication));
     }
 
     @Override
     public void deletePatientMedication(String id) {
+        PatientMedication pm = requirePatientMedication(id);
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        verifySchedulePermission(currentProfile, pm.getPatientId());
+        
         patientMedicationRepository.deleteById(id);
     }
 
     @Override
-    public PatientMedication updateMedicationSchedule(String patientMedicationId, String scheduleId, MedicationScheduleRequest request) {
+    public MedicationResponse updateMedicationSchedule(String patientMedicationId, String scheduleId,
+            MedicationScheduleRequest request) {
         PatientMedication pm = requirePatientMedication(patientMedicationId);
+
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        verifySchedulePermission(currentProfile, pm.getPatientId());
+
         List<MedicationSchedule> schedules = pm.getMedicationSchedules();
         if (schedules == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
@@ -191,12 +203,16 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
 
         patientMedicationMapper.updateModel(scheduleToUpdate, request);
-        return patientMedicationRepository.save(pm);
+        return toMedicationResponse(patientMedicationRepository.save(pm));
     }
 
     @Override
-    public PatientMedication deleteMedicationSchedule(String patientMedicationId, String scheduleId) {
+    public MedicationResponse deleteMedicationSchedule(String patientMedicationId, String scheduleId) {
         PatientMedication pm = requirePatientMedication(patientMedicationId);
+
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        verifySchedulePermission(currentProfile, pm.getPatientId());
+
         List<MedicationSchedule> schedules = pm.getMedicationSchedules();
         if (schedules == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
@@ -205,12 +221,17 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         if (!removed) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
         }
-        return patientMedicationRepository.save(pm);
+        return toMedicationResponse(patientMedicationRepository.save(pm));
     }
 
     @Override
-    public PatientMedication addScheduleTime(String patientMedicationId, String scheduleId, ScheduleTimeRequest request) {
+    public MedicationResponse addScheduleTime(String patientMedicationId, String scheduleId,
+            ScheduleTimeRequest request) {
         PatientMedication pm = requirePatientMedication(patientMedicationId);
+
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        verifySchedulePermission(currentProfile, pm.getPatientId());
+
         List<MedicationSchedule> schedules = pm.getMedicationSchedules();
         if (schedules == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
@@ -226,12 +247,17 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         }
 
         schedule.getScheduleTimeList().add(patientMedicationMapper.toModel(request));
-        return patientMedicationRepository.save(pm);
+        return toMedicationResponse(patientMedicationRepository.save(pm));
     }
 
     @Override
-    public PatientMedication updateScheduleTime(String patientMedicationId, String scheduleId, String timeId, ScheduleTimeRequest request) {
+    public MedicationResponse updateScheduleTime(String patientMedicationId, String scheduleId, String timeId,
+            ScheduleTimeRequest request) {
         PatientMedication pm = requirePatientMedication(patientMedicationId);
+
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        verifySchedulePermission(currentProfile, pm.getPatientId());
+
         List<MedicationSchedule> schedules = pm.getMedicationSchedules();
         if (schedules == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
@@ -253,12 +279,16 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found"));
 
         patientMedicationMapper.updateModel(timeToUpdate, request);
-        return patientMedicationRepository.save(pm);
+        return toMedicationResponse(patientMedicationRepository.save(pm));
     }
 
     @Override
-    public PatientMedication deleteScheduleTime(String patientMedicationId, String scheduleId, String timeId) {
+    public MedicationResponse deleteScheduleTime(String patientMedicationId, String scheduleId, String timeId) {
         PatientMedication pm = requirePatientMedication(patientMedicationId);
+
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        verifySchedulePermission(currentProfile, pm.getPatientId());
+
         List<MedicationSchedule> schedules = pm.getMedicationSchedules();
         if (schedules == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
@@ -275,7 +305,7 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
             if (!removed) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found");
             }
-            return patientMedicationRepository.save(pm);
+            return toMedicationResponse(patientMedicationRepository.save(pm));
         }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found");
     }
@@ -288,7 +318,8 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
     private void verifyAccessToPatient(UserProfile currentProfile, String patientId) {
         if (currentProfile.getRole() == Role.ELDERLY) {
             if (!currentProfile.getId().equals(patientId)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access medications of another profile");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "You cannot access medications of another profile");
             }
             return;
         }
@@ -296,15 +327,43 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         verifyCaregiverPermission(currentProfile.getId(), patientId);
     }
 
-    private void verifyCaregiverPermission(String caregiverId, String elderlyId) {
-        boolean hasPermission = relationshipRepository.existsByCaregiverIdAndElderlyIdAndStatus(
-                caregiverId,
-                elderlyId,
-                RelationStatus.ACCEPTED
-        );
+    private void verifySchedulePermission(UserProfile profile, String patientId) {
+        if (profile.getRole() == Role.CAREGIVER) {
+            verifyCaregiverPermission(profile.getId(), patientId,
+                    ct01.n07.backend.model.enums.PermissionLevel.EDIT_SCHEDULE,
+                    ct01.n07.backend.model.enums.PermissionLevel.MANAGE_ALL);
+        } else {
+            verifyAccessToPatient(profile, patientId);
+        }
+    }
 
-        if (!hasPermission) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Caregiver does not have access to this patient");
+    private void verifyCaregiverPermission(String caregiverId, String elderlyId) {
+        verifyCaregiverPermission(caregiverId, elderlyId, (ct01.n07.backend.model.enums.PermissionLevel[]) null);
+    }
+
+    private void verifyCaregiverPermission(String caregiverId, String elderlyId,
+            ct01.n07.backend.model.enums.PermissionLevel... requiredLevels) {
+        ct01.n07.backend.model.Relationship relationship = relationshipRepository
+                .findAllByCaregiverIdAndElderlyIdAndStatus(
+                        caregiverId,
+                        elderlyId,
+                        RelationStatus.ACCEPTED)
+                .stream().findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Caregiver does not have an accepted relationship with this patient"));
+
+        if (requiredLevels != null && requiredLevels.length > 0) {
+            boolean hasRequiredLevel = false;
+            for (ct01.n07.backend.model.enums.PermissionLevel level : requiredLevels) {
+                if (relationship.getPermissionLevel() == level) {
+                    hasRequiredLevel = true;
+                    break;
+                }
+            }
+            if (!hasRequiredLevel) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Caregiver does not have the required permission level to perform this action");
+            }
         }
     }
 
@@ -345,7 +404,8 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
             LocalTime parsed = LocalTime.parse(value);
             return ScheduleTime.builder().takenTime(parsed).quantity(BigDecimal.ONE).build();
         } catch (Exception ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid schedule time format: " + value + " (expected HH:mm)");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Invalid schedule time format: " + value + " (expected HH:mm)");
         }
     }
 
@@ -353,21 +413,35 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         List<String> schedules = medication.getMedicationSchedules() == null
                 ? List.of()
                 : medication.getMedicationSchedules().stream()
-                .flatMap(schedule -> schedule.getScheduleTimeList() == null
-                        ? java.util.stream.Stream.empty()
-                        : schedule.getScheduleTimeList().stream())
-                .map(ScheduleTime::getTakenTime)
-                .filter(Objects::nonNull)
-                .map(LocalTime::toString)
-                .toList();
+                        .flatMap(schedule -> schedule.getScheduleTimeList() == null
+                                ? java.util.stream.Stream.empty()
+                                : schedule.getScheduleTimeList().stream())
+                        .map(ScheduleTime::getTakenTime)
+                        .filter(Objects::nonNull)
+                        .map(LocalTime::toString)
+                        .toList();
 
         return MedicationResponse.builder()
                 .id(medication.getId())
                 .patientId(medication.getPatientId())
                 .pillId(medication.getPillId())
+                .nickname(medication.getNickname())
+                .dosageAmount(medication.getDosageAmount())
+                .dosageUnit(medication.getDosageUnit())
+                .route(medication.getRoute())
+                .mealRelation(medication.getMealRelation())
+                .instruction(medication.getInstruction())
+                .prescribedBy(medication.getPrescribedBy())
+                .purpose(medication.getPurpose())
+                .startDate(medication.getStartDate())
+                .endDate(medication.getEndDate())
+                .isPrn(medication.isPrn())
+                .maxPerDay(medication.getMaxPerDay())
                 .schedules(schedules)
                 .totalQuantity(medication.getTotalQuantity())
                 .isActive(medication.isActive())
+                .createdAt(medication.getCreatedAt())
+                .updatedAt(medication.getUpdatedAt())
                 .build();
     }
 }

@@ -1,13 +1,20 @@
 package ct01.n07.backend.controller.caregiver;
 
+import ct01.n07.backend.dto.userProfile.UserProfileSummaryResponse;
 import ct01.n07.backend.dto.userProfile.CreateProfileRequest;
 import ct01.n07.backend.dto.userProfile.UserProfileResponse;
+import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.service.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import static ct01.n07.backend.model.enums.Role.ELDERLY;
 
 /**
  * Các thao tác quản lý profile chỉ dành cho CAREGIVER.
@@ -33,5 +40,14 @@ public class CaregiverProfileController {
     public ResponseEntity<Void> deleteProfile(@PathVariable String id) {
         userProfileService.deleteProfile(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/search")
+    public ResponseEntity<Page<UserProfileSummaryResponse>> searchElderlyProfiles(
+            @RequestParam(required = false, defaultValue = "") String query,
+            @RequestParam(required = false) Role role,
+            @PageableDefault(size = 10) Pageable pageable) {
+        Page<UserProfileSummaryResponse> results = userProfileService.searchProfiles(query, role, pageable);
+        return ResponseEntity.ok(results);
     }
 }

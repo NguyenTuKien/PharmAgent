@@ -2,18 +2,13 @@ package ct01.n07.backend.controller.caregiver;
 
 import ct01.n07.backend.dto.relationship.ElderlyProfileResponse;
 import ct01.n07.backend.dto.relationship.RelationshipInviteRequest;
+import ct01.n07.backend.model.enums.PermissionLevel;
 import ct01.n07.backend.service.RelationshipService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
@@ -26,7 +21,7 @@ public class CaregiverRelationshipController {
 
     @GetMapping
     public ResponseEntity<List<ElderlyProfileResponse>> getRelativeElderlyProfiles() {
-        return ResponseEntity.ok(relationshipService.getRelativeElderlyProfiles());
+        return ResponseEntity.ok(relationshipService.getAcceptedElderlyProfiles());
     }
 
     @GetMapping("/pending")
@@ -40,11 +35,11 @@ public class CaregiverRelationshipController {
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", relationshipId));
     }
 
-    @PutMapping("/{targetElderlyId}")
+    @PatchMapping("/{targetElderlyId}")
     public ResponseEntity<Void> updateRelationship(
             @PathVariable("targetElderlyId") String targetElderlyId,
-            @Valid @RequestBody RelationshipInviteRequest request) {
-        relationshipService.updateRelationship(targetElderlyId, request);
+            @Valid @RequestParam PermissionLevel permissionLevel) {
+        relationshipService.updateRelationship(targetElderlyId, permissionLevel);
         return ResponseEntity.ok().build();
     }
 }

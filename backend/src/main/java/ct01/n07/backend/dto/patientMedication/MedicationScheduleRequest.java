@@ -1,4 +1,4 @@
-package ct01.n07.backend.dto.doseEvent;
+package ct01.n07.backend.dto.patientMedication;
 
 import ct01.n07.backend.model.enums.ScheduleType;
 import jakarta.validation.Valid;

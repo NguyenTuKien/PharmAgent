@@ -164,11 +164,14 @@ public class AuthFacade {
         User user;
         LoginRequest loginRequest = LoginRequest.builder().email(signupRequest.getEmail())
                 .password(signupRequest.getPassword()).build();
-        if (userProfileService.findByPhone(signupRequest.getCaregivePhone())) {
+        if (signupRequest.getCaregiver() != null
+                && userProfileService.findByPhone(signupRequest.getCaregiver().getPhone())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Caregiver phone number already exists");
         }
-        if (userProfileService.findByPhone(signupRequest.getElderlyphone())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Elderly phone number already exists");
+        if (signupRequest.getElderly() != null && !signupRequest.getElderly().getPhone().isBlank()) {
+            if (userProfileService.findByPhone(signupRequest.getElderly().getPhone())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Elderly phone number already exists");
+            }
         }
         try {
             user = userService.createUser(loginRequest);
@@ -177,12 +180,15 @@ public class AuthFacade {
         }
 
         UserProfile caregiverProfile = userProfileMapper.toCaregiverProfile(signupRequest, user.getId());
-        UserProfile elderlyProfile = userProfileMapper.toElderlyProfile(signupRequest, user.getId());
-
         userProfileService.saveUserProfile(caregiverProfile);
-        userProfileService.saveUserProfile(elderlyProfile);
-        relationshipService.createRelationship(caregiverProfile.getId(), elderlyProfile.getId(),
-                signupRequest.getRelationshipName(), signupRequest.getPermissionLevel());
+
+        if (signupRequest.getElderly() != null) {
+            UserProfile elderlyProfile = userProfileMapper.toElderlyProfile(signupRequest, user.getId());
+            userProfileService.saveUserProfile(elderlyProfile);
+            relationshipService.createRelationship(caregiverProfile.getId(), elderlyProfile.getId(),
+                    signupRequest.getElderly().getCaregiverTitle(), signupRequest.getElderly().getElderlyTitle(),
+                    signupRequest.getElderly().getPermissionLevel());
+        }
         return login(loginRequest, pageable);
     }
 
