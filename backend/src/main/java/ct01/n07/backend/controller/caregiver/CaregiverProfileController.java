@@ -1,0 +1,37 @@
+package ct01.n07.backend.controller.caregiver;
+
+import ct01.n07.backend.dto.userProfile.CreateProfileRequest;
+import ct01.n07.backend.dto.userProfile.UserProfileResponse;
+import ct01.n07.backend.service.UserProfileService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * Các thao tác quản lý profile chỉ dành cho CAREGIVER.
+ * Phân quyền được cấu hình tập trung tại SecurityConfiguration.
+ */
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/caregiver/profiles")
+public class CaregiverProfileController {
+
+    private final UserProfileService userProfileService;
+
+    // ── Chỉ CAREGIVER mới được tạo profile mới trong tài khoản ──
+    @PostMapping
+    public ResponseEntity<UserProfileResponse> createProfile(
+            @Valid @RequestBody CreateProfileRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(userProfileService.createProfile(request));
+    }
+
+    // ── Chỉ CAREGIVER mới được xóa profile trong tài khoản ──
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProfile(@PathVariable String id) {
+        userProfileService.deleteProfile(id);
+        return ResponseEntity.noContent().build();
+    }
+}
