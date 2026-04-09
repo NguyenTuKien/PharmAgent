@@ -55,4 +55,9 @@ public class MessageServiceImpl implements MessageService {
         
         return messages.map(messageMapper::toResponse);
     }
+
+    @Override
+    public void saveAllMessages(java.util.List<Message> messages) {
+        messageRepository.saveAll(messages);
+    }
 }

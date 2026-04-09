@@ -42,6 +42,11 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     @Override
+    public List<UserProfile> findAllById(List<String> ids) {
+        return userProfileRepository.findAllById(ids);
+    }
+
+    @Override
     public Page<UserProfile> findAllByUserId(String userId, Pageable pageable) {
         return userProfileRepository.findAllByUserId(userId, pageable);
     }

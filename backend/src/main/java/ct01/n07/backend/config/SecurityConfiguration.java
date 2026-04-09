@@ -50,8 +50,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/caregiver/**").hasRole("CAREGIVER")
                         .requestMatchers("/elderly/**").hasRole("ELDERLY")
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
@@ -78,7 +77,8 @@ public class SecurityConfiguration {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(customUserDetailsService::loadUserByUsername);
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(
+                customUserDetailsService::loadUserByUsername);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }

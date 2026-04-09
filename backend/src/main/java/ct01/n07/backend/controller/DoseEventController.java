@@ -21,8 +21,7 @@ public class DoseEventController {
     @PreAuthorize("hasAnyRole('CAREGIVER', 'ELDERLY')")
     public ResponseEntity<Page<DoseEventResponse>> getTodayDoses(
             @RequestParam String patientId,
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
+            @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(doseEventService.getTodayDoses(patientId, pageable));
     }
 
@@ -30,8 +29,7 @@ public class DoseEventController {
     @PreAuthorize("hasAnyRole('CAREGIVER', 'ELDERLY')")
     public ResponseEntity<Page<DoseEventResponse>> getPendingDoses(
             @RequestParam String patientId,
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
+            @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(doseEventService.getPendingDoses(patientId, pageable));
     }
 
@@ -39,8 +37,7 @@ public class DoseEventController {
     @PreAuthorize("hasAnyRole('CAREGIVER', 'ELDERLY')")
     public ResponseEntity<Page<DoseEventResponse>> getProcessedDoses(
             @RequestParam String patientId,
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
+            @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(doseEventService.getProcessedDoses(patientId, pageable));
     }
 

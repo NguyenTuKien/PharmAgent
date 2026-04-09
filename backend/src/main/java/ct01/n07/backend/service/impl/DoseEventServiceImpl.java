@@ -11,12 +11,7 @@ import ct01.n07.backend.service.DoseEventService;
 import ct01.n07.backend.service.PatientMedicationService;
 import ct01.n07.backend.service.UserProfileService;
 import ct01.n07.backend.model.enums.DoseStatus;
-import ct01.n07.backend.model.enums.Gender;
-import ct01.n07.backend.model.enums.MessageStatus;
-import ct01.n07.backend.model.enums.RelationStatus;
-import ct01.n07.backend.model.Message;
-import ct01.n07.backend.repository.RelationshipRepository;
-import ct01.n07.backend.repository.MessageRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -39,8 +34,6 @@ public class DoseEventServiceImpl implements DoseEventService {
     private final PatientMedicationService patientMedicationService;
     private final DoseEventMapper doseEventMapper;
     private final UserProfileService userProfileService;
-    private final RelationshipRepository relationshipRepository;
-    private final MessageRepository messageRepository;
 
     @Override
     public List<DoseEvent> getAllDoseEvents() {
@@ -108,62 +101,7 @@ public class DoseEventServiceImpl implements DoseEventService {
                 .toList();
     }
 
-    @Override
-    public DoseEventResponse confirmDose(String id) {
-        log.info("Elderly confirming dose event id={}", id);
-        DoseEvent doseEvent = doseEventRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy cữ thuốc với ID: " + id));
 
-        MedicationResponse medication = patientMedicationService.getPatientMedicationById(doseEvent.getPatientMedicationId());
-        UserProfile elderlyProfile = userProfileService.findById(medication.getPatientId());
-
-        LocalDateTime now = LocalDateTime.now();
-
-        // API xác nhận: Nếu đã quá hạn uống thì cập nhật là OVERDUE thay vì accept (TAKEN)
-        if (now.isAfter(doseEvent.getScheduledAt())) {
-            doseEvent.setStatus(DoseStatus.OVERDUE);
-        } else {
-            doseEvent.setStatus(DoseStatus.TAKEN);
-        }
-
-        doseEvent.setTakenAt(now);
-        doseEvent.setConfirmedBy(elderlyProfile.getId());
-
-        DoseEvent saved = doseEventRepository.save(doseEvent);
-
-        // --- Gửi tin nhắn thông báo cho người chăm sóc ---
-        try {
-            String elderlyTitle = elderlyProfile.getGender() == Gender.MALE ? "Ông" : 
-                                 elderlyProfile.getGender() == Gender.FEMALE ? "Bà" : "";
-            
-            String timeStr = now.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
-            String content = String.format("%s %s đã uống thuốc %s vào lúc %s", 
-                    elderlyTitle, elderlyProfile.getFirstName(), medication.getNickname(), timeStr);
-
-            List<ct01.n07.backend.model.Relationship> relationships = relationshipRepository
-                    .findAllByElderlyIdAndStatus(elderlyProfile.getId(), RelationStatus.ACCEPTED);
-
-            List<Message> notifications = relationships.stream()
-                    .map(rel -> Message.builder()
-                            .senderId(elderlyProfile.getId())
-                            .receiverId(rel.getCaregiverId())
-                            .content(content)
-                            .status(MessageStatus.SUCCESS)
-                            .build())
-                    .toList();
-
-            if (!notifications.isEmpty()) {
-                messageRepository.saveAll(notifications);
-                log.info("Sent dose confirmation notifications to {} caregivers", notifications.size());
-            }
-        } catch (Exception e) {
-            log.error("Failed to send dose confirmation notifications", e);
-            // Không throw exception để tránh rollback việc confirm thuốc
-        }
-
-        return doseEventMapper.toResponse(saved);
-    }
 
     @Override
     public DoseEventResponse updateDoseStatus(String id, DoseStatusUpdateRequest request) {

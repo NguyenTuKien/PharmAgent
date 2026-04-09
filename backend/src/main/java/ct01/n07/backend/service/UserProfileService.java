@@ -10,10 +10,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.List;
 public interface UserProfileService {
     void saveUserProfile(UserProfile userProfile);
 
     UserProfile findById(String profileId);
+    
+    List<UserProfile> findAllById(List<String> ids);
 
     Page<UserProfile> findAllByUserId(String userId, Pageable pageable);
 

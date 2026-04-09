@@ -35,11 +35,7 @@ public interface DoseEventService {
      */
     Page<DoseEventResponse> getProcessedDoses(String patientId, Pageable pageable);
 
-    /**
-     * Xác nhận đã uống thuốc dành cho người cao tuổi.
-     * Logic: Nếu quá hạn thì trạng thái là OVERDUE, ngược lại là TAKEN.
-     */
-    DoseEventResponse confirmDose(String id);
+
 
     /**
      * Cập nhật trạng thái một cữ thuốc (TAKEN / SKIPPED / REMIND).

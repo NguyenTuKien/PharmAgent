@@ -30,6 +30,32 @@ public class RelationshipServiceImpl implements RelationshipService {
     private final UserProfileService userProfileService;
 
     @Override
+    public List<Relationship> getAcceptedElderlyRelationships() {
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        requireRole(currentProfile, Role.CAREGIVER);
+        return relationshipRepository.findAllByCaregiverIdAndStatus(currentProfile.getId(), RelationStatus.ACCEPTED);
+    }
+
+    @Override
+    public List<Relationship> getAcceptedCaregiverRelationships() {
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        requireRole(currentProfile, Role.ELDERLY);
+        return relationshipRepository.findAllByElderlyIdAndStatus(currentProfile.getId(), RelationStatus.ACCEPTED);
+    }
+
+    @Override
+    public List<Relationship> getPendingElderlyRelationships() {
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        requireRole(currentProfile, Role.CAREGIVER);
+        return relationshipRepository.findAllByCaregiverIdAndStatus(currentProfile.getId(), RelationStatus.PENDING);
+    }
+
+    @Override
+    public List<Relationship> getAcceptedCaregiverRelationshipsByElderly(String elderlyId) {
+        return relationshipRepository.findAllByElderlyIdAndStatus(elderlyId, RelationStatus.ACCEPTED);
+    }
+
+    @Override
     public List<ElderlyProfileResponse> getAcceptedElderlyProfiles() {
         UserProfile currentProfile = userProfileService.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);

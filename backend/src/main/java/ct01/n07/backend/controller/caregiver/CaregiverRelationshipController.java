@@ -3,7 +3,7 @@ package ct01.n07.backend.controller.caregiver;
 import ct01.n07.backend.dto.relationship.ElderlyProfileResponse;
 import ct01.n07.backend.dto.relationship.RelationshipInviteRequest;
 import ct01.n07.backend.model.enums.PermissionLevel;
-import ct01.n07.backend.service.RelationshipService;
+import ct01.n07.backend.facade.RelationshipProfileFacade;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,16 +17,17 @@ import java.util.Map;
 @RequiredArgsConstructor
 @RequestMapping("/caregiver/relationship")
 public class CaregiverRelationshipController {
-    private final RelationshipService relationshipService;
+    private final RelationshipProfileFacade relationshipProfileFacade;
+    private final ct01.n07.backend.service.RelationshipService relationshipService;
 
     @GetMapping
     public ResponseEntity<List<ElderlyProfileResponse>> getRelativeElderlyProfiles() {
-        return ResponseEntity.ok(relationshipService.getAcceptedElderlyProfiles());
+        return ResponseEntity.ok(relationshipProfileFacade.getAcceptedElderlyProfiles());
     }
 
     @GetMapping("/pending")
     public ResponseEntity<List<ElderlyProfileResponse>> getPendingElderlyProfiles() {
-        return ResponseEntity.ok(relationshipService.getPendingElderlyProfiles());
+        return ResponseEntity.ok(relationshipProfileFacade.getPendingElderlyProfiles());
     }
 
     @PostMapping("/invite")

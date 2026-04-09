@@ -1,6 +1,7 @@
 package ct01.n07.backend.controller.elderly;
 
 import ct01.n07.backend.dto.relationship.CaregiverProfileResponse;
+import ct01.n07.backend.facade.RelationshipProfileFacade;
 import ct01.n07.backend.service.RelationshipService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,11 +17,12 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/elderly/relationship")
 public class ElderlyRelationshipController {
+    private final RelationshipProfileFacade relationshipProfileFacade;
     private final RelationshipService relationshipService;
 
     @GetMapping
     public ResponseEntity<List<CaregiverProfileResponse>> getRelativeCaregiverProfiles() {
-        return ResponseEntity.ok(relationshipService.getAcceptedCaregiverProfiles());
+        return ResponseEntity.ok(relationshipProfileFacade.getAcceptedCaregiverProfiles());
     }
 
     @GetMapping("/pending")
