@@ -1,9 +1,9 @@
 package ct01.n07.backend.config;
 
-import ct01.n07.backend.model.EmergencyContact;
-import ct01.n07.backend.model.PatientMedication;
+import ct01.n07.backend.model.Medication;
 import ct01.n07.backend.model.Pill;
 import ct01.n07.backend.model.PillImage;
+import ct01.n07.backend.model.UserContact;
 import ct01.n07.backend.model.User;
 import ct01.n07.backend.model.UserDevice;
 import ct01.n07.backend.model.UserProfile;
@@ -13,7 +13,7 @@ import ct01.n07.backend.model.enums.MealRelation;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.model.enums.UserStatus;
 import ct01.n07.backend.model.enums.ViewType;
-import ct01.n07.backend.repository.PatientMedicationRepository;
+import ct01.n07.backend.repository.MedicationRepository;
 import ct01.n07.backend.repository.PillRepository;
 import ct01.n07.backend.repository.UserProfileRepository;
 import ct01.n07.backend.repository.UserRepository;
@@ -40,7 +40,7 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final PillRepository pillRepository;
-    private final PatientMedicationRepository patientMedicationRepository;
+    private final MedicationRepository medicationRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -84,7 +84,7 @@ public class DataSeeder implements CommandLineRunner {
             profile.setGender(null);
             profile.setAddress(null);
             profile.setAvatarUrl(null);
-            profile.setEmergencyContacts(List.of());
+            profile.setUserContacts(List.of());
             profile.setUserDevices(List.of());
         });
     }
@@ -98,8 +98,8 @@ public class DataSeeder implements CommandLineRunner {
             profile.setGender(Gender.MALE);
             profile.setAddress("Ha Noi, Viet Nam");
             profile.setAvatarUrl(null);
-            profile.setEmergencyContacts(List.of(
-                    EmergencyContact.builder()
+            profile.setUserContacts(List.of(
+                    UserContact.builder()
                             .name("Con trai Dai")
                             .phone("0987654321")
                             .build()));
@@ -123,7 +123,7 @@ public class DataSeeder implements CommandLineRunner {
             profile.setGender(Gender.MALE);
             profile.setAddress("Ha Noi, Viet Nam");
             profile.setAvatarUrl(null);
-            profile.setEmergencyContacts(List.of());
+            profile.setUserContacts(List.of());
             profile.setUserDevices(List.of());
         });
     }
@@ -205,9 +205,9 @@ public class DataSeeder implements CommandLineRunner {
 
     private void upsertMedication(User familyAccount, Pill paracetamol) {
         String nickname = "Thuoc dau dau (hop xanh)";
-        PatientMedication medication = patientMedicationRepository
+        Medication medication = medicationRepository
                 .findByPatientIdAndPillIdAndNickname(familyAccount.getId(), paracetamol.getId(), nickname)
-                .orElseGet(PatientMedication::new);
+                .orElseGet(Medication::new);
 
         if (medication.getId() == null) {
             medication.setCreatedAt(Instant.now());
@@ -228,6 +228,6 @@ public class DataSeeder implements CommandLineRunner {
         medication.setActive(true);
         medication.setMedicationSchedules(List.of());
 
-        patientMedicationRepository.save(medication);
+        medicationRepository.save(medication);
     }
 }

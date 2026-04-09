@@ -12,8 +12,8 @@ import ct01.n07.backend.model.PillImage;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.PillRepository;
+import ct01.n07.backend.security.ProfileAccessContext;
 import ct01.n07.backend.service.PillService;
-import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
@@ -39,7 +39,7 @@ public class PillServiceImpl implements PillService {
 
     private final PillMapper pillMapper;
 
-    private final UserProfileService userProfileService;
+    private final ProfileAccessContext profileAccessContext;
 
     @Override
     public Page<PillCatalogResponse> getPillCatalog(String search, Pageable pageable) {
@@ -52,7 +52,7 @@ public class PillServiceImpl implements PillService {
 
     @Override
     public PillResponse createPill(PillCreateRequest request) {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         if (currentProfile.getRole() != Role.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only ADMIN can create pill catalog entries");
         }

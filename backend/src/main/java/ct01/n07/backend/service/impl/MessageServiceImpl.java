@@ -8,8 +8,8 @@ import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.MessageStatus;
 import ct01.n07.backend.repository.MessageRepository;
 import ct01.n07.backend.repository.UserProfileRepository;
+import ct01.n07.backend.security.ProfileAccessContext;
 import ct01.n07.backend.service.MessageService;
-import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,12 +25,12 @@ public class MessageServiceImpl implements MessageService {
 
     private final MessageRepository messageRepository;
     private final UserProfileRepository userProfileRepository;
-    private final UserProfileService userProfileService;
+    private final ProfileAccessContext profileAccessContext;
     private final MessageMapper messageMapper;
 
     @Override
     public MessageResponse sendMessage(MessageCreateRequest request) {
-        UserProfile sender = userProfileService.getCurrentUserProfile();
+        UserProfile sender = profileAccessContext.getCurrentUserProfile();
         
         // Validate receiver exists
         if (!userProfileRepository.existsById(request.getReceiverId())) {
@@ -48,7 +48,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Page<MessageResponse> getMyMessages(Pageable pageable) {
-        UserProfile currentUser = userProfileService.getCurrentUserProfile();
+        UserProfile currentUser = profileAccessContext.getCurrentUserProfile();
         
         Page<Message> messages = messageRepository.findByReceiverIdAndStatus(
                 currentUser.getId(), MessageStatus.SUCCESS, pageable);

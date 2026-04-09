@@ -15,6 +15,19 @@ spring:
   data:
     redis:
       url: ${REDIS_URL}
+  rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES}
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties: # <-- THÊM TOÀN BỘ PHẦN NÀY ĐỂ GMAIL HOẠT ĐỘNG
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 jwt:
   secret: ${JWT_SECRET:VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE=}

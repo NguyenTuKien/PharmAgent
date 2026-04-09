@@ -125,4 +125,13 @@ public class UserServiceImpl implements UserService {
         User saved = userRepository.save(user);
         return userMapper.toAdminResponse(saved);
     }
+
+    @Override
+    public void updatePassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
+        
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 }

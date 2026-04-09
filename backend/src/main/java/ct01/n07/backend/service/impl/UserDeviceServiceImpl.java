@@ -1,13 +1,13 @@
 package ct01.n07.backend.service.impl;
 
-import ct01.n07.backend.dto.userProfile.UserDeviceRequest;
-import ct01.n07.backend.dto.userProfile.UserProfileResponse;
+import ct01.n07.backend.dto.user.UserDeviceRequest;
+import ct01.n07.backend.dto.user.UserProfileResponse;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.UserDevice;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.repository.UserProfileRepository;
+import ct01.n07.backend.security.ProfileAccessContext;
 import ct01.n07.backend.service.UserDeviceService;
-import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,13 +21,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserDeviceServiceImpl implements UserDeviceService {
 
-    private final UserProfileService userProfileService;
+    private final ProfileAccessContext profileAccessContext;
     private final UserProfileRepository userProfileRepository;
     private final UserProfileMapper userProfileMapper;
 
     @Override
     public UserProfileResponse addDevice(UserDeviceRequest request) {
-        UserProfile profile = userProfileService.getCurrentUserProfile();
+        UserProfile profile = profileAccessContext.getCurrentUserProfile();
         if (profile.getUserDevices() == null) {
             profile.setUserDevices(new ArrayList<>());
         }
@@ -57,7 +57,7 @@ public class UserDeviceServiceImpl implements UserDeviceService {
 
     @Override
     public UserProfileResponse updateDevice(String deviceId, UserDeviceRequest request) {
-        UserProfile profile = userProfileService.getCurrentUserProfile();
+        UserProfile profile = profileAccessContext.getCurrentUserProfile();
         List<UserDevice> devices = profile.getUserDevices();
         if (devices == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Device list is empty");
@@ -78,7 +78,7 @@ public class UserDeviceServiceImpl implements UserDeviceService {
 
     @Override
     public UserProfileResponse deleteDevice(String deviceId) {
-        UserProfile profile = userProfileService.getCurrentUserProfile();
+        UserProfile profile = profileAccessContext.getCurrentUserProfile();
         List<UserDevice> devices = profile.getUserDevices();
         if (devices == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Device list is empty");
@@ -92,7 +92,7 @@ public class UserDeviceServiceImpl implements UserDeviceService {
 
     @Override
     public List<UserDevice> getMyDevices() {
-        UserProfile profile = userProfileService.getCurrentUserProfile();
+        UserProfile profile = profileAccessContext.getCurrentUserProfile();
         return profile.getUserDevices() != null ? profile.getUserDevices() : new ArrayList<>();
     }
 }

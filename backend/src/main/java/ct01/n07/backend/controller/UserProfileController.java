@@ -1,13 +1,13 @@
 package ct01.n07.backend.controller;
 
-import ct01.n07.backend.dto.userProfile.EmergencyContactRequest;
-import ct01.n07.backend.dto.userProfile.UpdateProfileRequest;
-import ct01.n07.backend.dto.userProfile.UserDeviceRequest;
-import ct01.n07.backend.dto.userProfile.UserProfileResponse;
-import ct01.n07.backend.dto.userProfile.UserProfileSummaryResponse;
-import ct01.n07.backend.model.EmergencyContact;
+import ct01.n07.backend.dto.user.UserContactRequest;
+import ct01.n07.backend.dto.user.UpdateProfileRequest;
+import ct01.n07.backend.dto.user.UserDeviceRequest;
+import ct01.n07.backend.dto.user.UserProfileResponse;
+import ct01.n07.backend.dto.user.UserProfileSummaryResponse;
+import ct01.n07.backend.model.UserContact;
 import ct01.n07.backend.model.UserDevice;
-import ct01.n07.backend.service.EmergencyContactService;
+import ct01.n07.backend.service.UserContactService;
 import ct01.n07.backend.service.UserDeviceService;
 import ct01.n07.backend.service.UserProfileService;
 import jakarta.validation.Valid;
@@ -26,7 +26,7 @@ import java.util.List;
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
-    private final EmergencyContactService emergencyContactService;
+    private final UserContactService userContactService;
     private final UserDeviceService userDeviceService;
 
     // ── Mọi role đều có thể xem danh sách profile trong tài khoản ──
@@ -48,30 +48,30 @@ public class UserProfileController {
         return ResponseEntity.ok(userProfileService.updateMyProfile(request));
     }
 
-    // ── Quản lý liên lạc khẩn cấp (Emergency Contacts) ──
+    // ── Quản lý liên hệ người dùng (User Contacts) ──
 
     @GetMapping("/me/contacts")
-    public ResponseEntity<List<EmergencyContact>> getMyContacts() {
-        return ResponseEntity.ok(emergencyContactService.getMyContacts());
+    public ResponseEntity<List<UserContact>> getMyContacts() {
+        return ResponseEntity.ok(userContactService.getMyContacts());
     }
 
     @PostMapping("/me/contacts")
-    public ResponseEntity<UserProfileResponse> addContact(
-            @Valid @RequestBody EmergencyContactRequest request) {
-        return ResponseEntity.ok(emergencyContactService.addContact(request));
+    public ResponseEntity<UserProfileResponse> addUserContact(
+            @Valid @RequestBody UserContactRequest request) {
+        return ResponseEntity.ok(userContactService.addUserContact(request));
     }
 
     @PutMapping("/me/contacts/{contactId}")
-    public ResponseEntity<UserProfileResponse> updateContact(
+    public ResponseEntity<UserProfileResponse> updateUserContact(
             @PathVariable String contactId,
-            @Valid @RequestBody EmergencyContactRequest request) {
-        return ResponseEntity.ok(emergencyContactService.updateContact(contactId, request));
+            @Valid @RequestBody UserContactRequest request) {
+        return ResponseEntity.ok(userContactService.updateUserContact(contactId, request));
     }
 
     @DeleteMapping("/me/contacts/{contactId}")
     public ResponseEntity<UserProfileResponse> deleteContact(
             @PathVariable String contactId) {
-        return ResponseEntity.ok(emergencyContactService.deleteContact(contactId));
+        return ResponseEntity.ok(userContactService.deleteContact(contactId));
     }
 
     // ── Quản lý thiết bị (User Devices) ──

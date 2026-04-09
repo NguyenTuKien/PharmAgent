@@ -10,8 +10,8 @@ import ct01.n07.backend.model.enums.RelationStatus;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.RelationshipRepository;
 import ct01.n07.backend.repository.UserProfileRepository;
+import ct01.n07.backend.security.ProfileAccessContext;
 import ct01.n07.backend.service.RelationshipService;
-import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -27,25 +27,25 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     private final RelationshipRepository relationshipRepository;
     private final UserProfileRepository userProfileRepository;
-    private final UserProfileService userProfileService;
+    private final ProfileAccessContext profileAccessContext;
 
     @Override
     public List<Relationship> getAcceptedElderlyRelationships() {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
         return relationshipRepository.findAllByCaregiverIdAndStatus(currentProfile.getId(), RelationStatus.ACCEPTED);
     }
 
     @Override
     public List<Relationship> getAcceptedCaregiverRelationships() {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.ELDERLY);
         return relationshipRepository.findAllByElderlyIdAndStatus(currentProfile.getId(), RelationStatus.ACCEPTED);
     }
 
     @Override
     public List<Relationship> getPendingElderlyRelationships() {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
         return relationshipRepository.findAllByCaregiverIdAndStatus(currentProfile.getId(), RelationStatus.PENDING);
     }
@@ -57,7 +57,7 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     @Override
     public List<ElderlyProfileResponse> getAcceptedElderlyProfiles() {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
 
         List<Relationship> relationships = relationshipRepository
@@ -97,7 +97,7 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     @Override
     public List<CaregiverProfileResponse> getAcceptedCaregiverProfiles() {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.ELDERLY);
 
         List<Relationship> relationships = relationshipRepository
@@ -137,7 +137,7 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     @Override
     public List<ElderlyProfileResponse> getPendingElderlyProfiles() {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
 
         List<Relationship> relationships = relationshipRepository
@@ -177,7 +177,7 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     @Override
     public List<CaregiverProfileResponse> getPendingCaregiverProfiles() {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.ELDERLY);
 
         List<Relationship> relationships = relationshipRepository
@@ -217,7 +217,7 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     @Override
     public String sendInvitation(RelationshipInviteRequest request) {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
 
         if (!userProfileRepository.existsByIdAndRole(request.getTargetElderlyId(), Role.ELDERLY)) {
@@ -243,7 +243,7 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     @Override
     public void acceptInvitation(String relationshipId) {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.ELDERLY);
 
         Relationship relationship = relationshipRepository.findByIdAndElderlyId(relationshipId, currentProfile.getId())
@@ -267,7 +267,7 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     @Override
     public void refuseInvitation(String relationshipId) {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.ELDERLY);
 
         Relationship relationship = relationshipRepository.findByIdAndElderlyId(relationshipId, currentProfile.getId())
@@ -283,7 +283,7 @@ public class RelationshipServiceImpl implements RelationshipService {
 
     @Override
     public void updateRelationship(String elderlyId, PermissionLevel permissionLevel) {
-        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
 
         String caregiverId = currentProfile.getId();

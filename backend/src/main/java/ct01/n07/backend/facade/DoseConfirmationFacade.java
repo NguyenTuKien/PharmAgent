@@ -1,17 +1,18 @@
 package ct01.n07.backend.facade;
 
-import ct01.n07.backend.dto.doseEvent.DoseEventResponse;
-import ct01.n07.backend.dto.patientMedication.MedicationResponse;
-import ct01.n07.backend.mapper.DoseEventMapper;
-import ct01.n07.backend.model.DoseEvent;
+import ct01.n07.backend.dto.event.EventDoseResponse;
+import ct01.n07.backend.dto.medication.MedicationResponse;
+import ct01.n07.backend.exception.ForbiddenAccessException;
+import ct01.n07.backend.mapper.EventDoseMapper;
+import ct01.n07.backend.model.EventDose;
 import ct01.n07.backend.model.Message;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.DoseStatus;
 import ct01.n07.backend.model.enums.Gender;
 import ct01.n07.backend.model.enums.MessageStatus;
-import ct01.n07.backend.service.DoseEventService;
+import ct01.n07.backend.service.EventDoseService;
+import ct01.n07.backend.service.MedicationService;
 import ct01.n07.backend.service.MessageService;
-import ct01.n07.backend.service.PatientMedicationService;
 import ct01.n07.backend.service.RelationshipService;
 import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
@@ -27,40 +28,45 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DoseConfirmationFacade {
 
-    private final DoseEventService doseEventService;
-    private final PatientMedicationService patientMedicationService;
+    private final EventDoseService eventDoseService;
+    private final MedicationService medicationService;
     private final UserProfileService userProfileService;
     private final RelationshipService relationshipService;
     private final MessageService messageService;
-    private final DoseEventMapper doseEventMapper;
+    private final EventDoseMapper eventDoseMapper;
 
     @Transactional
-    public DoseEventResponse confirmDose(String doseEventId) {
-        log.info("Elderly confirming dose event id={}", doseEventId);
+    public EventDoseResponse confirmDose(String doseEventId) {
+        log.info("Elderly confirming dose stats id={}", doseEventId);
 
         // Lấy thông tin cữ thuốc qua Core Service
-        DoseEvent doseEvent = doseEventService.getDoseEventById(doseEventId);
-        MedicationResponse medication = patientMedicationService.getPatientMedicationById(doseEvent.getPatientMedicationId());
+        EventDose eventDose = eventDoseService.getEventDoseById(doseEventId);
+        MedicationResponse medication = medicationService.getMedicationById(eventDose.getMedicationId());
         UserProfile elderlyProfile = userProfileService.findById(medication.getPatientId());
+
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        if (!currentProfile.getId().equals(medication.getPatientId())) {
+            throw new ForbiddenAccessException("Bạn không có quyền xác nhận uống thuốc cho người khác");
+        }
 
         LocalDateTime now = LocalDateTime.now();
 
-        if (now.isAfter(doseEvent.getScheduledAt())) {
-            doseEvent.setStatus(DoseStatus.OVERDUE);
+        if (now.isAfter(eventDose.getScheduledAt())) {
+            eventDose.setStatus(DoseStatus.OVERDUE);
         } else {
-            doseEvent.setStatus(DoseStatus.TAKEN);
+            eventDose.setStatus(DoseStatus.TAKEN);
         }
 
-        doseEvent.setTakenAt(now);
-        doseEvent.setConfirmedBy(elderlyProfile.getId());
+        eventDose.setTakenAt(now);
+        eventDose.setConfirmedBy(elderlyProfile.getId());
 
         // Lưu thông qua Core Service
-        DoseEvent saved = doseEventService.saveDoseEvent(doseEvent);
+        EventDose saved = eventDoseService.saveEventDose(eventDose);
 
         // Gửi notification
         sendDoseConfirmationNotifications(elderlyProfile, medication, now);
 
-        return doseEventMapper.toResponse(saved);
+        return eventDoseMapper.toResponse(saved);
     }
 
     private void sendDoseConfirmationNotifications(UserProfile elderlyProfile, MedicationResponse medication, LocalDateTime time) {

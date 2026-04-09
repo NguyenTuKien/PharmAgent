@@ -1,7 +1,7 @@
 package ct01.n07.backend.controller;
 
-import ct01.n07.backend.dto.doseEvent.AdherenceResponse;
-import ct01.n07.backend.dto.doseEvent.InventoryWarningResponse;
+import ct01.n07.backend.dto.stats.AdherenceResponse;
+import ct01.n07.backend.dto.stats.InventoryWarningResponse;
 import ct01.n07.backend.facade.StatsFacade;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;

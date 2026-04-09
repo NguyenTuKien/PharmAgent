@@ -1,18 +1,16 @@
 package ct01.n07.backend.facade;
 
-import ct01.n07.backend.dto.doseEvent.AdherenceResponse;
-import ct01.n07.backend.dto.doseEvent.InventoryWarningResponse;
-import ct01.n07.backend.dto.patientMedication.MedicationResponse;
+import ct01.n07.backend.dto.stats.AdherenceResponse;
+import ct01.n07.backend.dto.stats.InventoryWarningResponse;
+import ct01.n07.backend.dto.medication.MedicationResponse;
 import ct01.n07.backend.model.Pill;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.DoseStatus;
-import ct01.n07.backend.model.enums.RelationStatus;
-import ct01.n07.backend.repository.PatientMedicationRepository;
-import ct01.n07.backend.repository.RelationshipRepository;
-import ct01.n07.backend.service.DoseEventService;
-import ct01.n07.backend.service.PatientMedicationService;
+import ct01.n07.backend.service.EventDoseService;
+import ct01.n07.backend.service.MedicationService;
 import ct01.n07.backend.service.PillService;
 import ct01.n07.backend.service.UserProfileService;
+import ct01.n07.backend.security.MedicationPermissionValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -32,31 +30,27 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StatsFacade {
 
-    // [REFACTOR FIX]: Gỡ bỏ DoseEventRepository, PatientMedicationRepository khỏi Facade
+    // [REFACTOR FIX]: Gỡ bỏ EventDoseRepository, MedicationRepository khỏi Facade
     // Facade chỉ được giao tiếp trực tiếp với các Service (Clean Architecture)
-    private final DoseEventService doseEventService;
-    private final PatientMedicationService patientMedicationService;
+    private final EventDoseService eventDoseService;
+    private final MedicationService medicationService;
     private final PillService pillService;
-    private final PatientMedicationRepository patientMedicationRepository; // Chỉ giữ lại nếu dùng aggregation repository
     
-    // [REFACTOR FIX]: Thêm Relationship để kiểm tra phân quyền (Security)
-    private final RelationshipRepository relationshipRepository;
+    // [REFACTOR FIX]: Thêm Relationship để kiểm tra phân quyền (Security) thông qua Validator
+    private final MedicationPermissionValidator permissionValidator;
     private final UserProfileService userProfileService;
 
     private static final int INVENTORY_WARNING_THRESHOLD = 7;
 
-    // [REFACTOR FIX]: Hàm Helper kiểm tra bảo mật (IDOR)
     private void validatePermission(String patientId) {
         UserProfile currentUser = userProfileService.getCurrentUserProfile();
         if (currentUser.getId().equals(patientId)) {
             return; // Người dùng gọi xem thống kê của chính bản thân.
         }
         
-        // Kiểm tra xem người đang đăng nhập có phải là Caregiver được APPROVED của bệnh nhân này không.
-        boolean hasPermission = relationshipRepository.existsByCaregiverIdAndElderlyIdAndStatus(
-                currentUser.getId(), patientId, RelationStatus.ACCEPTED);
-                
-        if (!hasPermission) {
+        try {
+            permissionValidator.verifyCaregiverPermission(currentUser.getId(), patientId);
+        } catch (ResponseStatusException e) {
             log.warn("IDOR attempt detected: User {} tried to access stats of Patient {}", currentUser.getId(), patientId);
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem thống kê của bệnh nhân này.");
         }
@@ -80,7 +74,7 @@ public class StatsFacade {
         LocalDateTime endTime = endDate.atTime(LocalTime.MAX);
 
         // [REFACTOR FIX]: fix OOM (không dùng .size() nữa, dùng count service trả về trực tiếp số int)
-        long totalLong = doseEventService.countTotalDoseEvents(medicationIds, startTime, endTime);
+        long totalLong = eventDoseService.countTotalDoseEvents(medicationIds, startTime, endTime);
         int total = (int) totalLong;
 
         if (total == 0) {
@@ -90,7 +84,7 @@ public class StatsFacade {
         }
 
         // [REFACTOR FIX]: Lấy danh sách map các Status Group thay vì count 5 lần rời rạc
-        Map<DoseStatus, Long> countsByStatus = doseEventService.countDoseEventsByStatus(medicationIds, startTime, endTime);
+        Map<DoseStatus, Long> countsByStatus = eventDoseService.countDoseEventsByStatus(medicationIds, startTime, endTime);
 
         long taken = countsByStatus.getOrDefault(DoseStatus.TAKEN, 0L);
         long overdue = countsByStatus.getOrDefault(DoseStatus.OVERDUE, 0L);
@@ -117,10 +111,10 @@ public class StatsFacade {
         // [REFACTOR FIX]: IDOR verification
         validatePermission(patientId);
 
-        List<MedicationResponse> medications = patientMedicationService
+        List<MedicationResponse> medications = medicationService
                 .getMedications(patientId, null, Pageable.unpaged()).getContent();
 
-        if (medications == null || medications.isEmpty()) {
+        if (medications.isEmpty()) {
             return List.of();
         }
         
@@ -155,15 +149,13 @@ public class StatsFacade {
     public long getActivePatientsCount() {
         log.info("StatsFacade: counting active medication users");
         // [REFACTOR FIX]: Fix OOM, thay vì map và distinct trên Stream RAM Java, lấy kết quả Count Aggregation trả thẳng từ DB.
-        Long count = patientMedicationRepository.countDistinctActivePatients();
+        Long count = medicationService.countDistinctActivePatients();
         return count != null ? count : 0L;
     }
 
     private List<String> getMedicationIds(String patientId) {
-        List<MedicationResponse> medications = patientMedicationService
+        List<MedicationResponse> medications = medicationService
                 .getMedications(patientId, null, Pageable.unpaged()).getContent();
-        if (medications == null)
-            return List.of();
         return medications.stream().map(MedicationResponse::getId).toList();
     }
 }

@@ -1,8 +1,8 @@
 package ct01.n07.backend.controller.caregiver;
 
-import ct01.n07.backend.dto.userProfile.UserProfileSummaryResponse;
-import ct01.n07.backend.dto.userProfile.CreateProfileRequest;
-import ct01.n07.backend.dto.userProfile.UserProfileResponse;
+import ct01.n07.backend.dto.user.UserProfileSummaryResponse;
+import ct01.n07.backend.dto.user.CreateProfileRequest;
+import ct01.n07.backend.dto.user.UserProfileResponse;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.service.UserProfileService;
 import jakarta.validation.Valid;

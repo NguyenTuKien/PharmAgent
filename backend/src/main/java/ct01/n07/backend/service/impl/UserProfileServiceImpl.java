@@ -1,16 +1,15 @@
 package ct01.n07.backend.service.impl;
 
 import ct01.n07.backend.constant.ProfileConstant;
-import ct01.n07.backend.dto.userProfile.CreateProfileRequest;
-import ct01.n07.backend.dto.userProfile.UserProfileResponse;
-import ct01.n07.backend.dto.userProfile.UserProfileSummaryResponse;
-import ct01.n07.backend.dto.userProfile.UpdateProfileRequest;
+import ct01.n07.backend.dto.user.CreateProfileRequest;
+import ct01.n07.backend.dto.user.UserProfileResponse;
+import ct01.n07.backend.dto.user.UserProfileSummaryResponse;
+import ct01.n07.backend.dto.user.UpdateProfileRequest;
 import ct01.n07.backend.exception.CannotDeleteActiveProfileException;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.UserProfileRepository;
-import ct01.n07.backend.service.SecurityContextService;
 import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,14 +20,20 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
 
 @Service
 @RequiredArgsConstructor
 public class UserProfileServiceImpl implements UserProfileService {
 
+    private static final String PROFILE_ID_ATTR = "profileId";
+
     private final UserProfileRepository userProfileRepository;
     private final UserProfileMapper userProfileMapper;
-    private final SecurityContextService securityContextService;
 
     @Override
     public void saveUserProfile(UserProfile userProfile) {
@@ -53,14 +58,31 @@ public class UserProfileServiceImpl implements UserProfileService {
 
     @Override
     public String getCurrentUserId() {
-        return securityContextService.getCurrentUserId();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, ProfileConstant.UNAUTHORIZED);
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof String userId) || userId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, ProfileConstant.INVALID_AUTHENTICATION_PRINCIPAL);
+        }
+        return userId;
+    }
+
+    private String getCurrentProfileId() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return null;
+        }
+        return (String) attributes.getRequest().getAttribute(PROFILE_ID_ATTR);
     }
 
     @Override
     public UserProfile getCurrentUserProfile() {
         String userId = getCurrentUserId();
 
-        String profileId = securityContextService.getCurrentProfileId();
+        String profileId = getCurrentProfileId();
         if (profileId == null || profileId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, ProfileConstant.PROFILE_TOKEN_REQUIRED);
         }
@@ -75,7 +97,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     public Page<UserProfileSummaryResponse> getProfiles(Pageable pageable) {
         String userId = getCurrentUserId();
-        String currentProfileId = securityContextService.getCurrentProfileId(); // null nếu dùng accessToken
+        String currentProfileId = getCurrentProfileId(); // null nếu dùng accessToken
 
         if (currentProfileId != null && !currentProfileId.isBlank()) {
             return userProfileRepository.findAllByUserIdAndIdNot(userId, currentProfileId, pageable)
@@ -103,7 +125,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     public void deleteProfile(String profileId) {
         String userId = getCurrentUserId();
-        String currentProfileId = securityContextService.getCurrentProfileId();
+        String currentProfileId = getCurrentProfileId();
 
         // Không cho phép xóa profile đang được sử dụng
         if (profileId.equals(currentProfileId)) {
@@ -145,7 +167,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
     @Override
     public Page<UserProfileSummaryResponse> searchProfiles(String keyword, Role role, Pageable pageable) {
-        String currentProfileId = securityContextService.getCurrentProfileId();
+        String currentProfileId = getCurrentProfileId();
         String excludedId = currentProfileId != null ? currentProfileId : "";
 
         Page<UserProfile> profilePage;
@@ -158,3 +180,5 @@ public class UserProfileServiceImpl implements UserProfileService {
         return profilePage.map(userProfileMapper::toProfileSummary);
     }
 }
+
+

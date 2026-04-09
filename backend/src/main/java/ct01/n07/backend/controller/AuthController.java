@@ -48,4 +48,16 @@ public class AuthController {
         authFacade.logout(request);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestParam String email) {
+        authFacade.processForgotPassword(email);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authFacade.resetPassword(request);
+        return ResponseEntity.ok().build();
+    }
 }

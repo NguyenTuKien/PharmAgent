@@ -1,11 +1,11 @@
 package ct01.n07.backend.mapper;
 
-import ct01.n07.backend.dto.userProfile.UserProfileSummaryResponse;
+import ct01.n07.backend.dto.user.UserProfileSummaryResponse;
 import ct01.n07.backend.dto.auth.SignupRequest;
 import ct01.n07.backend.dto.auth.UserInfoResponse;
-import ct01.n07.backend.dto.userProfile.CreateProfileRequest;
-import ct01.n07.backend.dto.userProfile.UpdateProfileRequest;
-import ct01.n07.backend.dto.userProfile.UserProfileResponse;
+import ct01.n07.backend.dto.user.CreateProfileRequest;
+import ct01.n07.backend.dto.user.UpdateProfileRequest;
+import ct01.n07.backend.dto.user.UserProfileResponse;
 import ct01.n07.backend.model.User;
 import ct01.n07.backend.model.UserProfile;
 import org.mapstruct.BeanMapping;
@@ -27,7 +27,7 @@ public interface UserProfileMapper {
     @Mapping(target = "address", source = "req.caregiver.address")
     @Mapping(target = "avatarUrl", source = "req.caregiver.avatarUrl")
     @Mapping(target = "role", constant = "CAREGIVER")
-    @Mapping(target = "emergencyContacts", expression = "java(new java.util.ArrayList<>())")
+    @Mapping(target = "userContacts", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "userDevices", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
@@ -43,7 +43,7 @@ public interface UserProfileMapper {
     @Mapping(target = "address", source = "req.elderly.address")
     @Mapping(target = "avatarUrl", source = "req.elderly.avatarUrl")
     @Mapping(target = "role", constant = "ELDERLY")
-    @Mapping(target = "emergencyContacts", expression = "java(new java.util.ArrayList<>())")
+    @Mapping(target = "userContacts", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "userDevices", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
@@ -51,7 +51,7 @@ public interface UserProfileMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
-    @Mapping(target = "emergencyContacts", expression = "java(new java.util.ArrayList<>())")
+    @Mapping(target = "userContacts", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "userDevices", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
@@ -79,7 +79,7 @@ public interface UserProfileMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "role", ignore = true)
-    @Mapping(target = "emergencyContacts", ignore = true)
+    @Mapping(target = "userContacts", ignore = true)
     @Mapping(target = "userDevices", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

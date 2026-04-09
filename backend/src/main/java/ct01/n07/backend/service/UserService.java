@@ -26,4 +26,6 @@ public interface UserService {
     AdminUserResponse lockUser(String id);
 
     AdminUserResponse unlockUser(String id);
+
+    void updatePassword(String email, String newPassword);
 }

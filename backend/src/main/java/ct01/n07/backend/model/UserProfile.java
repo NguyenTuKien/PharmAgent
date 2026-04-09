@@ -39,7 +39,7 @@ public class UserProfile {
     private String address;
     private String avatarUrl;
 
-    private List<EmergencyContact> emergencyContacts;
+    private List<UserContact> userContacts;
 
     private List<UserDevice> userDevices;
 

@@ -4,20 +4,24 @@ import ct01.n07.backend.dto.auth.*;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.User;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.producer.MailProducerService;
 import ct01.n07.backend.security.JwtService;
 import ct01.n07.backend.service.RelationshipService;
 import ct01.n07.backend.service.UserProfileService;
 import ct01.n07.backend.service.UserService;
+import ct01.n07.backend.util.OtpUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.util.List;
 
 @Slf4j
@@ -32,6 +36,9 @@ public class AuthFacade {
     private final RelationshipService relationshipService;
     private final JwtService jwtService;
     private final UserProfileMapper userProfileMapper;
+    private final OtpUtil otpUtil;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final MailProducerService mailProducerService;
 
     // ==========================================
     // API 1: XỬ LÝ ĐĂNG NHẬP
@@ -190,6 +197,60 @@ public class AuthFacade {
                     signupRequest.getElderly().getPermissionLevel());
         }
         return login(loginRequest, pageable);
+    }
+
+    // ==========================================
+    // API 6: QUÊN MẬT KHẨU
+    // ==========================================
+    public void processForgotPassword(String email) {
+        // Bước 1: Kiểm tra xem email có tồn tại trong MongoDB không
+        try {
+            userService.findByEmail(email);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Email không tồn tại");
+        }
+
+        // Bước 2: Sinh mã OTP
+        String otpCode = otpUtil.generateOtp();
+
+        // Bước 3: Lưu vào Redis với Key là "OTP:email", Value là mã OTP, thời gian sống
+        // (TTL) là 5 phút
+        String redisKey = "OTP:" + email;
+        redisTemplate.opsForValue().set(redisKey, otpCode, Duration.ofMinutes(5));
+
+        // Bước 4: Đẩy nhiệm vụ gửi mail vào RabbitMQ
+        mailProducerService.sendOtpToQueue(email, otpCode);
+    }
+
+    // Hàm này dùng để gọi ở API bước sau (khi user nhập OTP vào app)
+    public boolean verifyOtp(String email, String userProvidedOtp) {
+        String redisKey = "OTP:" + email;
+
+        // Lấy OTP từ Redis ra
+        String savedOtp = redisTemplate.opsForValue().get(redisKey);
+
+        if (savedOtp != null && savedOtp.equals(userProvidedOtp)) {
+            // Xác thực thành công -> Xóa OTP khỏi Redis ngay lập tức để tránh dùng lại
+            redisTemplate.delete(redisKey);
+            return true;
+        }
+        return false;
+    }
+
+    // ==========================================
+    // API 7: DAT LAI MAT KHAU
+    // ==========================================
+    public void resetPassword(ResetPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới và xác nhận mật khẩu không khớp");
+        }
+
+        boolean isOtpValid = verifyOtp(request.getEmail(), request.getOtp());
+        if (!isOtpValid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP không hợp lệ hoặc đã hết hạn");
+        }
+
+        userService.updatePassword(request.getEmail(), request.getNewPassword());
     }
 
     private String extractBearerToken(String authorizationHeader) {

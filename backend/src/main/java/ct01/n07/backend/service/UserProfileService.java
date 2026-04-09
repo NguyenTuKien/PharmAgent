@@ -1,9 +1,9 @@
 package ct01.n07.backend.service;
 
-import ct01.n07.backend.dto.userProfile.CreateProfileRequest;
-import ct01.n07.backend.dto.userProfile.UpdateProfileRequest;
-import ct01.n07.backend.dto.userProfile.UserProfileResponse;
-import ct01.n07.backend.dto.userProfile.UserProfileSummaryResponse;
+import ct01.n07.backend.dto.user.CreateProfileRequest;
+import ct01.n07.backend.dto.user.UpdateProfileRequest;
+import ct01.n07.backend.dto.user.UserProfileResponse;
+import ct01.n07.backend.dto.user.UserProfileSummaryResponse;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.Role;
 import jakarta.validation.constraints.NotBlank;

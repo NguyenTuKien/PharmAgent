@@ -4,6 +4,7 @@ import ct01.n07.backend.dto.relationship.ElderlyProfileResponse;
 import ct01.n07.backend.dto.relationship.RelationshipInviteRequest;
 import ct01.n07.backend.model.enums.PermissionLevel;
 import ct01.n07.backend.facade.RelationshipProfileFacade;
+import ct01.n07.backend.service.RelationshipService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,7 @@ import java.util.Map;
 @RequestMapping("/caregiver/relationship")
 public class CaregiverRelationshipController {
     private final RelationshipProfileFacade relationshipProfileFacade;
-    private final ct01.n07.backend.service.RelationshipService relationshipService;
+    private final RelationshipService relationshipService;
 
     @GetMapping
     public ResponseEntity<List<ElderlyProfileResponse>> getRelativeElderlyProfiles() {

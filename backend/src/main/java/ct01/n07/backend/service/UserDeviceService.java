@@ -1,7 +1,7 @@
 package ct01.n07.backend.service;
 
-import ct01.n07.backend.dto.userProfile.UserDeviceRequest;
-import ct01.n07.backend.dto.userProfile.UserProfileResponse;
+import ct01.n07.backend.dto.user.UserDeviceRequest;
+import ct01.n07.backend.dto.user.UserProfileResponse;
 import ct01.n07.backend.model.UserDevice;
 
 import java.util.List;
