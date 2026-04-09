@@ -27,8 +27,8 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> selectProfile(
             @RequestHeader("Authorization") String authorization,
             @PathVariable("profileId") String profileId) { // Dùng PathVariable
-        String profileToken = authFacade.selectProfile(authorization, profileId);
-        return ResponseEntity.ok(Map.of("profileToken", profileToken));
+        String accessToken = authFacade.selectProfile(authorization, profileId);
+        return ResponseEntity.ok(Map.of("accessToken", accessToken));
     }
 
     @PostMapping("/refresh")

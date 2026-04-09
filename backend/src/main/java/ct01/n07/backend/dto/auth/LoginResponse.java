@@ -7,7 +7,7 @@ import org.springframework.data.domain.Page;
 @Data
 @Builder
 public class LoginResponse {
-    private String accessToken;
+    private String authToken;
     private String refreshToken;
     private Page<UserProfileSummaryResponse> profiles;
 }

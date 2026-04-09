@@ -20,14 +20,14 @@ public class JwtService {
     // 1. CÁC HÀM TẠO TOKEN
     // ==========================================
 
-    // Bước 1: Tạo Access Token cho tài khoản gốc
-    public String generateAccessToken(String userId) {
-        return jwtUtil.generateAccessToken(userId);
+    // Bước 1: Tạo Auth Token cho tài khoản gốc
+    public String generateAuthToken(String userId) {
+        return jwtUtil.generateAuthToken(userId);
     }
 
-    // Bước 2: Tạo Profile Token mang theo quyền (Role)
-    public String generateProfileToken(String userId, String profileId, String role) {
-        return jwtUtil.generateProfileToken(userId, profileId, role);
+    // Bước 2: Tạo Access Token mang theo quyền (Role)
+    public String generateAccessToken(String userId, String profileId, String role) {
+        return jwtUtil.generateAccessToken(userId, profileId, role);
     }
 
     // Bước 3: Tạo Refresh Token dạng JWT (Đã bổ sung truyền userId)
@@ -65,12 +65,12 @@ public class JwtService {
         return jwtUtil.isTokenValid(token, userId);
     }
 
-    public boolean isAccessToken(String token) {
-        return jwtUtil.isAccessToken(token);
+    public boolean isAuthToken(String token) {
+        return jwtUtil.isAuthToken(token);
     }
 
-    public boolean isProfileToken(String token) {
-        return jwtUtil.isProfileToken(token);
+    public boolean isAccessToken(String token) {
+        return jwtUtil.isAccessToken(token);
     }
 
     public boolean isRefreshToken(String token) {

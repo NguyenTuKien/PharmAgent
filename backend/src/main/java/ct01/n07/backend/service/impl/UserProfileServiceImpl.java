@@ -97,7 +97,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     public Page<UserProfileSummaryResponse> getProfiles(Pageable pageable) {
         String userId = getCurrentUserId();
-        String currentProfileId = getCurrentProfileId(); // null nếu dùng accessToken
+        String currentProfileId = getCurrentProfileId(); // null nếu dùng authToken
 
         if (currentProfileId != null && !currentProfileId.isBlank()) {
             return userProfileRepository.findAllByUserIdAndIdNot(userId, currentProfileId, pageable)

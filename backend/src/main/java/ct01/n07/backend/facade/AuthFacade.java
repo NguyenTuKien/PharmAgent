@@ -50,7 +50,7 @@ public class AuthFacade {
         User user = userService.verifyUserCredentials(request.getEmail(), request.getPassword());
 
         // 2. JwtService cấp phát Token
-        String accessToken = jwtService.generateAccessToken(user.getId());
+        String authToken = jwtService.generateAuthToken(user.getId());
         String refreshToken = jwtService.generateRefreshToken(user.getId());
 
         // 3. UserProfileService lấy danh sách hồ sơ theo phân trang hiện có
@@ -59,7 +59,7 @@ public class AuthFacade {
                 .map(userProfileMapper::toSummary);
 
         return LoginResponse.builder()
-                .accessToken(accessToken)
+                .authToken(authToken)
                 .refreshToken(refreshToken)
                 .profiles(profiles)
                 .build();
@@ -69,16 +69,16 @@ public class AuthFacade {
     // API 2: CHỌN HỒ SƠ (CẤP QUYỀN)
     // ==========================================
     public String selectProfile(String authorizationHeader, String profileId) {
-        String accessToken = normalizeToken(extractBearerToken(authorizationHeader));
+        String authToken = normalizeToken(extractBearerToken(authorizationHeader));
         String currentUserId;
         try {
-            currentUserId = jwtService.extractUserId(accessToken);
-            if (!jwtService.isTokenValid(accessToken, currentUserId) || !jwtService.isAccessToken(accessToken)) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token");
+            currentUserId = jwtService.extractUserId(authToken);
+            if (!jwtService.isTokenValid(authToken, currentUserId) || !jwtService.isAuthToken(authToken)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication token");
             }
         } catch (Exception ex) {
-            log.warn("selectProfile rejected due to invalid/expired access token: {}", ex.getClass().getSimpleName());
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token");
+            log.warn("selectProfile rejected due to invalid/expired auth token: {}", ex.getClass().getSimpleName());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication token");
         }
 
         // 1. Lấy thông tin Profile
@@ -90,13 +90,13 @@ public class AuthFacade {
             throw new AccessDeniedException("Bạn không có quyền truy cập hồ sơ này.");
         }
 
-        // 3. Cấp Profile Token chứa Role
-        String profileToken = jwtService.generateProfileToken(
+        // 3. Cấp Access Token chứa Role
+        String accessToken = jwtService.generateAccessToken(
                 currentUserId,
                 profileId,
                 profile.getRole().name());
 
-        return profileToken;
+        return accessToken;
     }
 
     // ==========================================
@@ -125,16 +125,16 @@ public class AuthFacade {
 
         // 3. Rotation: Cấp mới đủ 3 token để client tiếp tục gọi cả account-level và
         // profile-level APIs
-        String newAccessToken = jwtService.generateAccessToken(userId);
-        String newProfileToken = jwtService.generateProfileToken(userId, profile.getId(), profile.getRole().name());
+        String newAuthToken = jwtService.generateAuthToken(userId);
+        String newAccessToken = jwtService.generateAccessToken(userId, profile.getId(), profile.getRole().name());
         String newRefreshToken = jwtService.generateRefreshToken(userId);
 
         // Mẹo bảo mật bổ sung: Ném token cũ vào blacklist để tránh bị dùng lại
         jwtService.blacklistTokens(List.of(token));
 
         return TokenRefreshResponse.builder()
+                .authToken(newAuthToken)
                 .accessToken(newAccessToken)
-                .profileToken(newProfileToken)
                 .refreshToken(newRefreshToken)
                 .build();
     }
@@ -144,9 +144,9 @@ public class AuthFacade {
     // ==========================================
     public void logout(LogoutRequest request) {
         List<String> tokensToRevoke = java.util.stream.Stream.of(
+                request.getAuthToken(),
                 request.getAccessToken(),
-                request.getRefreshToken(),
-                request.getProfileToken()).map(this::normalizeToken)
+                request.getRefreshToken()).map(this::normalizeToken)
                 .filter(token -> token != null && !token.isBlank())
                 .toList();
 

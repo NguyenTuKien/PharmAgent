@@ -59,8 +59,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 List<GrantedAuthority> authorities = new ArrayList<>();
 
                 // 5. Phân loại Token và Cấp quyền
-                if (jwtService.isProfileToken(jwt)) {
-                    // Nếu là Profile Token -> Trích xuất Role và cấp quyền
+                if (jwtService.isAccessToken(jwt)) {
+                    // Nếu là Access Token -> Trích xuất Role và cấp quyền
                     String role = jwtService.extractRole(jwt);
                     String profileId = jwtService.extractProfileId(jwt);
 
@@ -70,7 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     // MẸO DEVOPS: Gắn thẳng profileId vào Request để Controller dùng luôn, không cần bóc JWT lại nữa!
                     request.setAttribute("profileId", profileId);
                 }
-                // Nếu là Access Token -> List authorities rỗng (Không có quyền gì ngoài việc được gọi API /select-profile)
+                // Nếu là Auth Token -> List authorities rỗng (Không có quyền gì ngoài việc được gọi API /select-profile)
 
                 // 6. Tạo Authentication object (Principal bây giờ là userId)
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

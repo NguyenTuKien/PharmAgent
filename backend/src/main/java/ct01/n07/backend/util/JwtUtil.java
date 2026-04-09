@@ -20,13 +20,13 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.access-expiration-ms:300000}") // Token bước 1: 5 phút
+    @Value("${jwt.auth-expiration-ms:60000}") // Token bước 1: 5 phút
+    private long authExpirationMs;
+
+    @Value("${jwt.access-expiration-ms:300000}") // Token bước 2 (Gọi API): 1 ngày
     private long accessExpirationMs;
 
-    @Value("${jwt.profile-expiration-ms:86400000}") // Token bước 2 (Gọi API): 1 ngày
-    private long profileExpirationMs;
-
-    @Value("${jwt.refresh-expiration-ms:604800000}") // Token làm mới: 7 ngày
+    @Value("${jwt.refresh-expiration-ms:6480000}") // Token làm mới: 7 ngày
     private long refreshExpirationMs;
 
     // ==========================================
@@ -64,20 +64,20 @@ public class JwtUtil {
     // 3. CÁC HÀM TẠO TOKEN
     // ==========================================
 
-    // Bước 1: Tạo Access Token (Chỉ chứa userId)
-    public String generateAccessToken(String userId) {
+    // Bước 1: Tạo Auth Token (Chỉ chứa userId)
+    public String generateAuthToken(String userId) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("type", "access");
-        return buildToken(claims, userId, accessExpirationMs);
+        claims.put("type", "auth");
+        return buildToken(claims, userId, authExpirationMs);
     }
 
-    // Bước 2: Tạo Profile Token (Chứa userId, profileId, role)
-    public String generateProfileToken(String userId, String profileId, String role) {
+    // Bước 2: Tạo Access Token (Chứa userId, profileId, role)
+    public String generateAccessToken(String userId, String profileId, String role) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("type", "profile");
+        claims.put("type", "access");
         claims.put("profileId", profileId);
         claims.put("role", role);
-        return buildToken(claims, userId, profileExpirationMs);
+        return buildToken(claims, userId, accessExpirationMs);
     }
 
     // Bước 3: Tạo Refresh Token (Bây giờ là JWT, có hạn sử dụng dài)
@@ -96,8 +96,8 @@ public class JwtUtil {
         return (extractedUserId.equals(userId)) && !isTokenExpired(token);
     }
 
-    public boolean isProfileToken(String token) {
-        return "profile".equals(extractTokenType(token));
+    public boolean isAuthToken(String token) {
+        return "auth".equals(extractTokenType(token));
     }
 
     public boolean isAccessToken(String token) {

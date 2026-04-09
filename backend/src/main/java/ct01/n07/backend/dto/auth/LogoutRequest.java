@@ -12,11 +12,11 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LogoutRequest {
+    @Size(max = 500, message = "Authenticate Token không được vượt quá 500 ký tự")
+    private String authToken;
+
     @Size(max = 500, message = "Access Token không được vượt quá 500 ký tự")
     private String accessToken;
-
-    @Size(max = 500, message = "Profile Token không được vượt quá 500 ký tự")
-    private String profileToken;
 
     @NotBlank(message = "Refresh Token không được để trống")
     @Size(max = 500, message = "Refresh Token không được vượt quá 500 ký tự")
