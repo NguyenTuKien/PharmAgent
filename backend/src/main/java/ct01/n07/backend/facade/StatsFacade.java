@@ -3,8 +3,10 @@ package ct01.n07.backend.facade;
 import ct01.n07.backend.dto.doseEvent.AdherenceResponse;
 import ct01.n07.backend.dto.doseEvent.InventoryWarningResponse;
 import ct01.n07.backend.dto.patientMedication.MedicationResponse;
+import ct01.n07.backend.model.PatientMedication;
 import ct01.n07.backend.model.enums.DoseStatus;
 import ct01.n07.backend.repository.DoseEventRepository;
+import ct01.n07.backend.repository.PatientMedicationRepository;
 import ct01.n07.backend.service.PatientMedicationService;
 import ct01.n07.backend.service.PillService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import java.util.List;
 public class StatsFacade {
 
     private final DoseEventRepository doseEventRepository;
+    private final PatientMedicationRepository patientMedicationRepository;
     private final PatientMedicationService patientMedicationService;
     private final PillService pillService;
 
@@ -54,25 +57,43 @@ public class StatsFacade {
                 .findByPatientMedicationIdInAndScheduledAtBetween(medicationIds, startTime, endTime)
                 .size();
 
-        // Đếm TAKEN
+        if (total == 0) {
+            return AdherenceResponse.builder()
+                    .total(0).taken(0).overdue(0).missed(0).skipped(0).pending(0).adherencePercent(0.0)
+                    .build();
+        }
+
+        // Đếm các trạng thái
         long taken = doseEventRepository
                 .countByPatientMedicationIdInAndScheduledAtBetweenAndStatus(
                         medicationIds, startTime, endTime, DoseStatus.TAKEN);
 
-        // Đếm SKIPPED
+        long overdue = doseEventRepository
+                .countByPatientMedicationIdInAndScheduledAtBetweenAndStatus(
+                        medicationIds, startTime, endTime, DoseStatus.OVERDUE);
+
+        long missed = doseEventRepository
+                .countByPatientMedicationIdInAndScheduledAtBetweenAndStatus(
+                        medicationIds, startTime, endTime, DoseStatus.MISSED);
+
         long skipped = doseEventRepository
                 .countByPatientMedicationIdInAndScheduledAtBetweenAndStatus(
                         medicationIds, startTime, endTime, DoseStatus.SKIPPED);
 
-        // Tính adherencePercent, tránh chia cho 0, làm tròn 2 chữ số thập phân
-        double adherencePercent = (total > 0)
-                ? Math.round(((double) taken / total) * 10000.0) / 100.0
-                : 0.0;
+        long pending = doseEventRepository
+                .countByPatientMedicationIdInAndScheduledAtBetweenAndStatus(
+                        medicationIds, startTime, endTime, DoseStatus.PENDING);
+
+        // Tính adherencePercent: (Taken + Overdue) / Total, làm tròn 2 chữ số thập phân
+        double adherencePercent = Math.round(((double) (taken + overdue) / total) * 10000.0) / 100.0;
 
         return AdherenceResponse.builder()
                 .total(total)
                 .taken((int) taken)
+                .overdue((int) overdue)
+                .missed((int) missed)
                 .skipped((int) skipped)
+                .pending((int) pending)
                 .adherencePercent(adherencePercent)
                 .build();
     }
@@ -85,14 +106,14 @@ public class StatsFacade {
     public List<InventoryWarningResponse> getInventoryWarnings(String patientId) {
         log.info("StatsFacade: fetching inventory warnings for patientId={}", patientId);
 
-        List<MedicationResponse> medications = patientMedicationService.getMedications(patientId, null, Pageable.unpaged()).getContent();
+        List<MedicationResponse> medications = patientMedicationService
+                .getMedications(patientId, null, Pageable.unpaged()).getContent();
 
         if (medications == null || medications.isEmpty()) {
             return List.of();
         }
-
         return medications.stream()
-                .filter(med -> med.isActive()
+                .filter(med -> med.getIsActive() != null && med.getIsActive()
                         && med.getTotalQuantity() != null
                         && med.getTotalQuantity() <= INVENTORY_WARNING_THRESHOLD)
                 .map(med -> {
@@ -112,9 +133,21 @@ public class StatsFacade {
                 .toList();
     }
 
+    /**
+     * Thống kê số lượng người đang sử dụng thuốc (có ít nhất 1 thuốc đang hoạt động).
+     */
+    public long getActivePatientsCount() {
+        log.info("StatsFacade: counting active medication users");
+        return patientMedicationRepository.findAllActiveMedications().stream()
+                .map(PatientMedication::getPatientId)
+                .distinct()
+                .count();
+    }
+
     // Helper: lấy danh sách medication IDs qua PatientMedicationService
     private List<String> getMedicationIds(String patientId) {
-        List<MedicationResponse> medications = patientMedicationService.getMedications(patientId, null, Pageable.unpaged()).getContent();
+        List<MedicationResponse> medications = patientMedicationService
+                .getMedications(patientId, null, Pageable.unpaged()).getContent();
         if (medications == null)
             return List.of();
         return medications.stream().map(MedicationResponse::getId).toList();

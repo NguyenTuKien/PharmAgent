@@ -225,8 +225,6 @@ public class DataSeeder implements CommandLineRunner {
         medication.setPurpose("Giam dau, ha sot");
         medication.setStartDate(LocalDate.now());
         medication.setEndDate(LocalDate.now().plusDays(7));
-        medication.setPrn(false);
-        medication.setMaxPerDay(4);
         medication.setActive(true);
         medication.setMedicationSchedules(List.of());
 

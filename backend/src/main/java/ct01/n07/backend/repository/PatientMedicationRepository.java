@@ -4,8 +4,10 @@ import ct01.n07.backend.model.PatientMedication;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -15,4 +17,7 @@ public interface PatientMedicationRepository extends MongoRepository<PatientMedi
     Page<PatientMedication> findByPatientId(String patientId, Pageable pageable);
 
     Page<PatientMedication> findByPatientIdAndIsActive(String patientId, boolean isActive, Pageable pageable);
+
+    @Query(value = "{ 'isActive': true }", fields = "{ 'patientId': 1 }")
+    List<PatientMedication> findAllActiveMedications();
 }

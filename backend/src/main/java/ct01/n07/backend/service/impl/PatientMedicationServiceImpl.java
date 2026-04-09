@@ -1,10 +1,6 @@
 package ct01.n07.backend.service.impl;
 
-import ct01.n07.backend.dto.patientMedication.MedicationCreateRequest;
-import ct01.n07.backend.dto.patientMedication.MedicationResponse;
-import ct01.n07.backend.dto.patientMedication.MedicationScheduleRequest;
-import ct01.n07.backend.dto.patientMedication.MedicationUpdateRequest;
-import ct01.n07.backend.dto.patientMedication.ScheduleTimeRequest;
+import ct01.n07.backend.dto.patientMedication.*;
 import ct01.n07.backend.mapper.PatientMedicationMapper;
 import ct01.n07.backend.model.MedicationSchedule;
 import ct01.n07.backend.model.PatientMedication;
@@ -12,7 +8,9 @@ import ct01.n07.backend.model.ScheduleTime;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.RelationStatus;
 import ct01.n07.backend.model.enums.Role;
-import ct01.n07.backend.model.enums.ScheduleType;
+import ct01.n07.backend.model.DoseEvent;
+import ct01.n07.backend.model.enums.DoseStatus;
+import ct01.n07.backend.repository.DoseEventRepository;
 import ct01.n07.backend.repository.PatientMedicationRepository;
 import ct01.n07.backend.repository.PillRepository;
 import ct01.n07.backend.repository.RelationshipRepository;
@@ -26,8 +24,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -41,6 +37,7 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
     private final RelationshipRepository relationshipRepository;
     private final UserProfileService userProfileService;
     private final PatientMedicationMapper patientMedicationMapper;
+    private final DoseEventRepository doseEventRepository;
 
     @Override
     public MedicationResponse createMedication(MedicationCreateRequest request) {
@@ -75,14 +72,14 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
                 .purpose(request.getPurpose())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
-                .isPrn(request.isPrn())
-                .maxPerDay(request.getMaxPerDay())
                 .totalQuantity(request.getTotalQuantity())
                 .isActive(true)
-                .medicationSchedules(List.of(toSimpleDailySchedule(request.getSchedules())))
+                .medicationSchedules(patientMedicationMapper.toModels(request.getSchedules()))
                 .build();
 
-        return toMedicationResponse(patientMedicationRepository.save(medication));
+        PatientMedication savedPm = patientMedicationRepository.save(medication);
+        syncDoseEvents(savedPm);
+        return toMedicationResponse(savedPm);
     }
 
     @Override
@@ -115,7 +112,7 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         }
 
         if (request.getSchedules() != null) {
-            medication.setMedicationSchedules(List.of(toSimpleDailySchedule(request.getSchedules())));
+            medication.setMedicationSchedules(patientMedicationMapper.toModels(request.getSchedules()));
         }
 
         if (request.getTotalQuantity() != null) {
@@ -146,12 +143,12 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
             medication.setStartDate(request.getStartDate());
         if (request.getEndDate() != null)
             medication.setEndDate(request.getEndDate());
-        if (request.getIsPrn() != null)
-            medication.setPrn(request.getIsPrn());
-        if (request.getMaxPerDay() != null)
-            medication.setMaxPerDay(request.getMaxPerDay());
-
-        return toMedicationResponse(patientMedicationRepository.save(medication));
+            
+        PatientMedication savedPm = patientMedicationRepository.save(medication);
+        if (request.getSchedules() != null) {
+            syncDoseEvents(savedPm);
+        }
+        return toMedicationResponse(savedPm);
     }
 
     @Override
@@ -160,9 +157,8 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
     }
 
     @Override
-    public MedicationResponse addMedicationSchedule(MedicationScheduleRequest medicationScheduleRequest) {
-        PatientMedication patientMedication = requirePatientMedication(
-                medicationScheduleRequest.getPatientMedicationId());
+    public MedicationResponse addMedicationSchedule(ScheduleRequest scheduleRequest, String patientMedicationId) {
+        PatientMedication patientMedication = requirePatientMedication(patientMedicationId);
 
         UserProfile currentProfile = userProfileService.getCurrentUserProfile();
         verifySchedulePermission(currentProfile, patientMedication.getPatientId());
@@ -171,8 +167,19 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
             patientMedication.setMedicationSchedules(new ArrayList<>());
         }
 
-        patientMedication.getMedicationSchedules().add(patientMedicationMapper.toModel(medicationScheduleRequest));
-        return toMedicationResponse(patientMedicationRepository.save(patientMedication));
+        MedicationSchedule newSchedule = patientMedicationMapper.toModel(scheduleRequest);
+        patientMedication.getMedicationSchedules().add(newSchedule);
+        patientMedication.setActive(true);
+        PatientMedication saved = patientMedicationRepository.save(patientMedication);
+        
+        // Tạo dose events cho schedule mới
+        if (newSchedule.getScheduleTimeList() != null) {
+            for (ScheduleTime time : newSchedule.getScheduleTimeList()) {
+                createDoseEvent(saved, newSchedule, time);
+            }
+        }
+        
+        return toMedicationResponse(saved);
     }
 
     @Override
@@ -182,11 +189,12 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         verifySchedulePermission(currentProfile, pm.getPatientId());
         
         patientMedicationRepository.deleteById(id);
+        doseEventRepository.deleteByPatientMedicationId(id);
     }
 
     @Override
     public MedicationResponse updateMedicationSchedule(String patientMedicationId, String scheduleId,
-            MedicationScheduleRequest request) {
+                                                      ScheduleRequest request) {
         PatientMedication pm = requirePatientMedication(patientMedicationId);
 
         UserProfile currentProfile = userProfileService.getCurrentUserProfile();
@@ -221,6 +229,7 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         if (!removed) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
         }
+        doseEventRepository.deleteByScheduleId(scheduleId);
         return toMedicationResponse(patientMedicationRepository.save(pm));
     }
 
@@ -246,8 +255,13 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
             schedule.setScheduleTimeList(new ArrayList<>());
         }
 
-        schedule.getScheduleTimeList().add(patientMedicationMapper.toModel(request));
-        return toMedicationResponse(patientMedicationRepository.save(pm));
+        ScheduleTime newTime = patientMedicationMapper.toModel(request);
+        schedule.getScheduleTimeList().add(newTime);
+        PatientMedication saved = patientMedicationRepository.save(pm);
+        
+        createDoseEvent(saved, schedule, newTime);
+        
+        return toMedicationResponse(saved);
     }
 
     @Override
@@ -279,7 +293,17 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found"));
 
         patientMedicationMapper.updateModel(timeToUpdate, request);
-        return toMedicationResponse(patientMedicationRepository.save(pm));
+        PatientMedication saved = patientMedicationRepository.save(pm);
+        
+        // Cập nhật DoseEvent nếu có
+        doseEventRepository.findByScheduleTimeId(timeId).ifPresent(event -> {
+            java.time.LocalDate date = schedule.getStartDate() != null ? schedule.getStartDate()
+                    : (pm.getStartDate() != null ? pm.getStartDate() : java.time.LocalDate.now());
+            event.setScheduledAt(date.atTime(timeToUpdate.getTakenTime()));
+            doseEventRepository.save(event);
+        });
+        
+        return toMedicationResponse(saved);
     }
 
     @Override
@@ -305,6 +329,7 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
             if (!removed) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found");
             }
+            doseEventRepository.deleteByScheduleTimeId(timeId);
             return toMedicationResponse(patientMedicationRepository.save(pm));
         }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found");
@@ -376,51 +401,7 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to perform this action");
     }
 
-    private MedicationSchedule toSimpleDailySchedule(List<String> scheduleTimes) {
-        if (scheduleTimes == null || scheduleTimes.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one schedule time is required");
-        }
-
-        List<ScheduleTime> times = scheduleTimes.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(value -> !value.isBlank())
-                .map(this::parseScheduleTime)
-                .toList();
-
-        if (times.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one valid schedule time is required");
-        }
-
-        return MedicationSchedule.builder()
-                .scheduleType(ScheduleType.DAILY)
-                .isActive(true)
-                .scheduleTimeList(times)
-                .build();
-    }
-
-    private ScheduleTime parseScheduleTime(String value) {
-        try {
-            LocalTime parsed = LocalTime.parse(value);
-            return ScheduleTime.builder().takenTime(parsed).quantity(BigDecimal.ONE).build();
-        } catch (Exception ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Invalid schedule time format: " + value + " (expected HH:mm)");
-        }
-    }
-
     private MedicationResponse toMedicationResponse(PatientMedication medication) {
-        List<String> schedules = medication.getMedicationSchedules() == null
-                ? List.of()
-                : medication.getMedicationSchedules().stream()
-                        .flatMap(schedule -> schedule.getScheduleTimeList() == null
-                                ? java.util.stream.Stream.empty()
-                                : schedule.getScheduleTimeList().stream())
-                        .map(ScheduleTime::getTakenTime)
-                        .filter(Objects::nonNull)
-                        .map(LocalTime::toString)
-                        .toList();
-
         return MedicationResponse.builder()
                 .id(medication.getId())
                 .patientId(medication.getPatientId())
@@ -435,13 +416,41 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
                 .purpose(medication.getPurpose())
                 .startDate(medication.getStartDate())
                 .endDate(medication.getEndDate())
-                .isPrn(medication.isPrn())
-                .maxPerDay(medication.getMaxPerDay())
-                .schedules(schedules)
+                .schedules(patientMedicationMapper.toResponses(medication.getMedicationSchedules()))
                 .totalQuantity(medication.getTotalQuantity())
                 .isActive(medication.isActive())
                 .createdAt(medication.getCreatedAt())
                 .updatedAt(medication.getUpdatedAt())
                 .build();
+    }
+
+    private void createDoseEvent(PatientMedication pm, MedicationSchedule schedule, ScheduleTime time) {
+        java.time.LocalDate date = schedule.getStartDate() != null ? schedule.getStartDate()
+                : (pm.getStartDate() != null ? pm.getStartDate() : java.time.LocalDate.now());
+
+        DoseEvent doseEvent = DoseEvent.builder()
+                .patientMedicationId(pm.getId())
+                .scheduleId(schedule.getId())
+                .scheduleTimeId(time.getId())
+                .scheduledAt(date.atTime(time.getTakenTime()))
+                .status(DoseStatus.PENDING)
+                .build();
+
+        doseEventRepository.save(doseEvent);
+    }
+
+    private void syncDoseEvents(PatientMedication pm) {
+        // Xóa tất cả dose events cũ của medication này và tạo lại
+        // Đây là cách đơn giản để sync khi list schedule bị thay đổi hoàn toàn
+        doseEventRepository.deleteByPatientMedicationId(pm.getId());
+        if (pm.getMedicationSchedules() != null) {
+            for (MedicationSchedule schedule : pm.getMedicationSchedules()) {
+                if (schedule.getScheduleTimeList() != null) {
+                    for (ScheduleTime time : schedule.getScheduleTimeList()) {
+                        createDoseEvent(pm, schedule, time);
+                    }
+                }
+            }
+        }
     }
 }

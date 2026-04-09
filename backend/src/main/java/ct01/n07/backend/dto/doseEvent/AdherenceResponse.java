@@ -11,7 +11,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AdherenceResponse {
     private int total;
-    private int taken;
-    private int skipped;
+    private int taken; // Đúng hạn
+    private int overdue; // Quá hạn
+    private int missed; // Bỏ lỡ
+    private int skipped; // Chủ động bỏ qua
+    private int pending; // Sắp tới
     private double adherencePercent;
 }

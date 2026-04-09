@@ -43,8 +43,6 @@ public class PatientMedication {
     private Integer totalQuantity;
     private LocalDate startDate;
     private LocalDate endDate;
-    private boolean isPrn;
-    private Integer maxPerDay;
     private boolean isActive;
 
     // Embedded Array: Danh sách các quy tắc lặp lịch uống

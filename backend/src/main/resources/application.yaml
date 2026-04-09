@@ -3,7 +3,6 @@ spring:
     time-zone: Asia/Ho_Chi_Minh
   config:
     import:
-      - optional:file:.env[.properties]
       - optional:file:./backend/.env[.properties]
 
   main:
@@ -14,9 +13,7 @@ spring:
     uri: ${MONGODB_URI}
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
+      url: ${REDIS_URL}
 
 jwt:
   secret: ${JWT_SECRET:VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE=}

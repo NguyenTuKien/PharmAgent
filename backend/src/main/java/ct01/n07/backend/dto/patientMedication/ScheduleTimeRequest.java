@@ -3,14 +3,18 @@ package ct01.n07.backend.dto.patientMedication;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ScheduleTimeRequest {
     @NotNull(message = "Thời gian uống (takenTime) không được để trống")
     private LocalTime takenTime;

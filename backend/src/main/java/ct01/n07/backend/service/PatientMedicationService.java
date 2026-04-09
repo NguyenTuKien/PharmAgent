@@ -1,14 +1,8 @@
 package ct01.n07.backend.service;
 
-import ct01.n07.backend.dto.patientMedication.MedicationCreateRequest;
-import ct01.n07.backend.dto.patientMedication.MedicationResponse;
-import ct01.n07.backend.dto.patientMedication.MedicationScheduleRequest;
-import ct01.n07.backend.dto.patientMedication.MedicationUpdateRequest;
-import ct01.n07.backend.dto.patientMedication.ScheduleTimeRequest;
+import ct01.n07.backend.dto.patientMedication.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
-import org.springframework.data.domain.Page;
 
 public interface PatientMedicationService {
     MedicationResponse createMedication(MedicationCreateRequest request);
@@ -22,10 +16,10 @@ public interface PatientMedicationService {
     void deletePatientMedication(String id);
 
     // Scheduling management
-    MedicationResponse addMedicationSchedule(MedicationScheduleRequest medicationScheduleRequest);
+    MedicationResponse addMedicationSchedule(ScheduleRequest scheduleRequest, String patientMedicationId);
 
     MedicationResponse updateMedicationSchedule(String patientMedicationId, String scheduleId,
-            MedicationScheduleRequest request);
+            ScheduleRequest request);
 
     MedicationResponse deleteMedicationSchedule(String patientMedicationId, String scheduleId);
 

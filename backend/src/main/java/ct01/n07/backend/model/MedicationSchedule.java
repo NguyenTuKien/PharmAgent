@@ -25,7 +25,7 @@ public class MedicationSchedule {
     private String note;
     private LocalDate startDate;
     private LocalDate endDate;
-    private boolean isActive;
+    private Boolean isActive;
 
     // Embedded Array: Các khung giờ trong 1 lịch
     private List<ScheduleTime> scheduleTimeList;

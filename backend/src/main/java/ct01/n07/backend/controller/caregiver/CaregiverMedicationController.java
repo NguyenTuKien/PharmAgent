@@ -1,16 +1,9 @@
 package ct01.n07.backend.controller.caregiver;
 
-import ct01.n07.backend.dto.patientMedication.MedicationCreateRequest;
-import ct01.n07.backend.dto.patientMedication.MedicationResponse;
-import ct01.n07.backend.dto.patientMedication.MedicationScheduleRequest;
-import ct01.n07.backend.dto.patientMedication.MedicationUpdateRequest;
-import ct01.n07.backend.dto.patientMedication.ScheduleTimeRequest;
+import ct01.n07.backend.dto.patientMedication.*;
 import ct01.n07.backend.service.PatientMedicationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,14 +14,6 @@ import org.springframework.web.bind.annotation.*;
 public class CaregiverMedicationController {
 
     private final PatientMedicationService patientMedicationService;
-
-    @GetMapping
-    public ResponseEntity<Page<MedicationResponse>> getActiveMedications(
-            @RequestParam String patientId,
-            @RequestParam(required = false) Boolean isActive,
-            @PageableDefault(size = 10) Pageable pageable) {
-        return ResponseEntity.ok(patientMedicationService.getMedications(patientId, isActive, pageable));
-    }
 
     @PostMapping
     public ResponseEntity<MedicationResponse> createMedication(@Valid @RequestBody MedicationCreateRequest request) {
@@ -46,17 +31,15 @@ public class CaregiverMedicationController {
     @PostMapping("/{id}/schedules")
     public ResponseEntity<MedicationResponse> addSchedule(
             @PathVariable String id,
-            @Valid @RequestBody MedicationScheduleRequest request) {
-        request.setPatientMedicationId(id);
-        return ResponseEntity.ok(patientMedicationService.addMedicationSchedule(request));
+            @Valid @RequestBody ScheduleRequest request) {
+        return ResponseEntity.ok(patientMedicationService.addMedicationSchedule(request, id));
     }
 
     @PutMapping("/{id}/schedules/{scheduleId}")
     public ResponseEntity<MedicationResponse> updateSchedule(
             @PathVariable String id,
             @PathVariable String scheduleId,
-            @Valid @RequestBody MedicationScheduleRequest request) {
-        request.setPatientMedicationId(id);
+            @Valid @RequestBody ScheduleRequest request) {
         return ResponseEntity.ok(patientMedicationService.updateMedicationSchedule(id, scheduleId, request));
     }
 

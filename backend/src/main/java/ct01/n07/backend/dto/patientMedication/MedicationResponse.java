@@ -26,12 +26,11 @@ public class MedicationResponse {
     private String purpose;
     private LocalDate startDate;
     private LocalDate endDate;
-    private boolean isPrn;
     private Integer maxPerDay;
 
-    private List<String> schedules;
+    private List<ScheduleResponse> schedules;
     private Integer totalQuantity;
-    private boolean isActive;
+    private Boolean isActive;
 
     private Instant createdAt;
     private Instant updatedAt;

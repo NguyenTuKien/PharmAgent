@@ -1,140 +1,42 @@
-# PharmAgent Backend API Reference (36 Endpoints)
+# Danh sách 36 API Hệ thống PharmAgent
 
-Tài liệu này cung cấp chi tiết kỹ thuật cho toàn bộ 36 API của hệ thống PharmAgent, chia theo các module nghiệp vụ.
+Tài liệu này ghi list 36 API được phân ra làm 5 nhóm module chính: Authentication, Profiles, Relationships, Devices, và Pills. Bảng này bao gồm ví dụ Input, Output chi tiết (định dạng JSON) để bạn có thể copy vào phần Body để test Postman ngay lập tức.
 
----
-
-## 1. Authentication & Security (`/auth`)
-
-### [API 1] Signup (`POST /auth/signup`)
-Đăng ký tài khoản hệ thống.
-- **Request Body**:
-  | Field | Type | Validation | Description |
-  | :--- | :--- | :--- | :--- |
-  | `email` | String | Email Format, NotBlank | Email dùng để đăng nhập |
-  | `password` | String | Min 8 chars, NotBlank | Mật khẩu |
-  | `caregiver` | Object | NotNull | Thông tin Profile của người đăng ký |
-- **Output**: `LoginResponse` (accessToken, refreshToken, profiles list).
-
-### [API 2] Login (`POST /auth/login`)
-Đăng nhập tài khoản.
-- **Request Body**: `{ "email": "...", "password": "..." }`
-- **Output**: `LoginResponse`.
-
-### [API 3] Select Profile (`POST /auth/profiles/{id}/select`)
-Hoán đổi Account Token lấy Profile Token.
-- **Path Variable**: `id` - ID của Profile muốn chọn (profileId).
-- **Output**: `{ "profileToken": "ey..." }`
-
-### [API 4] Refresh Token (`POST /auth/refresh`)
-Làm mới phiên làm việc.
-- **Request Body**: `{ "refreshToken": "...", "profileId": "..." }`
-- **Output**: `TokenRefreshResponse` (accessToken, profileToken, refreshToken).
-
-### [API 5] Logout (`POST /auth/logout`)
-Đăng xuất tài khoản.
-- **Request Body**: `{ "refreshToken": "..." }`
-- **Output**: `204 No Content`.
-
----
-
-## 2. User Profile Module (`/profiles`)
-
-### [API 6] List Account Profiles (`GET /profiles`)
-Lấy danh sách Profile thuộc tài khoản hiện tại.
-- **Query Params**: `page`, `size`.
-- **Output**: `Page<UserProfileSummaryResponse>`.
-
-### [API 7] Get My Profile (`GET /profiles/me`)
-Lấy thông tin chi tiết Profile đang truy cập.
-- **Output**: `UserProfileResponse` (bao gồm contacts và devices).
-
-### [API 8] Update My Profile (`PUT /profiles/me`)
-Cập nhật thông tin cá nhân.
-- **Input Fields**: `firstName`, `lastName`, `phone`, `dateOfBirth`, `gender`, `address`.
-- **Output**: `UserProfileResponse`.
-
-### [API 9-12] Emergency Contacts (CRUD)
-- `GET /profiles/me/contacts`: Lấy danh sách người liên hệ.
-- `POST /profiles/me/contacts`: Thêm mới (Body: `name`, `phone`).
-- `PUT /profiles/me/contacts/{id}`: Cập nhật (Body: `name`, `phone`).
-- `DELETE /profiles/me/contacts/{id}`: Xóa người liên hệ.
-
-### [API 13-16] User Devices (CRUD)
-- `GET /profiles/me/devices`: Xem danh sách thiết bị nhận thông báo.
-- `POST /profiles/me/devices`: Đăng ký thiết bị (Body: `deviceName`, `deviceToken`, `deviceType`).
-- `PUT /profiles/me/devices/{id}`: Cập nhật cấu hình.
-- `DELETE /profiles/me/devices/{id}`: Hủy đăng ký.
-
-### [API 17] Create Sub-Profile (`POST /caregiver/profiles`)
-**Caregiver** tạo profile Elderly mới trong cùng tài khoản.
-- **Input**: `CreateProfileRequest` (firstName, lastName, phone, role, gender...).
-
-### [API 18] Delete Sub-Profile (`DELETE /caregiver/profiles/{id}`)
-**Caregiver** xóa một profile phụ. `id` là profileId.
-
-### [API 19] Search Profiles (`POST /caregiver/profiles/search`)
-Tìm kiếm Profile khác trong hệ thống để kết nối.
-- **Input**: `{ "query": "string", "role": "ELDERLY/CAREGIVER" }`
-
----
-
-## 3. Relationship Module (`/relationship`)
-
-### [API 20] My Elderly (Accepted) (`GET /caregiver/relationship`)
-Danh sách người cao tuổi đang chăm sóc (đã chấp nhận).
-- **Output**: `List<ElderlyProfileResponse>` (chứa `relationshipId`, `profileId`, `status`, `permissionLevel`, `firstName`...).
-
-### [API 21] Pending Invites Out (`GET /caregiver/relationship/pending`)
-Danh sách lời mời đã gửi đi (đang chờ phản hồi).
-- **Output**: `List<ElderlyProfileResponse>` (chứa `relationshipId`, `profileId`, `status`, `permissionLevel`...).
-
-### [API 22] Send Invite (`POST /caregiver/relationship/invite`)
-Gửi lời mời kết nối tới Elderly ID qua `profileId`.
-- **Input**: `{ "targetElderlyId": "...", "caregiverTitle": "Con trai", "permissionLevel": "EDIT_SCHEDULE" }`
-- **Output**: Trả về `relationshipId` (String).
-
-### [API 23] Update Permission (`PATCH /caregiver/relationship/{id}`)
-Cập nhật quyền hạn cho mối quan hệ hiện tại. `id` ở đây là `targetElderlyId`.
-
-### [API 24] My Caregivers (Accepted) (`GET /elderly/relationship`)
-Danh sách người đang chăm sóc mình (đã chấp nhận).
-- **Output**: `List<CaregiverProfileResponse>` (chứa `relationshipId`, `profileId`, `status`, `permissionLevel`...).
-
-### [API 25] Pending Invites In (`GET /elderly/relationship/pending`)
-Danh sách lời mời từ phía Caregiver đang chờ Elderly phê duyệt.
-- **Output**: `List<CaregiverProfileResponse>` (chứa `relationshipId`, `profileId`, `status`, `permissionLevel`...).
-
-### [API 26] Accept Invite (`PUT /elderly/relationship/{id}/accept`)
-Đồng ý lời mời kết nối từ Caregiver. `id` của Path là `relationshipId`.
-
-### [API 27] Refuse Invite (`PUT /elderly/relationship/{id}/refuse`)
-Từ chối lời mời. `id` của Path là `relationshipId`.
-
----
-
-## 4. Pill Catalog Module (`/pills`)
-
-### [API 28] Get Pill Catalog (`GET /pills`)
-Danh mục thuốc có phân trang và tìm kiếm theo tên.
-
-### [API 29] Get Pill Detail (`GET /pills/{id}`)
-Thông tin chi tiết thuốc (Thành phần, HDSD, Cảnh báo).
-
-### [API 30] Keyword Search (`GET /pills/search`)
-Tìm kiếm nhanh theo keyword.
-
-### [API 31] Scan Pill (`POST /pills/scan`)
-Nhận diện thuốc qua hình ảnh (MultipartFile).
-
-### [API 32-36] Admin Pill Management
-- `POST /admin/pills`: Thêm thuốc mới (PillCreateRequest).
-- `PUT /admin/pills/{id}`: Sửa thông tin thuốc.
-- `DELETE /admin/pills/{id}`: Xóa thuốc.
-- `POST /admin/pills/{id}/images`: Thêm ảnh (PillImageRequest).
-- `DELETE /admin/pills/{id}/images/{imgId}`: Xóa ảnh.
-
----
-
-## 5. Medication & Dose APIs (To Be Finalized)
-Các API về đơn thuốc cá nhân (`/medications`), lịch uống thuốc của Caregiver (`/caregiver/medications`) và quản lý liều dùng (`/medications/doses`) hiện đang được xem xét kĩ thuật cuối cùng.
+| Module / Nhóm | Method | API Endpoint | Chức năng | Input Example (JSON) | Output Example (JSON) | Phân quyền (Auth) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1. Xác thực & Phân quyền (Auth)** | POST | `/api/auth/login` | Đăng nhập hệ thống. | `{"email": "test@gmail.com", "password": "password123"}` | `{"accessToken": "eyJ...", "refreshToken": "eyJ...", "profiles": [{"profileId": "65c...", "role": "CAREGIVER"}]}` | Public |
+| | POST | `/api/auth/signup` | Đăng ký tài khoản (tạo User gốc và 1 Profile mặc định). | `{"email": "test@gmail.com", "password": "password123", "confirmPassword": "password123", "caregiver": {"firstName": "John", "lastName": "Doe", "phone": "0912345678", "dateOfBirth": "1990-01-01", "gender": "MALE", "address": "Hanoi"}}` | `{"accessToken": "eyJ...", "refreshToken": "eyJ...", "profiles": [...]}` (201 Created) | Public |
+| | POST | `/api/auth/profiles/{profileId}/select` | Chọn Profile để sử dụng App. | **Header:** `Bearer <AccessToken>`<br>**Path:** `profileId="65c..."` | `{"profileToken": "eyJ..."}` | Auth |
+| | POST | `/api/auth/refresh` | Cấp lại ProfileToken/AccessToken mới khi hết hạn. | `{"profileId": "65c...", "refreshToken": "eyJ..."}` | `{"accessToken": "eyJ...", "profileToken": "eyJ...", "refreshToken": "eyJ..."}` | Public |
+| | POST | `/api/auth/logout` | Đăng xuất, vô hiệu hóa phiên làm việc. | **Header:** `Bearer <Token>`<br>`{"refreshToken": "eyJ..."}` | `204 No Content` | Auth |
+| **2. Quản lý Profile (Profiles)** | GET | `/api/profiles` | Lấy danh sách các profiles có trong tài khoản (user). | **Header:** `Bearer <ProfileToken>` | `{"content": [{"profileId": "65c...", "firstName": "John", "role": "CAREGIVER"}], "totalElements": 1}` | Auth |
+| | GET | `/api/profiles/me` | Lấy thông tin chi tiết của Profile đang đăng nhập. | **Header:** `Bearer <ProfileToken>` | `{"profileId": "65c...", "firstName": "John", "lastName": "Doe", "phone": "0912345678", "gender": "MALE", "contacts": [], "devices": []}` | Auth |
+| | PUT | `/api/profiles/me` | Cập nhật thông tin cá nhân của Profile hiện tại. | **Header:** `Bearer <ProfileToken>`<br>`{"firstName": "John", "lastName": "Doe", "phone": "0912345678", "dateOfBirth": "1990-01-01", "gender": "MALE", "address": "Hanoi"}` | `{"profileId": "65c...", "firstName": "John", "address": "Hanoi", ...}` | Auth |
+| | POST | `/api/caregiver/profiles` | Tạo thêm Profile mới cho người thân (dùng chung tài khoản gốc). | **Header:** `Bearer <AccessToken>`<br>`{"firstName": "Mary", "lastName": "Doe", "phone": "0987654321", "dateOfBirth": "1950-01-01", "gender": "FEMALE", "role": "ELDERLY"}` | `201 Created` | CAREGIVER |
+| | DELETE | `/api/caregiver/profiles/{id}` | Xóa một Profile phụ (Soft delete). | **Header:** `Bearer <AccessToken>` | `200 OK` | CAREGIVER |
+| | POST | `/api/caregiver/profiles/search` | Tìm kiếm Profile khác trong hệ thống để kết nối. | **Header:** `Bearer <AccessToken>`<br>`{"query": "0987654321", "role": "ELDERLY"}` | `[{"profileId": "...", "firstName": "Mary", "phone": "0987654321"}]` | CAREGIVER |
+| | GET | `/api/profiles/me/contacts` | Lấy danh sách người liên hệ khẩn cấp. | **Header:** `Bearer <ProfileToken>` | `[{"id": "c1", "name": "Bác sĩ A", "phone": "090111222"}]` | Auth |
+| | POST | `/api/profiles/me/contacts` | Thêm mới người liên hệ khẩn cấp. | **Header:** `Bearer <ProfileToken>`<br>`{"name": "Bác sĩ A", "phone": "090111222"}` | `{"profileId": "...", "contacts": [{"name": "Bác sĩ A"}]}` | Auth |
+| | PUT | `/api/profiles/me/contacts/{contactId}` | Cập nhật thông tin người liên hệ khẩn cấp. | **Header:** `Bearer <ProfileToken>`<br>`{"name": "Bác sĩ B", "phone": "090333444"}` | `{"profileId": "...", "contacts": [{"name": "Bác sĩ B"}]}` | Auth |
+| | DELETE | `/api/profiles/me/contacts/{contactId}` | Xóa người liên hệ khẩn cấp. | **Header:** `Bearer <ProfileToken>` | `{"profileId": "...", "contacts": []}` | Auth |
+| **3. Thiết bị & Thông báo (Devices)** | GET | `/api/profiles/me/devices` | Xem danh sách thiết bị nhận thông báo của Profile. | **Header:** `Bearer <ProfileToken>` | `[{"deviceId": "d1", "deviceName": "iPhone 15", "type": "MOBILE"}]` | Auth |
+| | POST | `/api/profiles/me/devices` | Đăng ký Device Token của điện thoại/trình duyệt để nhận Push. | **Header:** `Bearer <ProfileToken>`<br>`{"deviceName": "iPhone 15", "deviceToken": "Expo[...]", "type": "MOBILE"}` | `{"profileId": "...", "devices": [{"deviceName": "iPhone 15"}]}` | Auth |
+| | PUT | `/api/profiles/me/devices/{id}` | Cập nhật cấu hình (thông tin) của thiết bị. | **Header:** `Bearer <ProfileToken>`<br>`{"deviceName": "iPhone 16", "deviceToken": "Expo[...]", "type": "MOBILE"}` | `{"profileId": "...", "devices": [{"deviceName": "iPhone 16"}]}` | Auth |
+| | DELETE | `/api/profiles/me/devices/{id}` | Gỡ bỏ Device Token khi đăng xuất thiết bị. | **Header:** `Bearer <ProfileToken>` | `{"profileId": "...", "devices": []}` | Auth |
+| **4. Kết nối Người thân (Relationships)** | GET | `/api/caregiver/relationship` | Dành cho CAREGIVER lấy danh sách Người già đang theo dõi. | **Header:** `Bearer <ProfileToken>` | `[{"relationshipId": "r1", "profileId": "65c...", "firstName": "Mary", "status": "ACCEPTED"}]` | CAREGIVER |
+| | GET | `/api/caregiver/relationship/pending` | Dành cho CAREGIVER lấy danh sách lời mời kết nối gửi đi chưa duyệt. | **Header:** `Bearer <ProfileToken>` | `[{"relationshipId": "r2", "profileId": "65d...", "status": "PENDING"}]` | CAREGIVER |
+| | POST | `/api/caregiver/relationship/invite` | Gửi yêu cầu kết nối đến một Profile của tài khoản khác. | **Header:** `Bearer <ProfileToken>`<br>`{"targetElderlyId": "65d...", "caregiverTitle": "Con trai", "permissionLevel": "READ_ONLY"}` | `{"relationshipId": "r1"}` | CAREGIVER |
+| | PATCH | `/api/caregiver/relationship/{targetElderlyId}` | Cập nhật quyền hạn cho mối quan hệ. | **Header:** `Bearer <ProfileToken>`<br>`{"permissionLevel": "EDIT_SCHEDULE"}` | `200 OK` | CAREGIVER |
+| | GET | `/api/elderly/relationship` | Dành cho ELDERLY lấy danh sách người đang chăm sóc mình. | **Header:** `Bearer <ProfileToken>` | `[{"relationshipId": "r1", "profileId": "65e...", "status": "ACCEPTED"}]` | ELDERLY |
+| | GET | `/api/elderly/relationship/pending` | Dành cho ELDERLY lấy danh sách lời mời kết nối đang chờ duyệt. | **Header:** `Bearer <ProfileToken>` | `[{"relationshipId": "r2", "profileId": "65f...", "status": "PENDING"}]` | ELDERLY |
+| | PUT | `/api/elderly/relationship/{id}/accept` | Dành cho ELDERLY đồng ý cho phép CAREGIVER theo dõi. | **Header:** `Bearer <ProfileToken>`<br>`{"status": "ACCEPTED"}` | `200 OK` | ELDERLY |
+| | PUT | `/api/elderly/relationship/{id}/refuse` | Dành cho ELDERLY từ chối lời mời kết nối. | **Header:** `Bearer <ProfileToken>`<br>`{"status": "REFUSED"}` | `200 OK` | ELDERLY |
+| **5. AI Quét & Danh mục Thuốc (Pills)** | GET | `/api/pills` | Xem danh mục thuốc chung (Có phân trang, search theo tên). | **Header:** `Bearer <ProfileToken>`<br>**Query:** `page=0&size=10` | `{"content": [{"id": "p1", "name": "Panadol"}], "totalElements": 1}` | Auth |
+| | GET | `/api/pills/{id}` | Xem chi tiết thông tin một loại thuốc. | **Header:** `Bearer <ProfileToken>`<br>**Path:** `id="p1"` | `{"id": "p1", "name": "Panadol", "genericName": "Paracetamol", "dosageForm": "Viên nén", "images": []}` | Auth |
+| | GET | `/api/pills/search` | Tìm kiếm nhanh thuốc theo keyword. | **Header:** `Bearer <ProfileToken>`<br>**Query:** `keyword=Pana` | `[{"id": "p1", "name": "Panadol Extra"}]` | Auth |
+| | POST | `/api/pills/scan` | Gửi ảnh chụp lên server AI quét, trả về nhận diện thuốc. | **Header:** `Bearer <ProfileToken>`<br>**Multipart:** `file=image.jpg` | `{"pillId": "p1", "name": "Panadol Extra", "confidenceScore": 0.98}` | Auth |
+| | POST | `/api/admin/pills` | (CMS) Thêm thông tin thuốc mới vào hệ thống. | **Header:** `Bearer <ProfileToken>`<br>`{"name": "Panadol", "genericName": "Paracetamol", "brandName": "Panadol", "strength": "500mg", "dosageForm": "Viên nén", "manufacturer": "GSK", "usageInstructions": "Uống sau ăn"}` | `{"id": "p2", "name": "Panadol"}` (201 Created) | ADMIN |
+| | PUT | `/api/admin/pills/{id}` | (CMS) Cập nhật thông tin thuốc. | **Header:** `Bearer <ProfileToken>`<br>`{"name": "Panadol Extra", "genericName": "Paracetamol", "dosageForm": "Viên nén", "manufacturer": "GSK"}` | `{"id": "p2", "name": "Panadol Extra"}` | ADMIN |
+| | DELETE | `/api/admin/pills/{id}` | (CMS) Xóa thông tin thuốc khỏi hệ thống. | **Header:** `Bearer <ProfileToken>` | `200 OK` | ADMIN |
+| | POST | `/api/admin/pills/{pillId}/images` | (CMS) Thêm hình ảnh cho thuốc. | **Header:** `Bearer <ProfileToken>`<br>`{"imageUrl": "https://..."}` | `{"id": "p2", "images": ["https://..."]}` | ADMIN |
+| | DELETE | `/api/admin/pills/{pillId}/images/{imageId}` | (CMS) Xóa một hình ảnh cụ thể của thuốc. | **Header:** `Bearer <ProfileToken>` | `200 OK` | ADMIN |

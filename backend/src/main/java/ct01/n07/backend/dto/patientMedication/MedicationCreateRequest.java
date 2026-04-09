@@ -1,6 +1,7 @@
 package ct01.n07.backend.dto.patientMedication;
 
 import ct01.n07.backend.model.enums.MealRelation;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -16,7 +17,7 @@ public class MedicationCreateRequest {
     @NotBlank(message = "pillId is required")
     private String pillId;
 
-    @Size(max = 255, message = "Tên gợi nhớ không được vượt quá 255 ký tự")
+    @Size(max = 255, message = "Tên dễ nhớ cho thuốc (tối đa 255 ký tự)")
     private String nickname;
 
     @NotNull(message = "Liều lượng không được để trống")
@@ -26,10 +27,10 @@ public class MedicationCreateRequest {
     @NotBlank(message = "Đơn vị tính không được để trống (VD: Viên, ml, gói)")
     private String dosageUnit;
 
-    @NotBlank(message = "Đường dùng không được để trống (VD: Uống, bôi, tiêm)")
+    @NotBlank(message = "Cách dùng không được để trống (VD: Uống, bôi, tiêm)")
     private String route;
 
-    @NotNull(message = "Mối quan hệ với bữa ăn không được để trống")
+    @NotNull(message = "Mối quan hệ với bữa ăn không được để trống (Trước, trong, sau bữa ăn)")
     private MealRelation mealRelation;
 
     @Size(max = 500, message = "Hướng dẫn sử dụng quá dài (tối đa 500 ký tự)")
@@ -43,13 +44,10 @@ public class MedicationCreateRequest {
 
     private LocalDate endDate;
 
-    private boolean isPrn;
 
-    @Min(value = 1)
-    private Integer maxPerDay;
-
-    @NotEmpty(message = "schedules is required")
-    private List<@NotBlank(message = "schedule time cannot be blank") String> schedules;
+    @NotNull(message = "schedules is required")
+    @Valid
+    private List<ScheduleRequest> schedules;
 
     @NotNull(message = "totalQuantity is required")
     @Min(value = 1, message = "totalQuantity must be greater than 0")

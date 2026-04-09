@@ -1,6 +1,7 @@
 package ct01.n07.backend.dto.patientMedication;
 
 import ct01.n07.backend.model.enums.MealRelation;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.Data;
 
@@ -22,10 +23,10 @@ public class MedicationUpdateRequest {
     private String purpose;
     private LocalDate startDate;
     private LocalDate endDate;
-    private Boolean isPrn;
     private Integer maxPerDay;
 
-    private List<String> schedules;
+    @Valid
+    private List<ScheduleRequest> schedules;
 
     @Min(value = 1, message = "totalQuantity must be greater than 0")
     private Integer totalQuantity;

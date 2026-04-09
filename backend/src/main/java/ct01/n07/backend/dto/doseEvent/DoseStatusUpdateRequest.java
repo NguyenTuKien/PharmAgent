@@ -1,6 +1,7 @@
 package ct01.n07.backend.dto.doseEvent;
 
 import ct01.n07.backend.model.enums.DoseStatus;
+import java.time.LocalDateTime;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -19,4 +20,6 @@ public class DoseStatusUpdateRequest {
 
     @Size(max = 500, message = "Ghi chú không được vượt quá 500 ký tự")
     private String note;
+
+    private LocalDateTime takenAt;
 }
