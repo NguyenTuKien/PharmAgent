@@ -14,6 +14,8 @@ import ct01.n07.backend.model.enums.Role;
 public interface UserProfileRepository extends MongoRepository<UserProfile, String> {
     Page<UserProfile> findAllByUserId(String userId, Pageable pageable);
 
+    Page<UserProfile> findAllByUserIdAndIdNot(String userId, String excludedId, Pageable pageable);
+
     void deleteAllByUserId(String userId);
 
     Optional<UserProfile> findByIdAndUserId(String id, String userId);

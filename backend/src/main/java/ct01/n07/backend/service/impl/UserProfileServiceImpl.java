@@ -101,14 +101,13 @@ public class UserProfileServiceImpl implements UserProfileService {
         String userId = getCurrentUserId();
         String currentProfileId = getProfileIdFromRequest(); // null nếu dùng accessToken
 
-        Page<UserProfile> all = userProfileRepository.findAllByUserId(userId, pageable);
+        if (currentProfileId != null && !currentProfileId.isBlank()) {
+            return userProfileRepository.findAllByUserIdAndIdNot(userId, currentProfileId, pageable)
+                    .map(userProfileMapper::toProfileSummary);
+        }
 
-        List<UserProfileSummaryResponse> filtered = all.stream()
-                .filter(profile -> !profile.getId().equals(currentProfileId))
-                .map(userProfileMapper::toProfileSummary)
-                .toList();
-
-        return new org.springframework.data.domain.PageImpl<>(filtered, pageable, all.getTotalElements());
+        return userProfileRepository.findAllByUserId(userId, pageable)
+                .map(userProfileMapper::toProfileSummary);
     }
 
     @Override

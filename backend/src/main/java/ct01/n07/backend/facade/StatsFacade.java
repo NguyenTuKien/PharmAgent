@@ -53,9 +53,8 @@ public class StatsFacade {
         LocalDateTime endTime = endDate.atTime(LocalTime.MAX);
 
         // Tổng số cữ thuốc trong khoảng thời gian
-        int total = doseEventRepository
-                .findByPatientMedicationIdInAndScheduledAtBetween(medicationIds, startTime, endTime)
-                .size();
+        long total = doseEventRepository
+                .countByPatientMedicationIdInAndScheduledAtBetween(medicationIds, startTime, endTime);
 
         if (total == 0) {
             return AdherenceResponse.builder()
@@ -88,7 +87,7 @@ public class StatsFacade {
         double adherencePercent = Math.round(((double) (taken + overdue) / total) * 10000.0) / 100.0;
 
         return AdherenceResponse.builder()
-                .total(total)
+                .total((int) total)
                 .taken((int) taken)
                 .overdue((int) overdue)
                 .missed((int) missed)
