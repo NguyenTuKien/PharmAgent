@@ -6,8 +6,10 @@ import ct01.n07.backend.dto.patientMedication.MedicationResponse;
 import ct01.n07.backend.mapper.DoseEventMapper;
 import ct01.n07.backend.model.DoseEvent;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.DoseEventRepository;
 import ct01.n07.backend.service.DoseEventService;
+import ct01.n07.backend.service.MedicationPermissionValidator;
 import ct01.n07.backend.service.PatientMedicationService;
 import ct01.n07.backend.service.UserProfileService;
 import ct01.n07.backend.model.enums.DoseStatus;
@@ -34,6 +36,7 @@ public class DoseEventServiceImpl implements DoseEventService {
     private final PatientMedicationService patientMedicationService;
     private final DoseEventMapper doseEventMapper;
     private final UserProfileService userProfileService;
+    private final MedicationPermissionValidator permissionValidator;
 
     @Override
     public List<DoseEvent> getAllDoseEvents() {
@@ -113,6 +116,11 @@ public class DoseEventServiceImpl implements DoseEventService {
 
         // Lấy profile của người đang thực hiện xác nhận
         UserProfile confirmedByProfile = userProfileService.getCurrentUserProfile();
+
+        // Authorization: verify the caller has access to this patient's data
+        MedicationResponse medication = patientMedicationService.getPatientMedicationById(doseEvent.getPatientMedicationId());
+        String patientId = medication.getPatientId();
+        permissionValidator.verifyAccessToPatient(confirmedByProfile.getRole(), confirmedByProfile.getId(), patientId);
 
         doseEvent.setStatus(request.getStatus());
         doseEvent.setNote(request.getNote());

@@ -23,7 +23,6 @@ public class MedicationUpdateRequest {
     private String purpose;
     private LocalDate startDate;
     private LocalDate endDate;
-    private Integer maxPerDay;
 
     @Valid
     private List<ScheduleRequest> schedules;
