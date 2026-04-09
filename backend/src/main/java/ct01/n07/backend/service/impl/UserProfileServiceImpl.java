@@ -108,7 +108,7 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .map(userProfileMapper::toProfileSummary)
                 .toList();
 
-        return new org.springframework.data.domain.PageImpl<>(filtered, pageable, all.getTotalElements());
+        return new org.springframework.data.domain.PageImpl<>(filtered, pageable, filtered.size());
     }
 
     @Override

@@ -3,6 +3,7 @@ spring:
     time-zone: Asia/Ho_Chi_Minh
   config:
     import:
+      - optional:file:./.env[.properties]
       - optional:file:./backend/.env[.properties]
 
   main:

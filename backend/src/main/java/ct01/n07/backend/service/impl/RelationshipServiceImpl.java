@@ -61,6 +61,7 @@ public class RelationshipServiceImpl implements RelationshipService {
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
                             .avatarUrl(profile.getAvatarUrl())
+                            .elderlyTitle(rel.getElderlyTitle())
                             .status(rel.getStatus())
                             .permissionLevel(rel.getPermissionLevel())
                             .build();
@@ -100,7 +101,6 @@ public class RelationshipServiceImpl implements RelationshipService {
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
                             .caregiverTitle(rel.getCaregiverTitle())
-                            .address(profile.getAddress())
                             .avatarUrl(profile.getAvatarUrl())
                             .status(rel.getStatus())
                             .permissionLevel(rel.getPermissionLevel())
@@ -141,6 +141,7 @@ public class RelationshipServiceImpl implements RelationshipService {
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
                             .avatarUrl(profile.getAvatarUrl())
+                            .elderlyTitle(rel.getElderlyTitle())
                             .status(rel.getStatus())
                             .permissionLevel(rel.getPermissionLevel())
                             .build();
@@ -227,17 +228,13 @@ public class RelationshipServiceImpl implements RelationshipService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending invitations can be accepted");
         }
 
-        relationship.setStatus(RelationStatus.ACCEPTED);
-        relationshipRepository.save(relationship);
-
-        // Delete any existing ACCEPTED relationship between this pair
+        // Delete any existing ACCEPTED relationship between this pair before updating status
         relationshipRepository.findAllByCaregiverIdAndElderlyIdAndStatus(
                 relationship.getCaregiverId(), relationship.getElderlyId(), RelationStatus.ACCEPTED)
-                .forEach(oldRel -> {
-                    if (!oldRel.getId().equals(relationship.getId())) {
-                        relationshipRepository.delete(oldRel);
-                    }
-                });
+                .forEach(relationshipRepository::delete);
+
+        relationship.setStatus(RelationStatus.ACCEPTED);
+        relationshipRepository.save(relationship);
     }
 
     @Override
