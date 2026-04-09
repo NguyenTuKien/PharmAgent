@@ -231,7 +231,11 @@ public class RelationshipServiceImpl implements RelationshipService {
         // Delete any existing ACCEPTED relationship between this pair before accepting the new one
         relationshipRepository.findAllByCaregiverIdAndElderlyIdAndStatus(
                 relationship.getCaregiverId(), relationship.getElderlyId(), RelationStatus.ACCEPTED)
-                .forEach(relationshipRepository::delete);
+                .forEach(oldRel -> {
+                    if (!oldRel.getId().equals(relationship.getId())) {
+                        relationshipRepository.delete(oldRel);
+                    }
+                });
 
         relationship.setStatus(RelationStatus.ACCEPTED);
         relationshipRepository.save(relationship);

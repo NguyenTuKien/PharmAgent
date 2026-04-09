@@ -218,7 +218,8 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         MedicationSchedule updatedSchedule = saved.getMedicationSchedules().stream()
                 .filter(s -> Objects.equals(s.getId(), scheduleId))
                 .findFirst()
-                .orElse(scheduleToUpdate);
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Schedule not found after save"));
         if (updatedSchedule.getScheduleTimeList() != null) {
             for (ScheduleTime time : updatedSchedule.getScheduleTimeList()) {
                 createDoseEvent(saved, updatedSchedule, time);
