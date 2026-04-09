@@ -1,5 +1,6 @@
 package ct01.n07.backend.controller;
 
+import ct01.n07.backend.dto.stats.MedicationDoseStatsResponse;
 import ct01.n07.backend.dto.stats.AdherenceResponse;
 import ct01.n07.backend.dto.stats.InventoryWarningResponse;
 import ct01.n07.backend.facade.StatsFacade;
@@ -35,13 +36,16 @@ public class StatsController {
     }
 
     /**
-     * GET /api/stats/active-patients-count
-     * Thống kê số lượng người đang sử dụng thuốc (có ít nhất 1 thuốc đang hoạt động).
-     * Roles: Authenticated
+     * GET /api/stats/doses-by-medication
+     * Thống kê số lượng thuốc đã uống (TAKEN) của từng loại thuốc trong một khoảng
+     * thời gian.
      */
-    @GetMapping("/active-patients-count")
-    public ResponseEntity<Long> getActivePatientsCount() {
-        return ResponseEntity.ok(statsFacade.getActivePatientsCount());
+    @GetMapping("/doses-by-medication")
+    public ResponseEntity<List<MedicationDoseStatsResponse>> getTakenDosesByMedication(
+            @RequestParam String patientId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(statsFacade.getTakenDosesByMedication(patientId, startDate, endDate));
     }
 
     @GetMapping("/inventory-warnings")

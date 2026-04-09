@@ -29,8 +29,5 @@ public interface MedicationService {
             MedDoseRequest request);
 
     MedicationResponse deleteScheduleTime(String medicationId, String scheduleId, String timeId);
-
-    // Stats management
-    Long countDistinctActivePatients();
 }
 

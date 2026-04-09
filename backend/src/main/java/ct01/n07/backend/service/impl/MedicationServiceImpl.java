@@ -409,11 +409,6 @@ public class MedicationServiceImpl implements MedicationService {
                 .updatedAt(medication.getUpdatedAt())
                 .build();
     }
-
-    @Override
-    public Long countDistinctActivePatients() {
-        return medicationRepository.countDistinctActivePatients();
-    }
 }
 
 

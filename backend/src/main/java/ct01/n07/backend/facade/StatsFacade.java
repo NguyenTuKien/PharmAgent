@@ -2,6 +2,7 @@ package ct01.n07.backend.facade;
 
 import ct01.n07.backend.dto.stats.AdherenceResponse;
 import ct01.n07.backend.dto.stats.InventoryWarningResponse;
+import ct01.n07.backend.dto.stats.MedicationDoseStatsResponse;
 import ct01.n07.backend.dto.medication.MedicationResponse;
 import ct01.n07.backend.model.Pill;
 import ct01.n07.backend.model.UserProfile;
@@ -35,8 +36,9 @@ public class StatsFacade {
     private final EventDoseService eventDoseService;
     private final MedicationService medicationService;
     private final PillService pillService;
-    
-    // [REFACTOR FIX]: Thêm Relationship để kiểm tra phân quyền (Security) thông qua Validator
+
+    // [REFACTOR FIX]: Thêm Relationship để kiểm tra phân quyền (Security) thông qua
+    // Validator
     private final MedicationPermissionValidator permissionValidator;
     private final UserProfileService userProfileService;
 
@@ -47,18 +49,20 @@ public class StatsFacade {
         if (currentUser.getId().equals(patientId)) {
             return; // Người dùng gọi xem thống kê của chính bản thân.
         }
-        
+
         try {
             permissionValidator.verifyCaregiverPermission(currentUser.getId(), patientId);
         } catch (ResponseStatusException e) {
-            log.warn("IDOR attempt detected: User {} tried to access stats of Patient {}", currentUser.getId(), patientId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem thống kê của bệnh nhân này.");
+            log.warn("IDOR attempt detected: User {} tried to access stats of Patient {}", currentUser.getId(),
+                    patientId);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Bạn không có quyền xem thống kê của bệnh nhân này.");
         }
     }
 
     public AdherenceResponse getAdherence(String patientId, LocalDate startDate, LocalDate endDate) {
         log.info("StatsFacade: calculating adherence for patientId={}, from={} to={}", patientId, startDate, endDate);
-        
+
         // [REFACTOR FIX]: Kiểm tra IDOR trước khi tiến hành logic hệ thống
         validatePermission(patientId);
 
@@ -73,7 +77,8 @@ public class StatsFacade {
         LocalDateTime startTime = startDate.atStartOfDay();
         LocalDateTime endTime = endDate.atTime(LocalTime.MAX);
 
-        // [REFACTOR FIX]: fix OOM (không dùng .size() nữa, dùng count service trả về trực tiếp số int)
+        // [REFACTOR FIX]: fix OOM (không dùng .size() nữa, dùng count service trả về
+        // trực tiếp số int)
         long totalLong = eventDoseService.countTotalDoseEvents(medicationIds, startTime, endTime);
         int total = (int) totalLong;
 
@@ -83,8 +88,10 @@ public class StatsFacade {
                     .build();
         }
 
-        // [REFACTOR FIX]: Lấy danh sách map các Status Group thay vì count 5 lần rời rạc
-        Map<DoseStatus, Long> countsByStatus = eventDoseService.countDoseEventsByStatus(medicationIds, startTime, endTime);
+        // [REFACTOR FIX]: Lấy danh sách map các Status Group thay vì count 5 lần rời
+        // rạc
+        Map<DoseStatus, Long> countsByStatus = eventDoseService.countDoseEventsByStatus(medicationIds, startTime,
+                endTime);
 
         long taken = countsByStatus.getOrDefault(DoseStatus.TAKEN, 0L);
         long overdue = countsByStatus.getOrDefault(DoseStatus.OVERDUE, 0L);
@@ -107,7 +114,7 @@ public class StatsFacade {
 
     public List<InventoryWarningResponse> getInventoryWarnings(String patientId) {
         log.info("StatsFacade: fetching inventory warnings for patientId={}", patientId);
-        
+
         // [REFACTOR FIX]: IDOR verification
         validatePermission(patientId);
 
@@ -117,23 +124,24 @@ public class StatsFacade {
         if (medications.isEmpty()) {
             return List.of();
         }
-        
+
         // Lọc các thuốc cần cảnh báo
         List<MedicationResponse> warnings = medications.stream()
                 .filter(med -> med.getIsActive() != null && med.getIsActive()
                         && med.getTotalQuantity() != null
                         && med.getTotalQuantity() <= INVENTORY_WARNING_THRESHOLD)
                 .toList();
-                
-        // [REFACTOR FIX]: Loại bỏ Query N+1. Lấy tất cả ID tiến hành query 1 lần vào DB        
+
+        // [REFACTOR FIX]: Loại bỏ Query N+1. Lấy tất cả ID tiến hành query 1 lần vào DB
         List<String> pillIds = warnings.stream().map(MedicationResponse::getPillId).distinct().toList();
-        
+
         Map<String, String> pillNameMap = pillService.getPillsByIds(pillIds).stream()
                 .collect(Collectors.toMap(Pill::getId, Pill::getName));
 
         return warnings.stream()
                 .map(med -> {
-                    // [REFACTOR FIX]: Try-catch chỉ in warning chứ không nuốt lỗi, sử dụng Dictionary cache (Map) phía trên
+                    // [REFACTOR FIX]: Try-catch chỉ in warning chứ không nuốt lỗi, sử dụng
+                    // Dictionary cache (Map) phía trên
                     String pillName = pillNameMap.getOrDefault(med.getPillId(), "Thuốc không xác định");
                     if (pillName.equals("Thuốc không xác định")) {
                         log.warn("System consistency warning: Pill metadata not found for pillId={}", med.getPillId());
@@ -146,11 +154,28 @@ public class StatsFacade {
                 .toList();
     }
 
-    public long getActivePatientsCount() {
-        log.info("StatsFacade: counting active medication users");
-        // [REFACTOR FIX]: Fix OOM, thay vì map và distinct trên Stream RAM Java, lấy kết quả Count Aggregation trả thẳng từ DB.
-        Long count = medicationService.countDistinctActivePatients();
-        return count != null ? count : 0L;
+    public List<MedicationDoseStatsResponse> getTakenDosesByMedication(String patientId, LocalDate startDate,
+            LocalDate endDate) {
+        log.info("StatsFacade: fetching taken doses per medication for patientId={}", patientId);
+        validatePermission(patientId);
+
+        List<MedicationResponse> medications = medicationService
+                .getMedications(patientId, null, Pageable.unpaged()).getContent();
+
+        LocalDateTime startTime = startDate.atStartOfDay();
+        LocalDateTime endTime = endDate.atTime(LocalTime.MAX);
+
+        return medications.stream().map(med -> {
+            Map<DoseStatus, Long> countsByStatus = eventDoseService.countDoseEventsByStatus(
+                    List.of(med.getId()), startTime, endTime);
+
+            long taken = countsByStatus.getOrDefault(DoseStatus.TAKEN, 0L);
+            return ct01.n07.backend.dto.stats.MedicationDoseStatsResponse.builder()
+                    .nickname(med.getNickname() != null && !med.getNickname().isBlank() ? med.getNickname()
+                            : "Không có tên")
+                    .takenCount(taken)
+                    .build();
+        }).toList();
     }
 
     private List<String> getMedicationIds(String patientId) {
