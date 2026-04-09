@@ -211,7 +211,21 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
 
         patientMedicationMapper.updateModel(scheduleToUpdate, request);
-        return toMedicationResponse(patientMedicationRepository.save(pm));
+        PatientMedication saved = patientMedicationRepository.save(pm);
+
+        // Re-sync dose events for this schedule after update
+        doseEventRepository.deleteByScheduleId(scheduleId);
+        MedicationSchedule updatedSchedule = saved.getMedicationSchedules().stream()
+                .filter(s -> Objects.equals(s.getId(), scheduleId))
+                .findFirst()
+                .orElse(scheduleToUpdate);
+        if (updatedSchedule.getScheduleTimeList() != null) {
+            for (ScheduleTime time : updatedSchedule.getScheduleTimeList()) {
+                createDoseEvent(saved, updatedSchedule, time);
+            }
+        }
+
+        return toMedicationResponse(saved);
     }
 
     @Override

@@ -34,6 +34,12 @@ public interface DoseEventRepository extends MongoRepository<DoseEvent, String> 
             LocalDateTime endTime
     );
 
+    long countByPatientMedicationIdInAndScheduledAtBetween(
+            List<String> patientMedicationIds,
+            LocalDateTime startTime,
+            LocalDateTime endTime
+    );
+
     Page<DoseEvent> findByPatientMedicationIdInAndStatus(
             List<String> patientMedicationIds,
             DoseStatus status,

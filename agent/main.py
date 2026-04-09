@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, APIRouter, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
 
@@ -39,7 +39,7 @@ class PillScanResponse(BaseModel):
     sideEffects: Optional[str] = None
     manufacturer: Optional[str] = None
     confidenceScore: float = 0.0
-    imageUrls: List[str] = []
+    imageUrls: List[str] = Field(default_factory=list)
 
 # Router with /api prefix
 router = APIRouter(prefix="/api")
