@@ -196,4 +196,19 @@ public class DoseEventServiceImpl implements DoseEventService {
         DoseEvent saved = doseEventRepository.save(doseEvent);
         return doseEventMapper.toResponse(saved);
     }
+
+    @Override
+    public long countTotalDoseEvents(List<String> patientMedicationIds, LocalDateTime startTime, LocalDateTime endTime) {
+        return doseEventRepository.countByPatientMedicationIdInAndScheduledAtBetween(patientMedicationIds, startTime, endTime);
+    }
+
+    @Override
+    public java.util.Map<DoseStatus, Long> countDoseEventsByStatus(List<String> patientMedicationIds, LocalDateTime startTime, LocalDateTime endTime) {
+        java.util.Map<DoseStatus, Long> result = new java.util.EnumMap<>(DoseStatus.class);
+        for (DoseStatus status : DoseStatus.values()) {
+            result.put(status, doseEventRepository.countByPatientMedicationIdInAndScheduledAtBetweenAndStatus(
+                    patientMedicationIds, startTime, endTime, status));
+        }
+        return result;
+    }
 }

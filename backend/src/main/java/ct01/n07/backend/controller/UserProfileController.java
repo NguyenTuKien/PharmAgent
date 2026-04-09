@@ -7,6 +7,8 @@ import ct01.n07.backend.dto.userProfile.UserProfileResponse;
 import ct01.n07.backend.dto.userProfile.UserProfileSummaryResponse;
 import ct01.n07.backend.model.EmergencyContact;
 import ct01.n07.backend.model.UserDevice;
+import ct01.n07.backend.service.EmergencyContactService;
+import ct01.n07.backend.service.UserDeviceService;
 import ct01.n07.backend.service.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,8 @@ import java.util.List;
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
+    private final EmergencyContactService emergencyContactService;
+    private final UserDeviceService userDeviceService;
 
     // ── Mọi role đều có thể xem danh sách profile trong tài khoản ──
     @GetMapping
@@ -48,51 +52,51 @@ public class UserProfileController {
 
     @GetMapping("/me/contacts")
     public ResponseEntity<List<EmergencyContact>> getMyContacts() {
-        return ResponseEntity.ok(userProfileService.getMyContacts());
+        return ResponseEntity.ok(emergencyContactService.getMyContacts());
     }
 
     @PostMapping("/me/contacts")
     public ResponseEntity<UserProfileResponse> addContact(
             @Valid @RequestBody EmergencyContactRequest request) {
-        return ResponseEntity.ok(userProfileService.addContact(request));
+        return ResponseEntity.ok(emergencyContactService.addContact(request));
     }
 
     @PutMapping("/me/contacts/{contactId}")
     public ResponseEntity<UserProfileResponse> updateContact(
             @PathVariable String contactId,
             @Valid @RequestBody EmergencyContactRequest request) {
-        return ResponseEntity.ok(userProfileService.updateContact(contactId, request));
+        return ResponseEntity.ok(emergencyContactService.updateContact(contactId, request));
     }
 
     @DeleteMapping("/me/contacts/{contactId}")
     public ResponseEntity<UserProfileResponse> deleteContact(
             @PathVariable String contactId) {
-        return ResponseEntity.ok(userProfileService.deleteContact(contactId));
+        return ResponseEntity.ok(emergencyContactService.deleteContact(contactId));
     }
 
     // ── Quản lý thiết bị (User Devices) ──
 
     @GetMapping("/me/devices")
     public ResponseEntity<List<UserDevice>> getMyDevices() {
-        return ResponseEntity.ok(userProfileService.getMyDevices());
+        return ResponseEntity.ok(userDeviceService.getMyDevices());
     }
 
     @PostMapping("/me/devices")
     public ResponseEntity<UserProfileResponse> addDevice(
             @Valid @RequestBody UserDeviceRequest request) {
-        return ResponseEntity.ok(userProfileService.addDevice(request));
+        return ResponseEntity.ok(userDeviceService.addDevice(request));
     }
 
     @PutMapping("/me/devices/{deviceId}")
     public ResponseEntity<UserProfileResponse> updateDevice(
             @PathVariable String deviceId,
             @Valid @RequestBody UserDeviceRequest request) {
-        return ResponseEntity.ok(userProfileService.updateDevice(deviceId, request));
+        return ResponseEntity.ok(userDeviceService.updateDevice(deviceId, request));
     }
 
     @DeleteMapping("/me/devices/{deviceId}")
     public ResponseEntity<UserProfileResponse> deleteDevice(
             @PathVariable String deviceId) {
-        return ResponseEntity.ok(userProfileService.deleteDevice(deviceId));
+        return ResponseEntity.ok(userDeviceService.deleteDevice(deviceId));
     }
 }

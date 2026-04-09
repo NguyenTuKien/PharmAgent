@@ -3,6 +3,7 @@ package ct01.n07.backend.repository;
 import ct01.n07.backend.model.PatientMedication;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -20,4 +21,12 @@ public interface PatientMedicationRepository extends MongoRepository<PatientMedi
 
     @Query(value = "{ 'isActive': true }", fields = "{ 'patientId': 1 }")
     List<PatientMedication> findAllActiveMedications();
+
+    // [REFACTOR FIX]: Added MongoDB Aggregation to securely count active users and avoid OOM
+    @Aggregation(pipeline = {
+        "{ '$match': { 'isActive': true } }",
+        "{ '$group': { '_id': '$patientId' } }",
+        "{ '$count': 'totalActivePatients' }"
+    })
+    Long countDistinctActivePatients();
 }

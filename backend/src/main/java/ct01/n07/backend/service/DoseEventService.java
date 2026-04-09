@@ -46,4 +46,18 @@ public interface DoseEventService {
      * Yêu cầu Profile Token (CAREGIVER hoặc ELDERLY).
      */
     DoseEventResponse updateDoseStatus(String id, DoseStatusUpdateRequest request);
+
+    // [REFACTOR FIX]: Added for GroupBy status
+    java.util.Map<ct01.n07.backend.model.enums.DoseStatus, Long> countDoseEventsByStatus(
+            List<String> patientMedicationIds,
+            java.time.LocalDateTime startTime,
+            java.time.LocalDateTime endTime
+    );
+
+    // [REFACTOR FIX]: Added for total count instead of loading ALL records into memory via .size()
+    long countTotalDoseEvents(
+            List<String> patientMedicationIds,
+            java.time.LocalDateTime startTime,
+            java.time.LocalDateTime endTime
+    );
 }

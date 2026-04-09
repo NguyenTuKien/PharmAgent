@@ -3,6 +3,8 @@ package ct01.n07.backend.controller;
 import ct01.n07.backend.dto.doseEvent.AdherenceResponse;
 import ct01.n07.backend.dto.doseEvent.InventoryWarningResponse;
 import ct01.n07.backend.facade.StatsFacade;
+import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,9 @@ public class StatsController {
 
     private final StatsFacade statsFacade;
 
+    // [REFACTOR FIX]: Inject UserProfileService to get current user for IDOR check
+    private final UserProfileService userProfileService;
+
     /**
      * GET /api/stats/adherence
      * Tính tỷ lệ tuân thủ uống thuốc trong khoảng thời gian cho một bệnh nhân.
@@ -31,7 +36,9 @@ public class StatsController {
             @RequestParam String patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return ResponseEntity.ok(statsFacade.getAdherence(patientId, startDate, endDate));
+        // [REFACTOR FIX]: Pass currentUser to Facade to prevent IDOR
+        UserProfile currentUser = userProfileService.getCurrentUserProfile();
+        return ResponseEntity.ok(statsFacade.getAdherence(patientId, startDate, endDate, currentUser));
     }
 
     /**
@@ -44,4 +51,10 @@ public class StatsController {
         return ResponseEntity.ok(statsFacade.getActivePatientsCount());
     }
 
+    // [REFACTOR FIX]: Pass currentUser for inventory warnings as well
+    @GetMapping("/inventory-warnings")
+    public ResponseEntity<List<InventoryWarningResponse>> getInventoryWarnings(@RequestParam String patientId) {
+        UserProfile currentUser = userProfileService.getCurrentUserProfile();
+        return ResponseEntity.ok(statsFacade.getInventoryWarnings(patientId, currentUser));
+    }
 }

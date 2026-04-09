@@ -199,4 +199,13 @@ public class PillServiceImpl implements PillService {
                 .createdAt(pill.getCreatedAt())
                 .build();
     }
+
+    @Override
+    public List<Pill> getPillsByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) return Collections.emptyList();
+        Iterable<Pill> iterable = pillRepository.findAllById(ids);
+        List<Pill> result = new ArrayList<>();
+        iterable.forEach(result::add);
+        return result;
+    }
 }

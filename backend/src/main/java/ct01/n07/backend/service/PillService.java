@@ -35,4 +35,7 @@ public interface PillService {
     void deletePillImage(String pillId, String imageId);
 
     PillScanResponse scanPill(MultipartFile file);
+
+    // [REFACTOR FIX]: Added for batch fetching to prevent N+1 query
+    List<Pill> getPillsByIds(List<String> ids);
 }
