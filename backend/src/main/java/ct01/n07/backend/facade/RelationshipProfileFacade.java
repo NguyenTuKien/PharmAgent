@@ -42,6 +42,7 @@ public class RelationshipProfileFacade {
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
                             .avatarUrl(profile.getAvatarUrl())
+                            .elderlyTitle(rel.getElderlyTitle())
                             .status(rel.getStatus())
                             .permissionLevel(rel.getPermissionLevel())
                             .build();
@@ -99,6 +100,7 @@ public class RelationshipProfileFacade {
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
                             .avatarUrl(profile.getAvatarUrl())
+                            .elderlyTitle(rel.getElderlyTitle())
                             .status(rel.getStatus())
                             .permissionLevel(rel.getPermissionLevel())
                             .build();

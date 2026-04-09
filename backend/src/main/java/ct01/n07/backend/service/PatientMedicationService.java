@@ -29,4 +29,6 @@ public interface PatientMedicationService {
             ScheduleTimeRequest request);
 
     MedicationResponse deleteScheduleTime(String patientMedicationId, String scheduleId, String timeId);
+
+    long countDistinctActivePatients();
 }

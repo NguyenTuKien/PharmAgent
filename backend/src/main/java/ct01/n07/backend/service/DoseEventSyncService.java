@@ -55,6 +55,16 @@ public class DoseEventSyncService {
         });
     }
 
+    public void deletePendingByScheduleId(String scheduleId) {
+        if (scheduleId == null || scheduleId.isBlank()) return;
+        doseEventRepository.deleteByScheduleIdAndStatus(scheduleId, DoseStatus.PENDING);
+    }
+
+    public boolean hasDoseEventForScheduleTime(String scheduleTimeId) {
+        if (scheduleTimeId == null || scheduleTimeId.isBlank()) return false;
+        return doseEventRepository.findByScheduleTimeId(scheduleTimeId).isPresent();
+    }
+
     public void deleteByPatientMedicationId(String pmId) {
         doseEventRepository.deleteByPatientMedicationId(pmId);
     }

@@ -6,19 +6,15 @@ import ct01.n07.backend.dto.patientMedication.MedicationResponse;
 import ct01.n07.backend.model.Pill;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.DoseStatus;
-import ct01.n07.backend.model.enums.RelationStatus;
-import ct01.n07.backend.repository.PatientMedicationRepository;
-import ct01.n07.backend.repository.RelationshipRepository;
 import ct01.n07.backend.service.DoseEventService;
+import ct01.n07.backend.service.MedicationPermissionValidator;
 import ct01.n07.backend.service.PatientMedicationService;
 import ct01.n07.backend.service.PillService;
 import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,34 +28,21 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StatsFacade {
 
-    // [REFACTOR FIX]: Gỡ bỏ DoseEventRepository, PatientMedicationRepository khỏi Facade
-    // Facade chỉ được giao tiếp trực tiếp với các Service (Clean Architecture)
     private final DoseEventService doseEventService;
     private final PatientMedicationService patientMedicationService;
     private final PillService pillService;
-    private final PatientMedicationRepository patientMedicationRepository; // Chỉ giữ lại nếu dùng aggregation repository
-    
-    // [REFACTOR FIX]: Thêm Relationship để kiểm tra phân quyền (Security)
-    private final RelationshipRepository relationshipRepository;
+    private final MedicationPermissionValidator permissionValidator;
     private final UserProfileService userProfileService;
 
     private static final int INVENTORY_WARNING_THRESHOLD = 7;
 
-    // [REFACTOR FIX]: Hàm Helper kiểm tra bảo mật (IDOR)
     private void validatePermission(String patientId) {
         UserProfile currentUser = userProfileService.getCurrentUserProfile();
         if (currentUser.getId().equals(patientId)) {
-            return; // Người dùng gọi xem thống kê của chính bản thân.
+            return;
         }
-        
-        // Kiểm tra xem người đang đăng nhập có phải là Caregiver được APPROVED của bệnh nhân này không.
-        boolean hasPermission = relationshipRepository.existsByCaregiverIdAndElderlyIdAndStatus(
-                currentUser.getId(), patientId, RelationStatus.ACCEPTED);
-                
-        if (!hasPermission) {
-            log.warn("IDOR attempt detected: User {} tried to access stats of Patient {}", currentUser.getId(), patientId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem thống kê của bệnh nhân này.");
-        }
+        // Delegates to MedicationPermissionValidator — throws FORBIDDEN if not an accepted caregiver
+        permissionValidator.verifyCaregiverPermission(currentUser.getId(), patientId);
     }
 
     public AdherenceResponse getAdherence(String patientId, LocalDate startDate, LocalDate endDate) {
@@ -154,9 +137,7 @@ public class StatsFacade {
 
     public long getActivePatientsCount() {
         log.info("StatsFacade: counting active medication users");
-        // [REFACTOR FIX]: Fix OOM, thay vì map và distinct trên Stream RAM Java, lấy kết quả Count Aggregation trả thẳng từ DB.
-        Long count = patientMedicationRepository.countDistinctActivePatients();
-        return count != null ? count : 0L;
+        return patientMedicationService.countDistinctActivePatients();
     }
 
     private List<String> getMedicationIds(String patientId) {

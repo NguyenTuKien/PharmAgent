@@ -59,13 +59,6 @@ public interface DoseEventRepository extends MongoRepository<DoseEvent, String> 
             DoseStatus status
     );
 
-    // [REFACTOR FIX]: Added for total count instead of loading ALL records into memory via .size()
-    long countByPatientMedicationIdInAndScheduledAtBetween(
-            List<String> patientMedicationIds,
-            LocalDateTime startTime,
-            LocalDateTime endTime
-    );
-
     void deleteByScheduleTimeId(String scheduleTimeId);
 
     void deleteByScheduleIdAndStatus(String scheduleId, DoseStatus status);

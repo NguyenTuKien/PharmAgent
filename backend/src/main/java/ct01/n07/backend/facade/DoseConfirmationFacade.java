@@ -41,7 +41,14 @@ public class DoseConfirmationFacade {
         // Lấy thông tin cữ thuốc qua Core Service
         DoseEvent doseEvent = doseEventService.getDoseEventById(doseEventId);
         MedicationResponse medication = patientMedicationService.getPatientMedicationById(doseEvent.getPatientMedicationId());
-        UserProfile elderlyProfile = userProfileService.findById(medication.getPatientId());
+
+        // Verify the current user is the owner of this dose event
+        UserProfile currentProfile = userProfileService.getCurrentUserProfile();
+        if (!currentProfile.getId().equals(medication.getPatientId())) {
+            throw new ct01.n07.backend.exception.ForbiddenAccessException(
+                    "Bạn không có quyền xác nhận cữ thuốc của người khác");
+        }
+        UserProfile elderlyProfile = currentProfile;
 
         LocalDateTime now = LocalDateTime.now();
 

@@ -211,7 +211,7 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         PatientMedication savedPm = patientMedicationRepository.save(pm);
         // Re-sync dose events for the updated schedule:
         // Only delete PENDING events to preserve user-recorded data (TAKEN/MISSED/SKIPPED)
-        doseEventRepository.deleteByScheduleIdAndStatus(scheduleId, DoseStatus.PENDING);
+        doseEventSyncService.deletePendingByScheduleId(scheduleId);
         MedicationSchedule updatedSchedule = savedPm.getMedicationSchedules().stream()
                 .filter(s -> Objects.equals(s.getId(), scheduleId))
                 .findFirst()
@@ -220,8 +220,8 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
         if (updatedSchedule.getScheduleTimeList() != null) {
             for (ScheduleTime time : updatedSchedule.getScheduleTimeList()) {
                 // Only create a new event if no existing event references this scheduleTimeId
-                if (doseEventRepository.findByScheduleTimeId(time.getId()).isEmpty()) {
-                    createDoseEvent(savedPm, updatedSchedule, time);
+                if (!doseEventSyncService.hasDoseEventForScheduleTime(time.getId())) {
+                    doseEventSyncService.createDoseEvent(savedPm, updatedSchedule, time);
                 }
             }
         }
@@ -370,5 +370,11 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
                 .createdAt(medication.getCreatedAt())
                 .updatedAt(medication.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    public long countDistinctActivePatients() {
+        Long count = patientMedicationRepository.countDistinctActivePatients();
+        return count != null ? count : 0L;
     }
 }
