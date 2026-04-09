@@ -212,8 +212,9 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
 
         patientMedicationMapper.updateModel(scheduleToUpdate, request);
         PatientMedication savedPm = patientMedicationRepository.save(pm);
-        // Re-sync dose events for the updated schedule to reflect schedule time changes
-        doseEventRepository.deleteByScheduleId(scheduleId);
+        // Re-sync dose events for the updated schedule:
+        // Only delete PENDING events to preserve user-recorded data (TAKEN/MISSED/SKIPPED)
+        doseEventRepository.deleteByScheduleIdAndStatus(scheduleId, DoseStatus.PENDING);
         MedicationSchedule updatedSchedule = savedPm.getMedicationSchedules().stream()
                 .filter(s -> Objects.equals(s.getId(), scheduleId))
                 .findFirst()
@@ -221,7 +222,10 @@ public class PatientMedicationServiceImpl implements PatientMedicationService {
                         "Schedule not found after save"));
         if (updatedSchedule.getScheduleTimeList() != null) {
             for (ScheduleTime time : updatedSchedule.getScheduleTimeList()) {
-                createDoseEvent(savedPm, updatedSchedule, time);
+                // Only create a new event if no existing event references this scheduleTimeId
+                if (doseEventRepository.findByScheduleTimeId(time.getId()).isEmpty()) {
+                    createDoseEvent(savedPm, updatedSchedule, time);
+                }
             }
         }
         return toMedicationResponse(savedPm);

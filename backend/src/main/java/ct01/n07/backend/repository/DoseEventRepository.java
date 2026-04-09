@@ -61,6 +61,8 @@ public interface DoseEventRepository extends MongoRepository<DoseEvent, String> 
 
     void deleteByScheduleTimeId(String scheduleTimeId);
 
+    void deleteByScheduleIdAndStatus(String scheduleId, DoseStatus status);
+
     void deleteByScheduleId(String scheduleId);
 
     void deleteByPatientMedicationId(String patientMedicationId);
