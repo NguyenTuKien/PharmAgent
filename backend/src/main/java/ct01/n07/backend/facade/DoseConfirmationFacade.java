@@ -2,7 +2,6 @@ package ct01.n07.backend.facade;
 
 import ct01.n07.backend.dto.event.EventDoseResponse;
 import ct01.n07.backend.dto.medication.MedicationResponse;
-import ct01.n07.backend.exception.ForbiddenAccessException;
 import ct01.n07.backend.mapper.EventDoseMapper;
 import ct01.n07.backend.model.EventDose;
 import ct01.n07.backend.model.Message;
@@ -41,13 +40,10 @@ public class DoseConfirmationFacade {
 
         // Lấy thông tin cữ thuốc qua Core Service
         EventDose eventDose = eventDoseService.getEventDoseById(doseEventId);
+        // getMedicationById verifies that the current user has access to this medication
         MedicationResponse medication = medicationService.getMedicationById(eventDose.getMedicationId());
-        UserProfile elderlyProfile = userProfileService.findById(medication.getPatientId());
 
         UserProfile currentProfile = userProfileService.getCurrentUserProfile();
-        if (!currentProfile.getId().equals(medication.getPatientId())) {
-            throw new ForbiddenAccessException("Bạn không có quyền xác nhận uống thuốc cho người khác");
-        }
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -58,13 +54,13 @@ public class DoseConfirmationFacade {
         }
 
         eventDose.setTakenAt(now);
-        eventDose.setConfirmedBy(elderlyProfile.getId());
+        eventDose.setConfirmedBy(currentProfile.getId());
 
         // Lưu thông qua Core Service
         EventDose saved = eventDoseService.saveEventDose(eventDose);
 
         // Gửi notification
-        sendDoseConfirmationNotifications(elderlyProfile, medication, now);
+        sendDoseConfirmationNotifications(currentProfile, medication, now);
 
         return eventDoseMapper.toResponse(saved);
     }

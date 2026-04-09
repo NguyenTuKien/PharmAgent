@@ -2,19 +2,17 @@ package ct01.n07.backend.service.impl;
 
 import ct01.n07.backend.dto.medication.*;
 import ct01.n07.backend.mapper.MedicationMapper;
-import ct01.n07.backend.model.EventDose;
 import ct01.n07.backend.model.MedDose;
 import ct01.n07.backend.model.MedSchedule;
 import ct01.n07.backend.model.Medication;
 import ct01.n07.backend.model.UserProfile;
-import ct01.n07.backend.model.enums.DoseStatus;
 import ct01.n07.backend.model.enums.Role;
-import ct01.n07.backend.repository.EventDoseRepository;
 import ct01.n07.backend.repository.MedicationRepository;
 import ct01.n07.backend.repository.PillRepository;
 import ct01.n07.backend.repository.UserProfileRepository;
 import ct01.n07.backend.security.MedicationPermissionValidator;
 import ct01.n07.backend.security.ProfileAccessContext;
+import ct01.n07.backend.service.EventDoseSyncService;
 import ct01.n07.backend.service.MedicationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,7 +21,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -31,7 +28,7 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class MedicationServiceImpl implements MedicationService {
-    private final EventDoseRepository eventDoseRepository;
+    private final EventDoseSyncService eventDoseSyncService;
     private final MedicationRepository medicationRepository;
     private final PillRepository pillRepository;
     private final UserProfileRepository userProfileRepository;
@@ -78,7 +75,7 @@ public class MedicationServiceImpl implements MedicationService {
                 .build();
 
         Medication savedPm = medicationRepository.save(medication);
-        syncDoseEvents(savedPm);
+        eventDoseSyncService.syncDoseEvents(savedPm);
         return toMedicationResponse(savedPm);
     }
 
@@ -146,14 +143,17 @@ public class MedicationServiceImpl implements MedicationService {
             
         Medication savedPm = medicationRepository.save(medication);
         if (request.getSchedules() != null) {
-            syncDoseEvents(savedPm);
+            eventDoseSyncService.syncDoseEvents(savedPm);
         }
         return toMedicationResponse(savedPm);
     }
 
     @Override
     public MedicationResponse getMedicationById(String id) {
-        return toMedicationResponse(requirePatientMedication(id));
+        Medication medication = requirePatientMedication(id);
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
+        permissionValidator.verifyAccessToPatient(currentProfile.getRole(), currentProfile.getId(), medication.getPatientId());
+        return toMedicationResponse(medication);
     }
 
     @Override
@@ -175,7 +175,7 @@ public class MedicationServiceImpl implements MedicationService {
         // Tạo dose events cho schedule mới
         if (newSchedule.getScheduleTimeList() != null) {
             for (MedDose time : newSchedule.getScheduleTimeList()) {
-                createDoseEvent(saved, newSchedule, time);
+                eventDoseSyncService.createDoseEvent(saved, newSchedule, time);
             }
         }
         
@@ -189,7 +189,7 @@ public class MedicationServiceImpl implements MedicationService {
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
         
         medicationRepository.deleteById(id);
-        eventDoseRepository.deleteByMedicationId(id);
+        eventDoseSyncService.deleteByMedicationId(id);
     }
 
     @Override
@@ -214,7 +214,7 @@ public class MedicationServiceImpl implements MedicationService {
         Medication savedPm = medicationRepository.save(pm);
         // Re-sync dose events for the updated schedule:
         // Only delete PENDING events to preserve user-recorded data (TAKEN/MISSED/SKIPPED)
-        eventDoseRepository.deleteByScheduleIdAndStatus(scheduleId, DoseStatus.PENDING);
+        eventDoseSyncService.deletePendingByScheduleId(scheduleId);
         MedSchedule updatedSchedule = savedPm.getMedicationSchedules().stream()
                 .filter(s -> Objects.equals(s.getId(), scheduleId))
                 .findFirst()
@@ -223,8 +223,8 @@ public class MedicationServiceImpl implements MedicationService {
         if (updatedSchedule.getScheduleTimeList() != null) {
             for (MedDose time : updatedSchedule.getScheduleTimeList()) {
                 // Only create a new stats if no existing stats references this medDoseId
-                if (eventDoseRepository.findByMedDoseId(time.getId()).isEmpty()) {
-                    createDoseEvent(savedPm, updatedSchedule, time);
+                if (!eventDoseSyncService.hasDoseEventForMedDose(time.getId())) {
+                    eventDoseSyncService.createDoseEvent(savedPm, updatedSchedule, time);
                 }
             }
         }
@@ -246,7 +246,7 @@ public class MedicationServiceImpl implements MedicationService {
         if (!removed) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
         }
-        eventDoseRepository.deleteByScheduleId(scheduleId);
+        eventDoseSyncService.deleteByScheduleId(scheduleId);
         return toMedicationResponse(medicationRepository.save(pm));
     }
 
@@ -276,7 +276,7 @@ public class MedicationServiceImpl implements MedicationService {
         schedule.getScheduleTimeList().add(newTime);
         Medication saved = medicationRepository.save(pm);
         
-        createDoseEvent(saved, schedule, newTime);
+        eventDoseSyncService.createDoseEvent(saved, schedule, newTime);
         
         return toMedicationResponse(saved);
     }
@@ -313,12 +313,7 @@ public class MedicationServiceImpl implements MedicationService {
         Medication saved = medicationRepository.save(pm);
         
         // Cập nhật DoseEvent nếu có
-        eventDoseRepository.findByMedDoseId(timeToUpdate.getId()).ifPresent(event -> {
-            LocalDate date = schedule.getStartDate() != null ? schedule.getStartDate()
-                    : (pm.getStartDate() != null ? pm.getStartDate() : LocalDate.now());
-            event.setScheduledAt(date.atTime(timeToUpdate.getTakenTime()));
-            eventDoseRepository.save(event);
-        });
+        eventDoseSyncService.syncDoseEventForTimeUpdate(saved, schedule, timeToUpdate);
         
         return toMedicationResponse(saved);
     }
@@ -346,40 +341,10 @@ public class MedicationServiceImpl implements MedicationService {
             if (!removed) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found");
             }
-            eventDoseRepository.deleteByMedDoseId(timeId);
+            eventDoseSyncService.deleteByMedDoseId(timeId);
             return toMedicationResponse(medicationRepository.save(pm));
         }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found");
-    }
-
-    private void createDoseEvent(Medication pm, MedSchedule schedule, MedDose time) {
-        LocalDate date = schedule.getStartDate() != null ? schedule.getStartDate()
-                : (pm.getStartDate() != null ? pm.getStartDate() : LocalDate.now());
-
-        EventDose eventDose = EventDose.builder()
-                .medicationId(pm.getId())
-                .scheduleId(schedule.getId())
-                .medDoseId(time.getId())
-                .scheduledAt(date.atTime(time.getTakenTime()))
-                .status(DoseStatus.PENDING)
-                .build();
-
-        eventDoseRepository.save(eventDose);
-    }
-
-    private void syncDoseEvents(Medication pm) {
-        eventDoseRepository.deleteByMedicationId(pm.getId());
-        if (pm.getMedicationSchedules() == null) {
-            return;
-        }
-        for (MedSchedule schedule : pm.getMedicationSchedules()) {
-            if (schedule.getScheduleTimeList() == null) {
-                continue;
-            }
-            for (MedDose time : schedule.getScheduleTimeList()) {
-                createDoseEvent(pm, schedule, time);
-            }
-        }
     }
 
     private Medication requirePatientMedication(String id) {
