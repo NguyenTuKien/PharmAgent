@@ -108,7 +108,11 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .map(userProfileMapper::toProfileSummary)
                 .toList();
 
-        return new org.springframework.data.domain.PageImpl<>(filtered, pageable, filtered.size());
+        // Adjust totalElements to exclude the current profile if it was in the result set
+        long excludedCount = all.stream().filter(p -> p.getId().equals(currentProfileId)).count();
+        long adjustedTotal = all.getTotalElements() - excludedCount;
+
+        return new org.springframework.data.domain.PageImpl<>(filtered, pageable, adjustedTotal);
     }
 
     @Override
