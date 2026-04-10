@@ -3,9 +3,9 @@ name: Một số thống nhất chung cho Backend
 description: Tiêu chuẩn lập trình và kiến trúc thư mục Backend Spring Boot thực tế đóng gói bằng Facade, Service, Repository (Dự án PillLen / PharmAgent)
 ---
 
-# Một số thống nhất cho Backend
+# Một số thống nhất cho Backend (PillLen / PharmAgent)
 
-Tài liệu này quy định các tiêu chuẩn lập trình, kiến trúc thư mục và các quy tắc bắt buộc dành cho Team Backend dựa trên thiết kế hiện tại của dự án (Hệ thống nhắc nhở và quản lý uống thuốc Multi-Profile).
+Tài liệu này quy định các tiêu chuẩn lập trình, kiến trúc thư mục và các quy tắc bắt buộc dành cho Team Backend dựa trên thiết kế hiện tại của dự án PillLen (Hệ thống nhắc nhở và quản lý uống thuốc Multi-Profile).
 
 ## 1. Công Nghệ Sử Dụng (Tech Stack)
 - **Java**: Java 17+
@@ -60,6 +60,7 @@ src/main/java/ct01/web/backend/
 ### 3.4. Repository & Model (NoSQL Standards)
 - Các file tương tác với DB nằm ở `repository/` và kết thúc bằng đuôi `*Repository` (VD: `PillRepository`). **Tuyệt đối không dùng hậu tố Dao.**
 - Các Entity đại diện cho DB nằm ở `model/` (VD: `UserProfile`). Các Object bị nhúng (Embedded) bên trong Document cần có ID tự sinh: `@Builder.Default private String id = new ObjectId().toString();`.
+- **CẤM:** Tuyệt đối không được sửa đổi cấu trúc các class trong tầng `model/` (ví dụ: thêm/bớt các thuộc tính của `UserProfile`, `PatientMedication`...) trừ khi có sự thống nhất của cả team. Mọi thay đổi dữ liệu yêu cầu từ Client **phải được giải quyết thông qua việc tạo mới các DTO**. Chỉ định nghĩa DTO nếu Object đó có chứa nhiều Attribute, tránh việc tạo DTO tràn lan cho các Request chỉ có 1-2 tham số.
 
 ### 3.5. Quản Lý Lỗi & Biến Toàn Cục
 - Ném lỗi bằng `ResponseStatusException` (hoặc Custom Exception) để Global Exception Handler tự động bắt và trả JSON chuẩn cho FE. Không dùng `try-catch` cục bộ trả về `ResponseEntity` lỗi ở Controller.

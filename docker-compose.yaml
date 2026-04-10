@@ -4,49 +4,101 @@ services:
     restart: always
     env_file:
       - .env
+    ports:
+      - "27017:27017"
     volumes:
-      - ./database/mongo-data:/data/db
-      - ./database/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - mongo_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pharmagent
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    # Bắt buộc Redis phải khởi chạy với password được chỉ định
+    command: /bin/sh -c 'redis-server --requirepass "$$SPRING_DATA_REDIS_PASSWORD"'
+    ports:
+      - "6379:6379"
+    env_file:
+      - .env
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      # Sửa lại cú pháp healthcheck chuẩn của Redis có password
+      test: ["CMD-SHELL", "redis-cli -a $$SPRING_DATA_REDIS_PASSWORD ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - pharmagent
 
   backend:
     build: ./backend
-    image: ${DOCKER_REGISTRY:-ngtukien218}/pharmagent-backend:${TAG:-latest}
+    image: ${DOCKER_REGISTRY:-ngtukien218}/web-backend:${TAG:-latest}
     restart: always
     env_file:
       - .env
+    ports:
+      - "8080:8080"
     environment:
-      SPRING_MONGODB_URI: mongodb://${SPRING_MONGODB_USERNAME}:${SPRING_MONGODB_PASSWORD}@database:27017/${SPRING_MONGODB_DATABASE}?authSource=${SPRING_MONGODB_DATABASE}
+      MONGODB_URI: mongodb://${SPRING_MONGODB_USERNAME}:${SPRING_MONGODB_PASSWORD}@database:27017/${SPRING_MONGODB_DATABASE}?authSource=${SPRING_MONGODB_DATABASE}
+      REDIS_URL: redis://:${SPRING_DATA_REDIS_PASSWORD}@redis:6379
     depends_on:
       database:
         condition: service_healthy
+      redis: # Bắt buộc backend phải đợi cả Redis sẵn sàng
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep UP" ]
+      # Đã thêm /api vào đường dẫn healthcheck
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health | grep UP || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 5
     volumes:
-      - ./backend/logs:/app/logs
+      - backend_logs:/app/logs
+    networks:
+      - pharmagent
+
+  agent:
+    build: ./agent
+    image: ${DOCKER_REGISTRY:-ngtukien218}/web-agent:${TAG:-latest}
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - agent_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     networks:
       - pharmagent
 
   frontend:
     build: ./frontend
-    image: ${DOCKER_REGISTRY:-ngtukien218}/pharmagent-frontend:${TAG:-latest}
+    image: ${DOCKER_REGISTRY:-ngtukien218}/web-frontend:${TAG:-latest}
     restart: always
     ports:
       - "80:80"
     depends_on:
       backend:
         condition: service_healthy
+      agent:
+        condition: service_healthy
     networks:
       - pharmagent
+
+volumes:
+  mongo_data:
+  agent_logs:
+  backend_logs:
+  redis_data: # Đã bổ sung khai báo volume cho Redis
 
 networks:
   pharmagent:
