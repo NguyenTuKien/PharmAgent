@@ -4,14 +4,14 @@ import ct01.n07.backend.dto.event.EventDoseResponse;
 import ct01.n07.backend.dto.medication.MedicationResponse;
 import ct01.n07.backend.mapper.EventDoseMapper;
 import ct01.n07.backend.model.EventDose;
-import ct01.n07.backend.model.Message;
+import ct01.n07.backend.model.Notification;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.DoseStatus;
 import ct01.n07.backend.model.enums.Gender;
-import ct01.n07.backend.model.enums.MessageStatus;
+import ct01.n07.backend.model.enums.NotificationStatus;
 import ct01.n07.backend.service.EventDoseService;
 import ct01.n07.backend.service.MedicationCoreService;
-import ct01.n07.backend.service.MessageService;
+import ct01.n07.backend.service.NotificationService;
 import ct01.n07.backend.service.RelationshipService;
 import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ public class DoseConfirmationFacade {
     private final MedicationCoreService medicationCoreService;
     private final UserProfileService userProfileService;
     private final RelationshipService relationshipService;
-    private final MessageService messageService;
+    private final NotificationService notificationService;
     private final EventDoseMapper eventDoseMapper;
 
     @Transactional
@@ -78,18 +78,18 @@ public class DoseConfirmationFacade {
             List<ct01.n07.backend.model.Relationship> relationships = relationshipService
                     .getAcceptedCaregiverRelationshipsByElderly(elderlyProfile.getId());
 
-            List<Message> notifications = relationships.stream()
-                    .map(rel -> Message.builder()
+            List<Notification> notifications = relationships.stream()
+                    .map(rel -> Notification.builder()
                             .senderId(elderlyProfile.getId())
                             .receiverId(rel.getCaregiverId())
                             .content(content)
-                            .status(MessageStatus.SUCCESS)
+                            .status(NotificationStatus.SUCCESS)
                             .build())
                     .toList();
 
             if (!notifications.isEmpty()) {
-                // Save messages via MessageService
-                messageService.saveAllMessages(notifications);
+                // Save notifications via NotificationService
+                notificationService.saveAllNotifications(notifications);
                 log.info("Sent dose confirmation notifications to {} caregivers", notifications.size());
             }
         } catch (Exception e) {

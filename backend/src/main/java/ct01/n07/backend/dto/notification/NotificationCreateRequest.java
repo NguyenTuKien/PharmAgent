@@ -1,4 +1,4 @@
-package ct01.n07.backend.dto.message;
+package ct01.n07.backend.dto.notification;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MessageCreateRequest {
+public class NotificationCreateRequest {
     @NotBlank(message = "Người nhận không được để trống")
     private String receiverId;
 

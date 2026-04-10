@@ -1,5 +1,5 @@
 package ct01.n07.backend.model.enums;
 
-public enum MessageStatus {
+public enum NotificationStatus {
     SUCCESS, FAIL
 }

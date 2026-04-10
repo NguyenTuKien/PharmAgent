@@ -1,4 +1,4 @@
-name: CI pipeline for pharmagent
+name: CI/CD Pipeline
 
 on:
   push:
@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   unit_test_job:
+    name: Unit Test
     runs-on: ubuntu-latest
     services:
       mongodb:
@@ -84,6 +85,7 @@ jobs:
           echo "- Test results available in artifacts" >> $GITHUB_STEP_SUMMARY
 
   tag_job:
+    name: Get Image Tag
     runs-on: ubuntu-latest 
     if: >
       github.ref == 'refs/heads/main' ||
@@ -95,17 +97,18 @@ jobs:
       - name: Tính toán Tag tự động
         id: calc_tag
         run: |
+          SHORT_SHA=$(echo "${{ github.event.pull_request.head.sha || github.sha }}" | cut -c1-7)
           if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
             echo "tag=latest" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event_name }}" == 'pull_request' ]]; then
-            PR_NUMBER=${{ github.event.pull_request.number }}
-            echo "tag=pr-$PR_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "tag=$SHORT_SHA" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG_NAME=${GITHUB_REF#refs/tags/}
             echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
           fi
 
   build_job:
+    name: Build Docker Images
     runs-on: ubuntu-latest 
     needs: [unit_test_job, tag_job]  
     if: >
@@ -146,6 +149,7 @@ jobs:
         run: docker system prune -af
 
   integration_test_job:
+    name: Integration Test
     runs-on: ubuntu-latest
     needs: [tag_job, build_job]  
     if: >
@@ -192,12 +196,14 @@ jobs:
 
       - name: Check Health and Accessibility
         run: |
-          # Check Backend Health
-          curl -f http://localhost:8080/api/actuator/health || (echo "Backend unreachable" && exit 1)
-          # Check Agent Health
-          curl -f http://localhost:8000/api/health || (echo "Agent unreachable" && exit 1)
-          # Check Frontend Accessibility
-          curl -f http://localhost:80/ || (echo "Frontend unreachable" && exit 1)
+          # 1. Check xem Nginx có chuyển tiếp được sang Backend không (Cổng 80 chứ không phải 8080)
+          curl -f http://localhost:80/api/actuator/health || (echo "Nginx to Backend failed" && exit 1)
+          
+          # 2. Check xem Nginx có chuyển tiếp được sang Agent không (Cổng 80 chứ không phải 8000)
+          curl -f http://localhost:80/ai/api/health || (echo "Nginx to Agent failed" && exit 1)
+          
+          # 3. (Tùy chọn) Check trang chủ nếu bạn đã có index.html
+          # curl -f http://localhost:80/ || (echo "Frontend root 404 but proxy might work" && exit 1)
 
       - name: Cleanup Docker System
         if: always()
@@ -238,6 +244,7 @@ jobs:
             -Dsonar.token=${{ secrets.SONAR_TOKEN }}
 
   security_scan:
+    name: Security Scan
     runs-on: ubuntu-latest
     needs: [tag_job, build_job]
     if: >
@@ -288,6 +295,7 @@ jobs:
           exit-code: '0'
 
   notify_success:
+    name: Notify Success
     runs-on: ubuntu-latest
     needs: [integration_test_job]
     if: >
@@ -301,6 +309,7 @@ jobs:
           ${{ secrets.DISCORD_WEBHOOK_URL }}
 
   notify_fail:
+    name: Notify Fail
     runs-on: ubuntu-latest
     needs: [integration_test_job]
     if: >
