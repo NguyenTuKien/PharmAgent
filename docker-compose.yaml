@@ -72,7 +72,7 @@ services:
     environment:
       SPRING_MONGODB_URI: mongodb://${SPRING_MONGODB_USERNAME}:${SPRING_MONGODB_PASSWORD}@database:27017/${SPRING_MONGODB_DATABASE}?authSource=${SPRING_MONGODB_DATABASE}
       SPRING_DATA_REDIS_URL: redis://:${SPRING_DATA_REDIS_PASSWORD}@redis:6379
-      SPRING_RABBITMQ_ADDRESSES: amqp://${SPRING_RABBITMQ_USERNAME}:${SPRING_RABBITMQ_PASSWORD}@rabbitmq:5672
+      SPRING_RABBITMQ_ADDRESSES: amqp://${SPRING_RABBITMQ_USERNAME}:${SPRING_RABBITMQ_PASSWORD}@rabbitmq:5672/
     depends_on:
       database:
         condition: service_healthy
@@ -81,7 +81,6 @@ services:
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      # Đã thêm /api vào đường dẫn healthcheck
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health | grep UP || exit 1" ]
       interval: 30s
       timeout: 10s

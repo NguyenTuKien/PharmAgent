@@ -31,14 +31,26 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         try {
             // "Phẫu thuật" chuỗi addresses (ví dụ: amqp://user:pass@host:port/vhost)
             // Chúng ta thay thế amqp thành http để lớp URI của Java parse được userInfo
-            String uriString = rabbitMqProps.getAddresses().replace("amqp://", "http://").replace("amqps://", "https://");
+            String address = rabbitMqProps.getAddresses();
+            String uriString = address.replace("amqp://", "http://").replace("amqps://", "https://");
             URI uri = new URI(uriString);
 
             String host = uri.getHost();
             String userInfo = uri.getUserInfo();
-            String user = userInfo.split(":")[0];
-            String pass = userInfo.split(":")[1];
-            String vhost = uri.getPath().substring(1); // Bỏ dấu / ở đầu
+            String user = "guest";
+            String pass = "guest";
+
+            if (userInfo != null && userInfo.contains(":")) {
+                String[] userParts = userInfo.split(":", 2);
+                user = userParts[0];
+                pass = userParts.length > 1 ? userParts[1] : "";
+            }
+
+            // Xử lý vhost: nếu path trống hoặc là "/" thì dùng "/"
+            String path = uri.getPath();
+            String vhost = (path == null || path.isEmpty() || path.equals("/")) ? "/" : path.substring(1);
+
+            log.info("Configuring STOMP broker relay to host: {}, vhost: {}, user: {}", host, vhost, user);
 
             config.enableStompBrokerRelay("/topic", "/queue")
                     .setRelayHost(host)
@@ -52,6 +64,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     .setSystemHeartbeatReceiveInterval(10000);
 
         } catch (Exception e) {
+            log.error("Lỗi khi cấu hình WebSocket Message Broker: address={}, error={}", 
+                    rabbitMqProps.getAddresses(), e.getMessage());
             throw new RuntimeException("Không thể parse RabbitMQ addresses: " + e.getMessage());
         }
     }
