@@ -21,8 +21,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class MedicationCoreServiceImpl implements MedicationCoreService {
@@ -165,22 +163,12 @@ public class MedicationCoreServiceImpl implements MedicationCoreService {
         eventDoseSyncService.deleteByMedicationId(id);
     }
 
-    @Override
-    public List<String> getMedicationIdsByPatientId(String patientId) {
-        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
-        permissionValidator.verifyAccessToPatient(currentProfile.getRole(), currentProfile.getId(), patientId);
-        return medicationRepository.findByPatientId(patientId, Pageable.unpaged())
-                .getContent().stream().map(Medication::getId).toList();
-    }
-
-    @Override
-    public Medication requireMedication(String id) {
+    private Medication requireMedication(String id) {
         return medicationRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
     }
 
-    @Override
-    public MedicationResponse toMedicationResponse(Medication medication) {
+    private MedicationResponse toMedicationResponse(Medication medication) {
         return MedicationResponse.builder()
                 .id(medication.getId())
                 .patientId(medication.getPatientId())

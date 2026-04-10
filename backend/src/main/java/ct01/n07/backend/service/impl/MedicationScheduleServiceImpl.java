@@ -2,6 +2,7 @@ package ct01.n07.backend.service.impl;
 
 import ct01.n07.backend.dto.medication.MedDoseRequest;
 import ct01.n07.backend.dto.medication.MedScheduleRequest;
+import ct01.n07.backend.dto.medication.MedScheduleResponse;
 import ct01.n07.backend.dto.medication.MedicationResponse;
 import ct01.n07.backend.mapper.MedicationMapper;
 import ct01.n07.backend.model.MedDose;
@@ -12,7 +13,6 @@ import ct01.n07.backend.repository.MedicationRepository;
 import ct01.n07.backend.security.MedicationPermissionValidator;
 import ct01.n07.backend.security.ProfileAccessContext;
 import ct01.n07.backend.service.EventDoseSyncService;
-import ct01.n07.backend.service.MedicationCoreService;
 import ct01.n07.backend.service.MedicationScheduleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,7 +28,6 @@ import java.util.Objects;
 public class MedicationScheduleServiceImpl implements MedicationScheduleService {
 
     private final MedicationRepository medicationRepository;
-    private final MedicationCoreService medicationCoreService;
     private final ProfileAccessContext profileAccessContext;
     private final MedicationMapper medicationMapper;
     private final MedicationPermissionValidator permissionValidator;
@@ -36,7 +35,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
     @Override
     public MedicationResponse addMedicationSchedule(MedScheduleRequest scheduleRequest, String medicationId) {
-        Medication pm = medicationCoreService.requireMedication(medicationId);
+        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -57,12 +56,12 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
             }
         }
 
-        return medicationCoreService.toMedicationResponse(saved);
+        return toMedicationResponse(saved);
     }
 
     @Override
     public MedicationResponse updateMedicationSchedule(String medicationId, String scheduleId, MedScheduleRequest request) {
-        Medication pm = medicationCoreService.requireMedication(medicationId);
+        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -95,12 +94,12 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
                 }
             }
         }
-        return medicationCoreService.toMedicationResponse(savedPm);
+        return toMedicationResponse(savedPm);
     }
 
     @Override
     public MedicationResponse deleteMedicationSchedule(String medicationId, String scheduleId) {
-        Medication pm = medicationCoreService.requireMedication(medicationId);
+        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -114,12 +113,12 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
         }
         eventDoseSyncService.deleteByScheduleId(scheduleId);
-        return medicationCoreService.toMedicationResponse(medicationRepository.save(pm));
+        return toMedicationResponse(medicationRepository.save(pm));
     }
 
     @Override
     public MedicationResponse addScheduleTime(String medicationId, String scheduleId, MedDoseRequest request) {
-        Medication pm = medicationCoreService.requireMedication(medicationId);
+        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -144,12 +143,12 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
         eventDoseSyncService.createDoseEvent(saved, schedule, newTime);
 
-        return medicationCoreService.toMedicationResponse(saved);
+        return toMedicationResponse(saved);
     }
 
     @Override
     public MedicationResponse updateScheduleTime(String medicationId, String scheduleId, String timeId, MedDoseRequest request) {
-        Medication pm = medicationCoreService.requireMedication(medicationId);
+        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -179,12 +178,12 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
         eventDoseSyncService.syncDoseEventForTimeUpdate(saved, schedule, timeToUpdate);
 
-        return medicationCoreService.toMedicationResponse(saved);
+        return toMedicationResponse(saved);
     }
 
     @Override
     public MedicationResponse deleteScheduleTime(String medicationId, String scheduleId, String timeId) {
-        Medication pm = medicationCoreService.requireMedication(medicationId);
+        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -206,8 +205,33 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found");
             }
             eventDoseSyncService.deleteByMedDoseId(timeId);
-            return medicationCoreService.toMedicationResponse(medicationRepository.save(pm));
+            return toMedicationResponse(medicationRepository.save(pm));
         }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found");
+    }
+
+    private MedicationResponse toMedicationResponse(Medication medication) {
+        List<MedScheduleResponse> schedules =
+                medicationMapper.toResponses(medication.getMedicationSchedules());
+        return MedicationResponse.builder()
+                .id(medication.getId())
+                .patientId(medication.getPatientId())
+                .pillId(medication.getPillId())
+                .nickname(medication.getNickname())
+                .dosageAmount(medication.getDosageAmount())
+                .dosageUnit(medication.getDosageUnit())
+                .route(medication.getRoute())
+                .mealRelation(medication.getMealRelation())
+                .instruction(medication.getInstruction())
+                .prescribedBy(medication.getPrescribedBy())
+                .purpose(medication.getPurpose())
+                .startDate(medication.getStartDate())
+                .endDate(medication.getEndDate())
+                .schedules(schedules)
+                .totalQuantity(medication.getTotalQuantity())
+                .isActive(medication.isActive())
+                .createdAt(medication.getCreatedAt())
+                .updatedAt(medication.getUpdatedAt())
+                .build();
     }
 }

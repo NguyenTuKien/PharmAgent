@@ -4,13 +4,14 @@ import ct01.n07.backend.dto.event.EventDoseResponse;
 import ct01.n07.backend.dto.event.DoseStatusUpdateRequest;
 import ct01.n07.backend.mapper.EventDoseMapper;
 import ct01.n07.backend.model.EventDose;
+import ct01.n07.backend.model.Medication;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.DoseStatus;
 import ct01.n07.backend.repository.EventDoseRepository;
+import ct01.n07.backend.repository.MedicationRepository;
 import ct01.n07.backend.security.MedicationPermissionValidator;
 import ct01.n07.backend.security.ProfileAccessContext;
 import ct01.n07.backend.service.EventDoseService;
-import ct01.n07.backend.service.MedicationCoreService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +32,7 @@ import java.util.List;
 public class EventDoseServiceImpl implements EventDoseService {
 
     private final EventDoseRepository eventDoseRepository;
-    private final MedicationCoreService medicationCoreService;
+    private final MedicationRepository medicationRepository;
     private final EventDoseMapper eventDoseMapper;
     private final ProfileAccessContext profileAccessContext;
     private final MedicationPermissionValidator permissionValidator;
@@ -101,7 +102,8 @@ public class EventDoseServiceImpl implements EventDoseService {
     }
 
     private List<String> getMedicationIdsForPatient(String patientId) {
-        return medicationCoreService.getMedicationIdsByPatientId(patientId);
+        return medicationRepository.findByPatientId(patientId, Pageable.unpaged())
+                .getContent().stream().map(Medication::getId).toList();
     }
 
     private void validateAccessToPatient(String patientId) {
@@ -117,8 +119,10 @@ public class EventDoseServiceImpl implements EventDoseService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Khong tim thay cu thuoc voi ID: " + id));
 
-        // getMedicationById verifies the current user has access to this medication's patient
-        medicationCoreService.getMedicationById(eventDose.getMedicationId());
+        Medication medication = medicationRepository.findById(eventDose.getMedicationId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
+
+        validateAccessToPatient(medication.getPatientId());
 
         UserProfile confirmedByProfile = profileAccessContext.getCurrentUserProfile();
 
