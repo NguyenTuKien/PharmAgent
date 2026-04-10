@@ -169,25 +169,6 @@ public class MedicationCoreServiceImpl implements MedicationCoreService {
     }
 
     private MedicationResponse toMedicationResponse(Medication medication) {
-        return MedicationResponse.builder()
-                .id(medication.getId())
-                .patientId(medication.getPatientId())
-                .pillId(medication.getPillId())
-                .nickname(medication.getNickname())
-                .dosageAmount(medication.getDosageAmount())
-                .dosageUnit(medication.getDosageUnit())
-                .route(medication.getRoute())
-                .mealRelation(medication.getMealRelation())
-                .instruction(medication.getInstruction())
-                .prescribedBy(medication.getPrescribedBy())
-                .purpose(medication.getPurpose())
-                .startDate(medication.getStartDate())
-                .endDate(medication.getEndDate())
-                .schedules(medicationMapper.toResponses(medication.getMedicationSchedules()))
-                .totalQuantity(medication.getTotalQuantity())
-                .isActive(medication.isActive())
-                .createdAt(medication.getCreatedAt())
-                .updatedAt(medication.getUpdatedAt())
-                .build();
+        return medicationMapper.toResponse(medication);
     }
 }

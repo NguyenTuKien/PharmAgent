@@ -2,7 +2,6 @@ package ct01.n07.backend.service.impl;
 
 import ct01.n07.backend.dto.medication.MedDoseRequest;
 import ct01.n07.backend.dto.medication.MedScheduleRequest;
-import ct01.n07.backend.dto.medication.MedScheduleResponse;
 import ct01.n07.backend.dto.medication.MedicationResponse;
 import ct01.n07.backend.mapper.MedicationMapper;
 import ct01.n07.backend.model.MedDose;
@@ -211,27 +210,6 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
     }
 
     private MedicationResponse toMedicationResponse(Medication medication) {
-        List<MedScheduleResponse> schedules =
-                medicationMapper.toResponses(medication.getMedicationSchedules());
-        return MedicationResponse.builder()
-                .id(medication.getId())
-                .patientId(medication.getPatientId())
-                .pillId(medication.getPillId())
-                .nickname(medication.getNickname())
-                .dosageAmount(medication.getDosageAmount())
-                .dosageUnit(medication.getDosageUnit())
-                .route(medication.getRoute())
-                .mealRelation(medication.getMealRelation())
-                .instruction(medication.getInstruction())
-                .prescribedBy(medication.getPrescribedBy())
-                .purpose(medication.getPurpose())
-                .startDate(medication.getStartDate())
-                .endDate(medication.getEndDate())
-                .schedules(schedules)
-                .totalQuantity(medication.getTotalQuantity())
-                .isActive(medication.isActive())
-                .createdAt(medication.getCreatedAt())
-                .updatedAt(medication.getUpdatedAt())
-                .build();
+        return medicationMapper.toResponse(medication);
     }
 }

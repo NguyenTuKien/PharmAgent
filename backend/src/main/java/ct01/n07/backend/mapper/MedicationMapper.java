@@ -3,6 +3,7 @@ package ct01.n07.backend.mapper;
 import ct01.n07.backend.dto.medication.*;
 import ct01.n07.backend.model.MedDose;
 import ct01.n07.backend.model.MedSchedule;
+import ct01.n07.backend.model.Medication;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -23,6 +24,9 @@ public interface MedicationMapper {
 
     @Mapping(source = "scheduleTimeList", target = "medDoses")
     MedScheduleResponse toResponse(MedSchedule model);
+
+    @Mapping(source = "medicationSchedules", target = "schedules")
+    MedicationResponse toResponse(Medication medication);
 
     @Mapping(target = "id", ignore = true)
     MedDose toModel(MedDoseRequest request);
