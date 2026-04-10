@@ -289,7 +289,7 @@ jobs:
 
   notify_success:
     runs-on: ubuntu-latest
-    needs: [unit_test_job, tag_job, build_job, integration_test_job, code_quality_scan, security_scan]
+    needs: [unit_test_job, tag_job, build_job, integration_test_job]
     if: >
       success() &&
       (github.ref == 'refs/heads/main' || github.event_name == 'pull_request')
@@ -302,7 +302,7 @@ jobs:
 
   notify_fail:
     runs-on: ubuntu-latest
-    needs: [unit_test_job, tag_job, build_job, integration_test_job, code_quality_scan, security_scan]
+    needs: [unit_test_job, tag_job, build_job, integration_test_job]
     if: >
       failure() &&
       (github.ref == 'refs/heads/main' || github.event_name == 'pull_request')
