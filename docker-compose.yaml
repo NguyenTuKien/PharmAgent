@@ -37,6 +37,25 @@ services:
     networks:
       - pharmagent
 
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    restart: always
+    ports:
+      - "5672:5672"    # Cổng AMQP
+      - "15672:15672"  # Cổng UI Management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${SPRING_RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${SPRING_RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pharmagent
+
   backend:
     build: ./backend
     image: ${DOCKER_REGISTRY:-ngtukien218}/web-backend:${TAG:-latest}
@@ -48,10 +67,13 @@ services:
     environment:
       MONGODB_URI: mongodb://${SPRING_MONGODB_USERNAME}:${SPRING_MONGODB_PASSWORD}@database:27017/${SPRING_MONGODB_DATABASE}?authSource=${SPRING_MONGODB_DATABASE}
       REDIS_URL: redis://:${SPRING_DATA_REDIS_PASSWORD}@redis:6379
+      RABBITMQ_ADDRESSES: amqp://${SPRING_RABBITMQ_USERNAME}:${SPRING_RABBITMQ_PASSWORD}@rabbitmq:5672
     depends_on:
       database:
         condition: service_healthy
       redis: # Bắt buộc backend phải đợi cả Redis sẵn sàng
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       # Đã thêm /api vào đường dẫn healthcheck
@@ -96,9 +118,10 @@ services:
 
 volumes:
   mongo_data:
+  redis_data:
+  rabbitmq_data:
   agent_logs:
   backend_logs:
-  redis_data: # Đã bổ sung khai báo volume cho Redis
 
 networks:
   pharmagent:
