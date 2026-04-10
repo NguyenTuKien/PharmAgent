@@ -11,12 +11,12 @@ spring:
   application:
     name: backend
   mongodb:
-    uri: ${MONGODB_URI}
+    uri: ${SPRING_MONGODB_URI}
   data:
     redis:
-      url: ${REDIS_URL}
+      url: ${SPRING_DATA_REDIS_URL}
   rabbitmq:
-    addresses: ${RABBITMQ_ADDRESSES}
+    addresses: ${SPRING_RABBITMQ_ADDRESSES}
 
   mail:
     host: smtp.gmail.com
