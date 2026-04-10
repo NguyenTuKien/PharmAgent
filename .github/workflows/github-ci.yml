@@ -35,6 +35,13 @@ jobs:
       - name: Run Unit Tests with Maven
         working-directory: ./backend
         run: mvn -B clean test
+        env:
+          MONGODB_URI: mongodb://localhost:27017/pharmagent_test_db
+          REDIS_URL: redis://localhost:6379
+          RABBITMQ_ADDRESSES: localhost:5672
+          JWT_SECRET: day-la-mot-chuoi-secret-key-gia-cuc-ky-dai-de-chay-unit-test-thanh-cong
+          SPRING_MAIL_USERNAME: test@gmail.com
+          SPRING_MAIL_PASSWORD: dummy-password
         
       - name: Generate JaCoCo Coverage Report
         if: always()
