@@ -87,7 +87,7 @@ jobs:
     runs-on: ubuntu-latest 
     if: >
       github.ref == 'refs/heads/main' ||
-      startsWith(github.ref, 'refs/tags/')
+      startsWith(github.ref, 'refs/tags/') ||
       github.event_name == 'pull_request'
     outputs:
       docker_tag: ${{ steps.calc_tag.outputs.tag }} 
