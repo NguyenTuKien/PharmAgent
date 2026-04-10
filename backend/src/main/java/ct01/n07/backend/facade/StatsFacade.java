@@ -8,7 +8,7 @@ import ct01.n07.backend.model.Pill;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.DoseStatus;
 import ct01.n07.backend.service.EventDoseService;
-import ct01.n07.backend.service.MedicationService;
+import ct01.n07.backend.service.MedicationCoreService;
 import ct01.n07.backend.service.PillService;
 import ct01.n07.backend.service.UserProfileService;
 import ct01.n07.backend.security.MedicationPermissionValidator;
@@ -34,7 +34,7 @@ public class StatsFacade {
     // [REFACTOR FIX]: Gỡ bỏ EventDoseRepository, MedicationRepository khỏi Facade
     // Facade chỉ được giao tiếp trực tiếp với các Service (Clean Architecture)
     private final EventDoseService eventDoseService;
-    private final MedicationService medicationService;
+    private final MedicationCoreService medicationCoreService;
     private final PillService pillService;
 
     // [REFACTOR FIX]: Thêm Relationship để kiểm tra phân quyền (Security) thông qua
@@ -118,7 +118,7 @@ public class StatsFacade {
         // [REFACTOR FIX]: IDOR verification
         validatePermission(patientId);
 
-        List<MedicationResponse> medications = medicationService
+        List<MedicationResponse> medications = medicationCoreService
                 .getMedications(patientId, null, Pageable.unpaged()).getContent();
 
         if (medications.isEmpty()) {
@@ -159,7 +159,7 @@ public class StatsFacade {
         log.info("StatsFacade: fetching taken doses per medication for patientId={}", patientId);
         validatePermission(patientId);
 
-        List<MedicationResponse> medications = medicationService
+        List<MedicationResponse> medications = medicationCoreService
                 .getMedications(patientId, null, Pageable.unpaged()).getContent();
 
         LocalDateTime startTime = startDate.atStartOfDay();
@@ -179,7 +179,7 @@ public class StatsFacade {
     }
 
     private List<String> getMedicationIds(String patientId) {
-        List<MedicationResponse> medications = medicationService
+        List<MedicationResponse> medications = medicationCoreService
                 .getMedications(patientId, null, Pageable.unpaged()).getContent();
         return medications.stream().map(MedicationResponse::getId).toList();
     }

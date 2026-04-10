@@ -10,7 +10,7 @@ import ct01.n07.backend.model.enums.DoseStatus;
 import ct01.n07.backend.model.enums.Gender;
 import ct01.n07.backend.model.enums.MessageStatus;
 import ct01.n07.backend.service.EventDoseService;
-import ct01.n07.backend.service.MedicationService;
+import ct01.n07.backend.service.MedicationCoreService;
 import ct01.n07.backend.service.MessageService;
 import ct01.n07.backend.service.RelationshipService;
 import ct01.n07.backend.service.UserProfileService;
@@ -28,7 +28,7 @@ import java.util.List;
 public class DoseConfirmationFacade {
 
     private final EventDoseService eventDoseService;
-    private final MedicationService medicationService;
+    private final MedicationCoreService medicationCoreService;
     private final UserProfileService userProfileService;
     private final RelationshipService relationshipService;
     private final MessageService messageService;
@@ -38,10 +38,10 @@ public class DoseConfirmationFacade {
     public EventDoseResponse confirmDose(String doseEventId) {
         log.info("Elderly confirming dose stats id={}", doseEventId);
 
-        // Lấy thông tin cữ thuốc qua Core Service
+        // Lấy thông tin cữ thuôc qua Core Service
         EventDose eventDose = eventDoseService.getEventDoseById(doseEventId);
         // getMedicationById verifies that the current user has access to this medication
-        MedicationResponse medication = medicationService.getMedicationById(eventDose.getMedicationId());
+        MedicationResponse medication = medicationCoreService.getMedicationById(eventDose.getMedicationId());
 
         UserProfile currentProfile = userProfileService.getCurrentUserProfile();
 

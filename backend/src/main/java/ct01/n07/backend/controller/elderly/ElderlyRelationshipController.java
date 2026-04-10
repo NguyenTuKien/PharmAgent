@@ -27,7 +27,7 @@ public class ElderlyRelationshipController {
 
     @GetMapping("/pending")
     public ResponseEntity<List<CaregiverProfileResponse>> getPendingCaregiverProfiles() {
-        return ResponseEntity.ok(relationshipService.getPendingCaregiverProfiles());
+        return ResponseEntity.ok(relationshipProfileFacade.getPendingCaregiverProfiles());
     }
 
     @PutMapping("/{id}/accept")

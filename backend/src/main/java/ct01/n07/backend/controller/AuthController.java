@@ -2,6 +2,8 @@ package ct01.n07.backend.controller;
 
 import ct01.n07.backend.dto.auth.*;
 import ct01.n07.backend.facade.AuthFacade;
+import ct01.n07.backend.facade.PasswordFacade;
+import ct01.n07.backend.facade.RegistrationFacade;
 import jakarta.validation.Valid;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/auth")
 public class AuthController {
     private final AuthFacade authFacade;
+    private final RegistrationFacade registrationFacade;
+    private final PasswordFacade passwordFacade;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
@@ -40,7 +44,7 @@ public class AuthController {
     public ResponseEntity<LoginResponse> signup(
             @PageableDefault(page = 0, size = 10) Pageable pageable,
             @Valid @RequestBody SignupRequest signupRequest) {
-        return ResponseEntity.ok(authFacade.signup(signupRequest, pageable));
+        return ResponseEntity.ok(registrationFacade.signup(signupRequest, pageable));
     }
 
     @PostMapping("/logout")
@@ -51,13 +55,13 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     public ResponseEntity<Void> forgotPassword(@Valid @RequestParam String email) {
-        authFacade.processForgotPassword(email);
+        passwordFacade.processForgotPassword(email);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        authFacade.resetPassword(request);
+        passwordFacade.resetPassword(request);
         return ResponseEntity.ok().build();
     }
 }

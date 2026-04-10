@@ -1,7 +1,5 @@
 package ct01.n07.backend.service.impl;
 
-import ct01.n07.backend.dto.relationship.CaregiverProfileResponse;
-import ct01.n07.backend.dto.relationship.ElderlyProfileResponse;
 import ct01.n07.backend.dto.relationship.RelationshipInviteRequest;
 import ct01.n07.backend.model.Relationship;
 import ct01.n07.backend.model.UserProfile;
@@ -18,8 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -51,168 +47,15 @@ public class RelationshipServiceImpl implements RelationshipService {
     }
 
     @Override
+    public List<Relationship> getPendingCaregiverRelationships() {
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
+        requireRole(currentProfile, Role.ELDERLY);
+        return relationshipRepository.findAllByElderlyIdAndStatus(currentProfile.getId(), RelationStatus.PENDING);
+    }
+
+    @Override
     public List<Relationship> getAcceptedCaregiverRelationshipsByElderly(String elderlyId) {
         return relationshipRepository.findAllByElderlyIdAndStatus(elderlyId, RelationStatus.ACCEPTED);
-    }
-
-    @Override
-    public List<ElderlyProfileResponse> getAcceptedElderlyProfiles() {
-        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
-        requireRole(currentProfile, Role.CAREGIVER);
-
-        List<Relationship> relationships = relationshipRepository
-                .findAllByCaregiverIdAndStatus(currentProfile.getId(), RelationStatus.ACCEPTED);
-
-        if (relationships.isEmpty()) {
-            return List.of();
-        }
-
-        List<String> elderlyIds = relationships.stream()
-                .map(Relationship::getElderlyId)
-                .toList();
-
-        Map<String, UserProfile> profileMap = userProfileRepository.findAllById(elderlyIds).stream()
-                .filter(profile -> profile.getRole() == Role.ELDERLY)
-                .collect(Collectors.toMap(UserProfile::getId, p -> p));
-
-        return relationships.stream()
-                .filter(rel -> profileMap.containsKey(rel.getElderlyId()))
-                .map(rel -> {
-                    UserProfile profile = profileMap.get(rel.getElderlyId());
-                    return ElderlyProfileResponse.builder()
-                            .relationshipId(rel.getId())
-                            .profileId(profile.getId())
-                            .firstName(profile.getFirstName())
-                            .lastName(profile.getLastName())
-                            .phone(profile.getPhone())
-                            .address(profile.getAddress())
-                            .avatarUrl(profile.getAvatarUrl())
-                            .elderlyTitle(rel.getElderlyTitle())
-                            .status(rel.getStatus())
-                            .permissionLevel(rel.getPermissionLevel())
-                            .build();
-                })
-                .toList();
-    }
-
-    @Override
-    public List<CaregiverProfileResponse> getAcceptedCaregiverProfiles() {
-        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
-        requireRole(currentProfile, Role.ELDERLY);
-
-        List<Relationship> relationships = relationshipRepository
-                .findAllByElderlyIdAndStatus(currentProfile.getId(), RelationStatus.ACCEPTED);
-
-        if (relationships.isEmpty()) {
-            return List.of();
-        }
-
-        List<String> caregiverIds = relationships.stream()
-                .map(Relationship::getCaregiverId)
-                .toList();
-
-        Map<String, UserProfile> profileMap = userProfileRepository.findAllById(caregiverIds).stream()
-                .filter(profile -> profile.getRole() == Role.CAREGIVER)
-                .collect(Collectors.toMap(UserProfile::getId, p -> p));
-
-        return relationships.stream()
-                .filter(rel -> profileMap.containsKey(rel.getCaregiverId()))
-                .map(rel -> {
-                    UserProfile profile = profileMap.get(rel.getCaregiverId());
-                    return CaregiverProfileResponse.builder()
-                            .relationshipId(rel.getId())
-                            .profileId(profile.getId())
-                            .firstName(profile.getFirstName())
-                            .lastName(profile.getLastName())
-                            .phone(profile.getPhone())
-                            .address(profile.getAddress())
-                            .caregiverTitle(rel.getCaregiverTitle())
-                            .avatarUrl(profile.getAvatarUrl())
-                            .status(rel.getStatus())
-                            .permissionLevel(rel.getPermissionLevel())
-                            .build();
-                })
-                .toList();
-    }
-
-    @Override
-    public List<ElderlyProfileResponse> getPendingElderlyProfiles() {
-        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
-        requireRole(currentProfile, Role.CAREGIVER);
-
-        List<Relationship> relationships = relationshipRepository
-                .findAllByCaregiverIdAndStatus(currentProfile.getId(), RelationStatus.PENDING);
-
-        if (relationships.isEmpty()) {
-            return List.of();
-        }
-
-        List<String> elderlyIds = relationships.stream()
-                .map(Relationship::getElderlyId)
-                .toList();
-
-        Map<String, UserProfile> profileMap = userProfileRepository.findAllById(elderlyIds).stream()
-                .filter(profile -> profile.getRole() == Role.ELDERLY)
-                .collect(Collectors.toMap(UserProfile::getId, p -> p));
-
-        return relationships.stream()
-                .filter(rel -> profileMap.containsKey(rel.getElderlyId()))
-                .map(rel -> {
-                    UserProfile profile = profileMap.get(rel.getElderlyId());
-                    return ElderlyProfileResponse.builder()
-                            .relationshipId(rel.getId())
-                            .profileId(profile.getId())
-                            .firstName(profile.getFirstName())
-                            .lastName(profile.getLastName())
-                            .phone(profile.getPhone())
-                            .address(profile.getAddress())
-                            .avatarUrl(profile.getAvatarUrl())
-                            .elderlyTitle(rel.getElderlyTitle())
-                            .status(rel.getStatus())
-                            .permissionLevel(rel.getPermissionLevel())
-                            .build();
-                })
-                .toList();
-    }
-
-    @Override
-    public List<CaregiverProfileResponse> getPendingCaregiverProfiles() {
-        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
-        requireRole(currentProfile, Role.ELDERLY);
-
-        List<Relationship> relationships = relationshipRepository
-                .findAllByElderlyIdAndStatus(currentProfile.getId(), RelationStatus.PENDING);
-
-        if (relationships.isEmpty()) {
-            return List.of();
-        }
-
-        List<String> caregiverIds = relationships.stream()
-                .map(Relationship::getCaregiverId)
-                .toList();
-
-        Map<String, UserProfile> profileMap = userProfileRepository.findAllById(caregiverIds).stream()
-                .filter(profile -> profile.getRole() == Role.CAREGIVER)
-                .collect(Collectors.toMap(UserProfile::getId, p -> p));
-
-        return relationships.stream()
-                .filter(rel -> profileMap.containsKey(rel.getCaregiverId()))
-                .map(rel -> {
-                    UserProfile profile = profileMap.get(rel.getCaregiverId());
-                    return CaregiverProfileResponse.builder()
-                            .relationshipId(rel.getId())
-                            .profileId(profile.getId())
-                            .firstName(profile.getFirstName())
-                            .lastName(profile.getLastName())
-                            .phone(profile.getPhone())
-                            .address(profile.getAddress())
-                            .avatarUrl(profile.getAvatarUrl())
-                            .caregiverTitle(rel.getCaregiverTitle())
-                            .status(rel.getStatus())
-                            .permissionLevel(rel.getPermissionLevel())
-                            .build();
-                })
-                .toList();
     }
 
     @Override

@@ -100,9 +100,37 @@ public class RelationshipProfileFacade {
                             .lastName(profile.getLastName())
                             .phone(profile.getPhone())
                             .address(profile.getAddress())
-                            .elderlyTitle(rel.getElderlyTitle())
                             .avatarUrl(profile.getAvatarUrl())
                             .elderlyTitle(rel.getElderlyTitle())
+                            .status(rel.getStatus())
+                            .permissionLevel(rel.getPermissionLevel())
+                            .build();
+                })
+                .toList();
+    }
+
+    public List<CaregiverProfileResponse> getPendingCaregiverProfiles() {
+        List<Relationship> relationships = relationshipService.getPendingCaregiverRelationships();
+        if (relationships.isEmpty()) return List.of();
+
+        List<String> caregiverIds = relationships.stream().map(Relationship::getCaregiverId).toList();
+        Map<String, UserProfile> profileMap = userProfileService.findAllById(caregiverIds).stream()
+                .filter(p -> p.getRole() == Role.CAREGIVER)
+                .collect(Collectors.toMap(UserProfile::getId, p -> p));
+
+        return relationships.stream()
+                .filter(rel -> profileMap.containsKey(rel.getCaregiverId()))
+                .map(rel -> {
+                    UserProfile profile = profileMap.get(rel.getCaregiverId());
+                    return CaregiverProfileResponse.builder()
+                            .relationshipId(rel.getId())
+                            .profileId(profile.getId())
+                            .firstName(profile.getFirstName())
+                            .lastName(profile.getLastName())
+                            .phone(profile.getPhone())
+                            .address(profile.getAddress())
+                            .caregiverTitle(rel.getCaregiverTitle())
+                            .avatarUrl(profile.getAvatarUrl())
                             .status(rel.getStatus())
                             .permissionLevel(rel.getPermissionLevel())
                             .build();

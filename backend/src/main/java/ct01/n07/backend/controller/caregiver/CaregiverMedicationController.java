@@ -1,7 +1,7 @@
 package ct01.n07.backend.controller.caregiver;
 
 import ct01.n07.backend.dto.medication.*;
-import ct01.n07.backend.service.MedicationService;
+import ct01.n07.backend.facade.MedicationFacade;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,18 +13,18 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/caregiver/medications")
 public class CaregiverMedicationController {
 
-    private final MedicationService medicationService;
+    private final MedicationFacade medicationFacade;
 
     @PostMapping
     public ResponseEntity<MedicationResponse> createMedication(@Valid @RequestBody MedicationCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(medicationService.createMedication(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(medicationFacade.createMedication(request));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<MedicationResponse> updateMedication(
             @PathVariable String id,
             @Valid @RequestBody MedicationUpdateRequest request) {
-        return ResponseEntity.ok(medicationService.updateMedication(id, request));
+        return ResponseEntity.ok(medicationFacade.updateMedication(id, request));
     }
 
     // Scheduling management
@@ -32,7 +32,7 @@ public class CaregiverMedicationController {
     public ResponseEntity<MedicationResponse> addSchedule(
             @PathVariable String id,
             @Valid @RequestBody MedScheduleRequest request) {
-        return ResponseEntity.ok(medicationService.addMedicationSchedule(request, id));
+        return ResponseEntity.ok(medicationFacade.addMedicationSchedule(request, id));
     }
 
     @PutMapping("/{id}/schedules/{scheduleId}")
@@ -40,14 +40,14 @@ public class CaregiverMedicationController {
             @PathVariable String id,
             @PathVariable String scheduleId,
             @Valid @RequestBody MedScheduleRequest request) {
-        return ResponseEntity.ok(medicationService.updateMedicationSchedule(id, scheduleId, request));
+        return ResponseEntity.ok(medicationFacade.updateMedicationSchedule(id, scheduleId, request));
     }
 
     @DeleteMapping("/{id}/schedules/{scheduleId}")
     public ResponseEntity<MedicationResponse> deleteSchedule(
             @PathVariable String id,
             @PathVariable String scheduleId) {
-        return ResponseEntity.ok(medicationService.deleteMedicationSchedule(id, scheduleId));
+        return ResponseEntity.ok(medicationFacade.deleteMedicationSchedule(id, scheduleId));
     }
 
     @PostMapping("/{id}/schedules/{scheduleId}/times")
@@ -55,7 +55,7 @@ public class CaregiverMedicationController {
             @PathVariable String id,
             @PathVariable String scheduleId,
             @Valid @RequestBody MedDoseRequest request) {
-        return ResponseEntity.ok(medicationService.addScheduleTime(id, scheduleId, request));
+        return ResponseEntity.ok(medicationFacade.addScheduleTime(id, scheduleId, request));
     }
 
     @PutMapping("/{id}/schedules/{scheduleId}/times/{timeId}")
@@ -64,7 +64,7 @@ public class CaregiverMedicationController {
             @PathVariable String scheduleId,
             @PathVariable String timeId,
             @Valid @RequestBody MedDoseRequest request) {
-        return ResponseEntity.ok(medicationService.updateScheduleTime(id, scheduleId, timeId, request));
+        return ResponseEntity.ok(medicationFacade.updateScheduleTime(id, scheduleId, timeId, request));
     }
 
     @DeleteMapping("/{id}/schedules/{scheduleId}/times/{timeId}")
@@ -72,12 +72,12 @@ public class CaregiverMedicationController {
             @PathVariable String id,
             @PathVariable String scheduleId,
             @PathVariable String timeId) {
-        return ResponseEntity.ok(medicationService.deleteScheduleTime(id, scheduleId, timeId));
+        return ResponseEntity.ok(medicationFacade.deleteScheduleTime(id, scheduleId, timeId));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
-        medicationService.deleteMedication(id);
+        medicationFacade.deleteMedication(id);
         return ResponseEntity.noContent().build();
     }
 }
