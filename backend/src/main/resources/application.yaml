@@ -1,10 +1,10 @@
 spring:
   jackson:
     time-zone: Asia/Ho_Chi_Minh
-  config:
-    import:
-      - optional:file:./.env[.properties]
-      - optional:file:./backend/.env[.properties]
+#  config:
+#    import:
+#      - optional:file:./.env[.properties]
+#      - optional:file:./backend/.env[.properties]
 
   main:
     banner-mode: "off"
@@ -20,8 +20,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${EMAIL_USERNAME}
-    password: ${EMAIL_PASSWORD}
+    username: ${SPRING_MAIL_USERNAME}
+    password: ${SPRING_MAIL_PASSWORD}
     properties: # <-- THÊM TOÀN BỘ PHẦN NÀY ĐỂ GMAIL HOẠT ĐỘNG
       mail:
         smtp:
@@ -30,8 +30,9 @@ spring:
             enable: true
 
 jwt:
-  secret: ${JWT_SECRET:VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE=}
-  expiration-ms: ${JWT_EXPIRATION_MS:900000}
+  secret: ${JWT_SECRET}
+  auth-expiration-ms: ${JWT_AUTH_EXPIRATION_MS:300000}
+  access-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}
   refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
 
 server:

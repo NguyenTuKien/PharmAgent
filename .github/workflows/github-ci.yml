@@ -2,10 +2,10 @@ name: CI pipeline for pharmagent
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "main"]
     tags: [ "v*" ]
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "main"]
 
 permissions:
   contents: read
@@ -16,6 +16,11 @@ permissions:
 jobs:
   unit_test_job:
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
