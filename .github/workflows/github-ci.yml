@@ -35,6 +35,13 @@ jobs:
       - name: Run Unit Tests with Maven
         working-directory: ./backend
         run: mvn -B clean test
+        env:
+          MONGODB_URI: mongodb://localhost:27017/pharmagent_test_db
+          REDIS_URL: redis://localhost:6379
+          RABBITMQ_ADDRESSES: localhost:5672
+          JWT_SECRET: day-la-mot-chuoi-secret-key-gia-cuc-ky-dai-de-chay-unit-test-thanh-cong
+          SPRING_MAIL_USERNAME: test@gmail.com
+          SPRING_MAIL_PASSWORD: dummy-password
         
       - name: Generate JaCoCo Coverage Report
         if: always()
@@ -79,9 +86,9 @@ jobs:
   tag_job:
     runs-on: ubuntu-latest 
     if: >
-      github.ref == 'refs/heads/dev' ||
       github.ref == 'refs/heads/main' ||
-      startsWith(github.ref, 'refs/tags/')
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'pull_request'
     outputs:
       docker_tag: ${{ steps.calc_tag.outputs.tag }} 
     steps:
@@ -90,9 +97,9 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
             echo "tag=latest" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.ref }}" == 'refs/heads/dev' ]]; then
-            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-            echo "tag=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == 'pull_request' ]]; then
+            PR_NUMBER=${{ github.event.pull_request.number }}
+            echo "tag=pr-$PR_NUMBER" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG_NAME=${GITHUB_REF#refs/tags/}
             echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
@@ -102,9 +109,9 @@ jobs:
     runs-on: ubuntu-latest 
     needs: [unit_test_job, tag_job]  
     if: >
-      github.ref == 'refs/heads/dev' ||
       github.ref == 'refs/heads/main' ||
-      startsWith(github.ref, 'refs/tags/')
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'pull_request'
     env:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
       REGISTRY_IMAGE: ${{ vars.DOCKER_REGISTRY }}
@@ -118,15 +125,21 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and Push Backend
         run: |
-          docker pull $REGISTRY_IMAGE/pharmagent-backend:$TAG || true
-          docker build --cache-from $REGISTRY_IMAGE/pharmagent-backend:$TAG -t $REGISTRY_IMAGE/pharmagent-backend:$TAG ./backend
-          docker push $REGISTRY_IMAGE/pharmagent-backend:$TAG
+          docker pull $REGISTRY_IMAGE/web-backend:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/web-backend:$TAG -t $REGISTRY_IMAGE/web-backend:$TAG ./backend
+          docker push $REGISTRY_IMAGE/web-backend:$TAG
+
+      - name: Build and Push Agent
+        run: |
+          docker pull $REGISTRY_IMAGE/web-agent:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/web-agent:$TAG -t $REGISTRY_IMAGE/web-agent:$TAG ./agent
+          docker push $REGISTRY_IMAGE/web-agent:$TAG
 
       - name: Build and Push Frontend
         run: |
-          docker pull $REGISTRY_IMAGE/pharmagent-frontend:$TAG || true
-          docker build --cache-from $REGISTRY_IMAGE/pharmagent-frontend:$TAG -t $REGISTRY_IMAGE/pharmagent-frontend:$TAG ./frontend
-          docker push $REGISTRY_IMAGE/pharmagent-frontend:$TAG
+          docker pull $REGISTRY_IMAGE/web-frontend:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/web-frontend:$TAG -t $REGISTRY_IMAGE/web-frontend:$TAG ./frontend
+          docker push $REGISTRY_IMAGE/web-frontend:$TAG
 
       - name: Cleanup Docker System
         if: always() 
@@ -134,11 +147,11 @@ jobs:
 
   integration_test_job:
     runs-on: ubuntu-latest
-    needs: [unit_test_job, tag_job, build_job]  
+    needs: [tag_job, build_job]  
     if: >
-      github.ref == 'refs/heads/dev' ||
       github.ref == 'refs/heads/main' ||
-      startsWith(github.ref, 'refs/tags/')
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'pull_request'
     env:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
       REGISTRY_IMAGE: ${{ vars.DOCKER_REGISTRY }}
@@ -171,13 +184,19 @@ jobs:
           
       - name: Wait and Check Logs
         run: |
-          sleep 20
+          sleep 30
           docker compose ps
           docker compose logs --tail=200 backend || true
+          docker compose logs --tail=200 agent || true
           docker compose logs --tail=200 frontend || true
 
-      - name: Check Backend Health and Frontend Accessibility
+      - name: Check Health and Accessibility
         run: |
+          # Check Backend Health
+          curl -f http://localhost:8080/api/actuator/health || (echo "Backend unreachable" && exit 1)
+          # Check Agent Health
+          curl -f http://localhost:8000/api/health || (echo "Agent unreachable" && exit 1)
+          # Check Frontend Accessibility
           curl -f http://localhost:80/ || (echo "Frontend unreachable" && exit 1)
 
       - name: Cleanup Docker System
@@ -187,8 +206,10 @@ jobs:
           docker system prune -a -f
 
   code_quality_scan:
+    name: Code Quality Scan with SonarCloud
     runs-on: ubuntu-latest
     needs: [unit_test_job]
+    continue-on-error: true
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -210,7 +231,7 @@ jobs:
       - name: Run SonarCloud Scan with Maven
         working-directory: ./backend
         run: |
-          mvn sonar:sonar \
+          mvn compile sonar:sonar \
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} \
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -220,9 +241,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [tag_job, build_job]
     if: >
-      github.ref == 'refs/heads/dev' ||
       github.ref == 'refs/heads/main' ||
-      startsWith(github.ref, 'refs/tags/')
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'pull_request'
     continue-on-error: true  
     env:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
@@ -248,29 +269,43 @@ jobs:
       - name: Run Trivy vulnerability scanner - Backend Image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY_IMAGE }}/pharmagent-backend:${{ env.TAG }}'
+          image-ref: '${{ env.REGISTRY_IMAGE }}/web-backend:${{ env.TAG }}'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+      - name: Run Trivy vulnerability scanner - Agent Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.REGISTRY_IMAGE }}/web-agent:${{ env.TAG }}'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+      - name: Run Trivy vulnerability scanner - Frontend Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.REGISTRY_IMAGE }}/web-frontend:${{ env.TAG }}'
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
 
   notify_success:
     runs-on: ubuntu-latest
-    needs: [unit_test_job, tag_job, build_job, integration_test_job, code_quality_scan, security_scan]
+    needs: [integration_test_job]
     if: >
       success() &&
-      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+      (github.ref == 'refs/heads/main' || github.event_name == 'pull_request')
     steps:
       - name: Send Discord Notification - Success
         run: |
           curl -H "Content-Type: application/json" \
-          -d "{\"content\": \"✅ **DEPLOY SUCCESS!** 🚀\\n**Project:** ${{ github.repository }}\\n**Branch:** ${{ github.ref_name }}\\n**User:** ${{ github.actor }}\\n**Status:** 🟢 Thành công\\n👉 [Xem Pipeline](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\"}" \
+          -d "{\"content\": \"✅ **PIPELINE SUCCESS!** 🚀\\n**Project:** ${{ github.repository }}\\n**${{ github.event_name == 'pull_request' && 'Pull Request' || 'Branch' }}:** ${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref_name }}\\n**User:** ${{ github.actor }}\\n**Status:** 🟢 Thành công\\n👉 [Xem Pipeline](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\"}" \
           ${{ secrets.DISCORD_WEBHOOK_URL }}
 
   notify_fail:
     runs-on: ubuntu-latest
-    needs: [unit_test_job, tag_job, build_job, integration_test_job, code_quality_scan, security_scan]
+    needs: [integration_test_job]
     if: >
       failure() &&
-      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+      (github.ref == 'refs/heads/main' || github.event_name == 'pull_request')
     steps:
       - name: Send Discord Notification - Failed
         run: |

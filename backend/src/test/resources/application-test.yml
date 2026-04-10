@@ -1,0 +1,25 @@
+spring:
+  # Tắt auto config Redis/RabbitMQ như đã làm ở bước trước
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/pharmagent_test_db}
+
+  # Cung cấp giá trị giả cho mail (nếu MailService bị gọi lúc khởi tạo)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${SPRING_MAIL_USERNAME:test@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:dummy-password}
+
+# Cung cấp giá trị giả cho JWT
+jwt:
+  # Lưu ý: secret key giả này phải đủ dài (ít nhất 32 ký tự / 256-bit) để tránh lỗi thuật toán HS256
+  secret: ${JWT_SECRET:day-la-mot-chuoi-secret-key-gia-cuc-ky-dai-de-chay-unit-test-thanh-cong}
+  auth-expiration-ms: 300000
+  access-expiration-ms: 900000
+  refresh-expiration-ms: 604800000
