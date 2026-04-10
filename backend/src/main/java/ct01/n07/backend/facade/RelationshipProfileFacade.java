@@ -43,7 +43,6 @@ public class RelationshipProfileFacade {
                             .address(profile.getAddress())
                             .elderlyTitle(rel.getElderlyTitle())
                             .avatarUrl(profile.getAvatarUrl())
-                            .elderlyTitle(rel.getElderlyTitle())
                             .status(rel.getStatus())
                             .permissionLevel(rel.getPermissionLevel())
                             .build();

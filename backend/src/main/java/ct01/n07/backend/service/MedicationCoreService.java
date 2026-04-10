@@ -7,6 +7,8 @@ import ct01.n07.backend.model.Medication;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
+
 public interface MedicationCoreService {
     MedicationResponse createMedication(MedicationCreateRequest request);
 
@@ -21,4 +23,6 @@ public interface MedicationCoreService {
     Medication requireMedication(String id);
 
     MedicationResponse toMedicationResponse(Medication medication);
+
+    List<String> getMedicationIdsByPatientId(String patientId);
 }
