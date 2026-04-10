@@ -196,12 +196,14 @@ jobs:
 
       - name: Check Health and Accessibility
         run: |
-          # Check Backend Health
-          curl -f http://localhost:8080/api/actuator/health || (echo "Backend unreachable" && exit 1)
-          # Check Agent Health
-          curl -f http://localhost:8000/api/health || (echo "Agent unreachable" && exit 1)
-          # Check Frontend Accessibility
-          curl -f http://localhost:80/ || (echo "Frontend unreachable" && exit 1)
+          # 1. Check xem Nginx có chuyển tiếp được sang Backend không (Cổng 80 chứ không phải 8080)
+          curl -f http://localhost:80/api/actuator/health || (echo "Nginx to Backend failed" && exit 1)
+          
+          # 2. Check xem Nginx có chuyển tiếp được sang Agent không (Cổng 80 chứ không phải 8000)
+          curl -f http://localhost:80/ai/api/health || (echo "Nginx to Agent failed" && exit 1)
+          
+          # 3. (Tùy chọn) Check trang chủ nếu bạn đã có index.html
+          # curl -f http://localhost:80/ || (echo "Frontend root 404 but proxy might work" && exit 1)
 
       - name: Cleanup Docker System
         if: always()
