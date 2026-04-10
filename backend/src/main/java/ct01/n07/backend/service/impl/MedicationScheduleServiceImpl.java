@@ -34,7 +34,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
     @Override
     public MedicationResponse addMedicationSchedule(MedScheduleRequest scheduleRequest, String medicationId) {
-        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
+        Medication pm = requireMedication(medicationId);
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -60,7 +60,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
     @Override
     public MedicationResponse updateMedicationSchedule(String medicationId, String scheduleId, MedScheduleRequest request) {
-        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
+        Medication pm = requireMedication(medicationId);
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -98,7 +98,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
     @Override
     public MedicationResponse deleteMedicationSchedule(String medicationId, String scheduleId) {
-        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
+        Medication pm = requireMedication(medicationId);
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -117,7 +117,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
     @Override
     public MedicationResponse addScheduleTime(String medicationId, String scheduleId, MedDoseRequest request) {
-        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
+        Medication pm = requireMedication(medicationId);
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -147,7 +147,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
     @Override
     public MedicationResponse updateScheduleTime(String medicationId, String scheduleId, String timeId, MedDoseRequest request) {
-        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
+        Medication pm = requireMedication(medicationId);
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -182,7 +182,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
     @Override
     public MedicationResponse deleteScheduleTime(String medicationId, String scheduleId, String timeId) {
-        Medication pm = medicationRepository.findById(medicationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
+        Medication pm = requireMedication(medicationId);
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
@@ -207,6 +207,11 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
             return toMedicationResponse(medicationRepository.save(pm));
         }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Time not found");
+    }
+
+    private Medication requireMedication(String medicationId) {
+        return medicationRepository.findById(medicationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
     }
 
     private MedicationResponse toMedicationResponse(Medication medication) {

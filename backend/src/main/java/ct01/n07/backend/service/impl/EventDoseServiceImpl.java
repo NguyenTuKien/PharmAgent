@@ -117,7 +117,7 @@ public class EventDoseServiceImpl implements EventDoseService {
 
         EventDose eventDose = eventDoseRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Khong tim thay cu thuoc voi ID: " + id));
+                        HttpStatus.NOT_FOUND, "Dose event not found with ID: " + id));
 
         Medication medication = medicationRepository.findById(eventDose.getMedicationId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication not found"));
