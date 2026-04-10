@@ -73,7 +73,6 @@ services:
       MONGODB_URI: mongodb://${SPRING_MONGODB_USERNAME}:${SPRING_MONGODB_PASSWORD}@database:27017/${SPRING_MONGODB_DATABASE}?authSource=${SPRING_MONGODB_DATABASE}
       REDIS_URL: redis://:${SPRING_DATA_REDIS_PASSWORD}@redis:6379
       RABBITMQ_ADDRESSES: amqp://${SPRING_RABBITMQ_USERNAME}:${SPRING_RABBITMQ_PASSWORD}@rabbitmq:5672
-      RABBITMQ_STOMP_HOST: rabbitmq
     depends_on:
       database:
         condition: service_healthy

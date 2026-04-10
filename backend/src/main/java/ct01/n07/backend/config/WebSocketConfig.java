@@ -1,5 +1,6 @@
 package ct01.n07.backend.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -9,6 +10,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 import lombok.RequiredArgsConstructor;
 import java.net.URI;
 
+@Slf4j
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
@@ -20,6 +22,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         config.setApplicationDestinationPrefixes("/app");
+
+        if (rabbitMqProps.getAddresses() == null || rabbitMqProps.getAddresses().isEmpty()) {
+            log.warn("RabbitMQ addresses is empty. STOMP broker relay will not be configured.");
+            return;
+        }
 
         try {
             // "Phẫu thuật" chuỗi addresses (ví dụ: amqp://user:pass@host:port/vhost)
