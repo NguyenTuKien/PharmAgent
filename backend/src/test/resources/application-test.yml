@@ -1,15 +1,25 @@
 spring:
+  main:
+    banner-mode: "off"
+  mongodb:
+    uri: mongodb://localhost:27017/test_db
   data:
-    mongodb:
-      uri: mongodb://localhost:27017/test_db # Hoặc dùng nhúng (embedded)
     redis:
-      host: localhost
+      url: redis://localhost:6379
   rabbitmq:
-    addresses: amqp://guest:guest@localhost:5672/ # Giá trị giả để không bị NPE
+    addresses: amqp://guest:guest@localhost:5672/
   mail:
     host: smtp.gmail.com
+    port: 587
+    username: test@gmail.com
+    password: test_password
 
-app:
-  jwt:
-    secret: "dummy_secret_for_testing_purposes_only_1234567890" # Phải đủ dài
-    expiration: 3600000
+jwt:
+  secret: "dummy_secret_for_testing_purposes_only_1234567890_secured"
+  auth-expiration-ms: 300000
+  access-expiration-ms: 900000
+  refresh-expiration-ms: 604800000
+
+logging:
+  level:
+    root: error
