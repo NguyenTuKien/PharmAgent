@@ -15,7 +15,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - pharmagent
+      - web
 
   redis:
     image: redis:7-alpine
@@ -35,7 +35,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - pharmagent
+      - web
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
@@ -59,7 +59,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - pharmagent
+      - web
 
   backend:
     build: ./backend
@@ -88,7 +88,7 @@ services:
     volumes:
       - backend_logs:/app/logs
     networks:
-      - pharmagent
+      - web
 
   agent:
     build: ./agent
@@ -104,7 +104,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - pharmagent
+      - web
 
   frontend:
     build: ./frontend
@@ -118,7 +118,16 @@ services:
       agent:
         condition: service_healthy
     networks:
-      - pharmagent
+      - web
+  
+  cloudflare:
+    image: cloudflare/cloudflared:2024.6.0
+    restart: always
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+    networks:
+      - web
 
 volumes:
   mongo_data:
@@ -128,5 +137,5 @@ volumes:
   backend_logs:
 
 networks:
-  pharmagent:
+  web:
     driver: bridge
