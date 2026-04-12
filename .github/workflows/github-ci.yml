@@ -316,25 +316,20 @@ jobs:
       github.event_name == 'pull_request'
     env:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
-      PAT_TOKEN: ${{ secrets.PAT_TOKEN }} 
-      REPO_CONFIG: ${{ vars.REPO_CONFIG }}
-      
+      REPO_CONFIG: ${{ vars.REPO_CONFIG }} 
     steps:
       - name: Checkout Backend Config Repo
         uses: actions/checkout@v4
         with:
           repository: ${{ env.REPO_CONFIG }}
-          token: ${{ env.PAT_TOKEN }}
+          ssh-key: ${{ secrets.SSH_KEY }} # 1. Dùng đúng tham số ssh-key
+          ref: 'main' # 2. Chốt cứng ref để tránh lỗi "Bad credentials"
           path: Backend 
 
       - name: Update Backend Tag for Staging
         run: |
           cd Backend
           TARGET_FILE="spring/stag/values-stag.yaml"
-          
-          echo ">>> Deploying to STAG environment <<<"
-          echo ">>> Updating file: $TARGET_FILE with tag: ${{ env.TAG }} <<<"
-          
           yq -i '.backend.image.tag = strenv(TAG)' "$TARGET_FILE"
           
           git config user.name "github-actions[bot]"
@@ -342,7 +337,6 @@ jobs:
           
           git add "$TARGET_FILE"
           git commit -m "CD: Update backend stag image tag to ${{ env.TAG }}" || echo "No changes to commit"
-          git pull --rebase origin main
           git push origin main --force
 
   update_be_config_prod:
@@ -352,23 +346,20 @@ jobs:
     if: github.ref == 'refs/heads/main'
     env:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
-      PAT_TOKEN: ${{ secrets.PAT_TOKEN }} 
       REPO_CONFIG: ${{ vars.REPO_CONFIG }}
     steps:
       - name: Checkout Backend Config Repo
         uses: actions/checkout@v4
         with:
           repository: ${{ env.REPO_CONFIG }}
-          token: ${{ env.PAT_TOKEN }}
+          ssh-key: ${{ secrets.SSH_KEY }} # 3. Sửa tương tự như trên
+          ref: 'main'
           path: backend-repo
+
       - name: Update Backend Tag for Production
         run: |
           cd backend-repo
           TARGET_FILE="spring/prod/values-prod.yaml"
-          
-          echo ">>> Deploying to PROD environment <<<"
-          echo ">>> Updating file: $TARGET_FILE with tag: ${{ env.TAG }} <<<"
-          
           yq -i '.backend.image.tag = strenv(TAG)' "$TARGET_FILE"
           
           git config user.name "github-actions[bot]"
@@ -376,7 +367,6 @@ jobs:
           
           git add "$TARGET_FILE"
           git commit -m "CD: Update backend prod image tag to ${{ env.TAG }}" || echo "No changes to commit"
-          git pull --rebase origin main
           git push origin main --force
 
 
