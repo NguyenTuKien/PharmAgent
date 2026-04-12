@@ -307,7 +307,7 @@ jobs:
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
     
-    update_be_config_stag:
+  update_be_config_stag:
     name: Update Backend Config (Stag)
     needs: [tag_job, helm_lint_job, integration_test_job]
     runs-on: ubuntu-latest
