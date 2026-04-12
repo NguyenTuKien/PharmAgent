@@ -318,7 +318,6 @@ jobs:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
       REPO_CONFIG: ${{ vars.REPO_CONFIG }} 
     steps:
-      steps:
       # 1. Checkout cái repo GitHub hiện tại (nơi chứa code backend)
       - name: Checkout Source Code (GitHub)
         uses: actions/checkout@v4
@@ -362,7 +361,6 @@ jobs:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
       REPO_CONFIG: ${{ vars.REPO_CONFIG }}
     steps:
-      steps:
       # 1. Checkout cái repo GitHub hiện tại (nơi chứa code backend)
       - name: Checkout Source Code (GitHub)
         uses: actions/checkout@v4
