@@ -318,14 +318,28 @@ jobs:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
       REPO_CONFIG: ${{ vars.REPO_CONFIG }} 
     steps:
-      - name: Checkout Backend Config Repo
+      steps:
+      # 1. Checkout cái repo GitHub hiện tại (nơi chứa code backend)
+      - name: Checkout Source Code (GitHub)
         uses: actions/checkout@v4
-        with:
-          repository: ${{ env.REPO_CONFIG }}
-          ssh-key: ${{ secrets.SSH_KEY }} # 1. Dùng đúng tham số ssh-key
-          ref: 'main' # 2. Chốt cứng ref để tránh lỗi "Bad credentials"
-          path: Backend 
 
+      # 2. Cấu hình SSH Agent để dùng được SSH Key cho GitLab
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      # 3. Clone repo Config từ GitLab bằng lệnh git clone
+      - name: Clone Backend Config Repo (GitLab)
+        run: |
+          # Thêm gitlab.com vào known_hosts để không bị hỏi confirm
+          mkdir -p ~/.ssh
+          ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
+          
+          # Clone repo vào thư mục 'Backend'
+          git clone git@gitlab.com:NguyenTuKien/PharmAgent.git Backend
+          
+      # 4. Update Tag (Giữ nguyên logic cũ của Kiên)
       - name: Update Backend Tag for Staging
         run: |
           cd Backend
@@ -348,25 +362,39 @@ jobs:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
       REPO_CONFIG: ${{ vars.REPO_CONFIG }}
     steps:
-      - name: Checkout Backend Config Repo
+      steps:
+      # 1. Checkout cái repo GitHub hiện tại (nơi chứa code backend)
+      - name: Checkout Source Code (GitHub)
         uses: actions/checkout@v4
-        with:
-          repository: ${{ env.REPO_CONFIG }}
-          ssh-key: ${{ secrets.SSH_KEY }} # 3. Sửa tương tự như trên
-          ref: 'main'
-          path: backend-repo
 
-      - name: Update Backend Tag for Production
+      # 2. Cấu hình SSH Agent để dùng được SSH Key cho GitLab
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      # 3. Clone repo Config từ GitLab bằng lệnh git clone
+      - name: Clone Backend Config Repo (GitLab)
         run: |
-          cd backend-repo
-          TARGET_FILE="spring/prod/values-prod.yaml"
+          # Thêm gitlab.com vào known_hosts để không bị hỏi confirm
+          mkdir -p ~/.ssh
+          ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
+          
+          # Clone repo vào thư mục 'Backend'
+          git clone git@gitlab.com:NguyenTuKien/PharmAgent.git Backend
+          
+      # 4. Update Tag (Giữ nguyên logic cũ của Kiên)
+      - name: Update Backend Tag for Staging
+        run: |
+          cd Backend
+          TARGET_FILE="spring/stag/values-stag.yaml"
           yq -i '.backend.image.tag = strenv(TAG)' "$TARGET_FILE"
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           git add "$TARGET_FILE"
-          git commit -m "CD: Update backend prod image tag to ${{ env.TAG }}" || echo "No changes to commit"
+          git commit -m "CD: Update backend stag image tag to ${{ env.TAG }}" || echo "No changes to commit"
           git push origin main --force
 
 
