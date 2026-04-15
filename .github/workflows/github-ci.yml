@@ -332,11 +332,7 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
           
-<<<<<<< HEAD
-          git clone git@gitlab.com:D23CTPM/PharmAgent.git Backend
-=======
           git clone ${REPO_CONFIG} Config
->>>>>>> 0047c7d (Update)
           
       - name: Update Config Tag for Staging
         run: |
