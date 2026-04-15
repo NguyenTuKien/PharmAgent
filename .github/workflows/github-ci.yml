@@ -307,8 +307,8 @@ jobs:
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
     
-  update_be_config:
-    name: Update Backend Config
+  update_config:
+    name: Update Config
     needs: [tag_job, helm_lint_job, integration_test_job]
     runs-on: ubuntu-latest
     if: >
@@ -327,63 +327,33 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      - name: Clone Backend Config Repo (GitLab)
+      - name: Clone Config Repo (GitLab)
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
           
+<<<<<<< HEAD
           git clone git@gitlab.com:D23CTPM/PharmAgent.git Backend
+=======
+          git clone ${REPO_CONFIG} Config
+>>>>>>> 0047c7d (Update)
           
-      - name: Update Backend Tag for Staging
+      - name: Update Config Tag for Staging
         run: |
-          cd Backend
-          TARGET_FILE="spring/values-prod.yaml"
-          yq -i '.backend.image.tag = strenv(TAG)' "$TARGET_FILE"
+          cd Config
+          BACKEND_TARGET_FILE="app/spring/values-prod.yaml"
+          yq -i '.backend.image.tag = strenv(TAG)' "$BACKEND_TARGET_FILE"
+
+          # FRONTEND_TARGET_FILE="app/react/values-prod.yaml"
+          # yq -i '.frontend.image.tag = strenv(TAG)' "$FRONTEND_TARGET_FILE"
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add "$TARGET_FILE"
-          git commit -m "CD: Update backend stag image tag to ${{ env.TAG }}" || echo "No changes to commit"
+          git add "$BACKEND_TARGET_FILE"
+          # git add "$FRONTEND_TARGET_FILE"
+          git commit -m "CD: Update backend and frontend image tag to ${{ env.TAG }}" || echo "No changes to commit"
           git push origin main --force
-
-  # update_fe_config_stag:
-  #   name: Update Frontend Config (Stag)
-  #   needs: [tag_job, integration_test_job]
-  #   runs-on: ubuntu-latest
-  #   if: >
-  #     startsWith(github.ref, 'refs/tags/') ||
-  #     github.event_name == 'pull_request'
-  #   env:
-  #     TAG: ${{ needs.tag_job.outputs.docker_tag }}
-  #     PAT_TOKEN: ${{ secrets.PAT_TOKEN }} 
-  #     FRONTEND_REPO_CONFIG: ${{ vars.FRONTEND_REPO_CONFIG }}
-      
-  #   steps:
-  #     - name: Checkout Frontend Config Repo
-  #       uses: actions/checkout@v4
-  #       with:
-  #         repository: ${{ env.FRONTEND_REPO_CONFIG }}
-  #         token: ${{ env.PAT_TOKEN }}
-  #         path: frontend-repo
-
-  #     - name: Update Frontend Tag for Staging
-  #       run: |
-  #         cd frontend-repo
-  #         TARGET_FILE="helm-values/values-stag.yaml"
-          
-  #         echo ">>> Deploying to STAG environment <<<"
-  #         echo ">>> Updating file: $TARGET_FILE with tag: ${{ env.TAG }} <<<"
-          
-  #         yq -i '.frontend.image.tag = strenv(TAG)' "$TARGET_FILE"
-          
-  #         git config user.name "github-actions[bot]"
-  #         git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-  #         git add "$TARGET_FILE"
-  #         git commit -m "CD: Update frontend stag image tag to ${{ env.TAG }}" || echo "No changes to commit"
-  #         git pull --rebase origin main
-  #         git push origin main --force
 
   notify_success:
     name: Notify Success
