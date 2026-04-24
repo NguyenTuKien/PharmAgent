@@ -349,10 +349,10 @@ jobs:
       - name: Update Config Tag for Staging
         run: |
           cd Config
-          BACKEND_TARGET_FILE="app/spring/values-prod.yaml"
+          BACKEND_TARGET_FILE="app/backend/values-prod.yaml"
           yq -i '.backend.image.tag = strenv(TAG)' "$BACKEND_TARGET_FILE"
 
-          # FRONTEND_TARGET_FILE="app/react/values-prod.yaml"
+          # FRONTEND_TARGET_FILE="app/frontend/values-prod.yaml"
           # yq -i '.frontend.image.tag = strenv(TAG)' "$FRONTEND_TARGET_FILE"
           
           git config user.name "github-actions[bot]"
