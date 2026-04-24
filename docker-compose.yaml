@@ -78,7 +78,6 @@ services:
     networks:
       - pharmagent-network
 
-<<<<<<< HEAD
   gateway:
     build: ./gateway
     image: ${DOCKER_REGISTRY:-ghcr.io/nguyentukien}/pharmagent-gateway:${TAG:-latest}
@@ -127,47 +126,6 @@ services:
 #        condition: service_started
 #    networks:
 #      - pharmagent-network
-=======
-  # agent:
-  #   build: ./agent
-  #   image: ${DOCKER_REGISTRY:-ngtukien218}/web-agent:${TAG:-latest}
-  #   restart: always
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - agent_logs:/app/logs
-  #   healthcheck:
-  #     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
-  #     interval: 15s
-  #     timeout: 5s
-  #     retries: 5
-  #   networks:
-  #     - web
-
-  # frontend:
-  #   build: ./frontend
-  #   image: ${DOCKER_REGISTRY:-ngtukien218}/web-frontend:${TAG:-latest}
-  #   restart: always
-  #   ports:
-  #     - "80:80"
-  #   depends_on:
-  #     backend:
-  #       condition: service_healthy
-  #     agent:
-  #       condition: service_healthy
-  #   networks:
-  #     - web
-  
-  cloudflare:
-    image: cloudflare/cloudflared:2024.6.0
-    restart: always
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - web
->>>>>>> 7af0ed9 (Test)
 
 volumes:
   mongo_data:
