@@ -44,8 +44,13 @@ rabbitmq:
 
 mail:
   environment:
+<<<<<<< HEAD
     SPRING_MAIL_USERNAME: "<set-via-secret>"
     SPRING_MAIL_PASSWORD: "<set-via-secret>"
+=======
+    SPRING_MAIL_USERNAME: "thechalksquad.work@gmail.com"
+    SPRING_MAIL_PASSWORD: "vxagswcsettletgb"
+>>>>>>> 8545654 (Update)
     SPRING_MAIL_HOST: "smtp.gmail.com"
     SPRING_MAIL_PORT: "587"
 
