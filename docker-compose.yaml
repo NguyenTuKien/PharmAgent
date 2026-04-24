@@ -12,7 +12,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - web
+      - pharmagent-network
 
   redis:
     image: redis:7-alpine
@@ -27,7 +27,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - web
+      - pharmagent-network
 
   rabbitmq:
     image: rabbitmq:3.11-management
@@ -41,11 +41,11 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
-      - web
+      - pharmagent-network
 
   backend:
     build: ./backend
-    image: ghcr.io/nguyentukien/web-backend:latest
+    image: ghcr.io/nguyentukien/pharmagent-backend:latest
     restart: always
     env_file: .env
     depends_on:
@@ -63,7 +63,7 @@ services:
     volumes:
       - backend_logs:/app/logs
     networks:
-      - web
+      - pharmagent-network
   
   cloudflare:
     image: cloudflare/cloudflared:2024.6.0
@@ -74,7 +74,7 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - web
+      - pharmagent-network
 
 volumes:
   mongo_data:
@@ -83,5 +83,5 @@ volumes:
   backend_logs:
 
 networks:
-  web:
+  pharmagent-network:
     driver: bridge
