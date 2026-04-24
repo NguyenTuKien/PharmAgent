@@ -2,10 +2,7 @@ services:
   database:
     image: mongo:7
     restart: always
-    env_file:
-      - .env
-    ports:
-      - "27017:27017"
+    env_file: .env
     volumes:
       - mongo_data:/data/db
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
@@ -15,127 +12,76 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - web
+      - pharmagent-network
 
   redis:
     image: redis:7-alpine
     restart: always
-    # Bắt buộc Redis phải khởi chạy với password được chỉ định
-    command: /bin/sh -c 'redis-server --requirepass "$$SPRING_DATA_REDIS_PASSWORD"'
-    ports:
-      - "6379:6379"
-    env_file:
-      - .env
-    volumes:
-      - redis_data:/data
+    env_file: .env
+    command: /bin/sh -c 'redis-server --requirepass "$${SPRING_DATA_REDIS_PASSWORD}"'
     healthcheck:
-      # Sửa lại cú pháp healthcheck chuẩn của Redis có password
-      test: ["CMD-SHELL", "redis-cli -a $$SPRING_DATA_REDIS_PASSWORD ping | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${SPRING_DATA_REDIS_PASSWORD}\" ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - redis_data:/data
     networks:
-      - web
+      - pharmagent-network
 
   rabbitmq:
-    image: rabbitmq:3.12-management-alpine
+    image: rabbitmq:3.11-management
     restart: always
-    command: >
-      sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp rabbitmq_web_stomp
-      && rabbitmq-server"
-    ports:
-      - "5672:5672"    # Cổng AMQP
-      - "15672:15672"  # Cổng UI Management
-      - "61613:61613"  # Cổng STOMP
-      - "15674:15674"  # Cổng Web STOMP
-    environment:
-      RABBITMQ_DEFAULT_USER: ${SPRING_RABBITMQ_USERNAME}
-      RABBITMQ_DEFAULT_PASS: ${SPRING_RABBITMQ_PASSWORD}
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+    env_file: .env
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     networks:
-      - web
+      - pharmagent-network
 
   backend:
     build: ./backend
-    image: ${DOCKER_REGISTRY:-ngtukien218}/web-backend:${TAG:-latest}
+    image: ${DOCKER_REGISTRY:-ghcr.io/nguyentukien}/pharmagent-backend:${TAG:-latest}
     restart: always
-    env_file:
-      - .env
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_MONGODB_URI: mongodb://${SPRING_MONGODB_USERNAME}:${SPRING_MONGODB_PASSWORD}@database:27017/${SPRING_MONGODB_DATABASE}?authSource=${SPRING_MONGODB_DATABASE}
-      SPRING_DATA_REDIS_URL: redis://:${SPRING_DATA_REDIS_PASSWORD}@redis:6379
-      SPRING_RABBITMQ_ADDRESSES: amqp://${SPRING_RABBITMQ_USERNAME}:${SPRING_RABBITMQ_PASSWORD}@rabbitmq:5672/
+    env_file: .env
     depends_on:
       database:
         condition: service_healthy
-      redis: # Bắt buộc backend phải đợi cả Redis sẵn sàng
+      redis:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health | grep UP || exit 1" ]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health | grep UP || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
     volumes:
       - backend_logs:/app/logs
     networks:
-      - web
-
-  agent:
-    build: ./agent
-    image: ${DOCKER_REGISTRY:-ngtukien218}/web-agent:${TAG:-latest}
-    restart: always
-    ports:
-      - "8000:8000"
-    volumes:
-      - agent_logs:/app/logs
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-    networks:
-      - web
-
-  frontend:
-    build: ./frontend
-    image: ${DOCKER_REGISTRY:-ngtukien218}/web-frontend:${TAG:-latest}
-    restart: always
-    ports:
-      - "80:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-      agent:
-        condition: service_healthy
-    networks:
-      - web
+      - pharmagent-network
   
   cloudflare:
     image: cloudflare/cloudflared:2024.6.0
     restart: always
+    env_file: .env
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
-      - frontend
+      backend:
+        condition: service_healthy
     networks:
-      - web
+      - pharmagent-network
 
 volumes:
   mongo_data:
   redis_data:
   rabbitmq_data:
-  agent_logs:
   backend_logs:
 
 networks:
-  web:
+  pharmagent-network:
     driver: bridge

@@ -12,6 +12,7 @@ permissions:
   checks: write
   pull-requests: write
   statuses: write
+  packages: write
 
 jobs:
   unit_test_job:
@@ -130,32 +131,36 @@ jobs:
       github.event_name == 'pull_request'
     env:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
-      REGISTRY_IMAGE: ${{ vars.DOCKER_REGISTRY }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
-      - name: Log in to Docker Registry
+      - name: Convert repository owner to lowercase
+        run: echo "REGISTRY_IMAGE=ghcr.io/${OWNER,,}" >> ${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and Push Backend
         run: |
-          docker pull $REGISTRY_IMAGE/web-backend:$TAG || true
-          docker build --cache-from $REGISTRY_IMAGE/web-backend:$TAG -t $REGISTRY_IMAGE/web-backend:$TAG ./backend
-          docker push $REGISTRY_IMAGE/web-backend:$TAG
+          docker pull $REGISTRY_IMAGE/pharmagent-backend:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/pharmagent-backend:$TAG -t $REGISTRY_IMAGE/pharmagent-backend:$TAG ./backend
+          docker push $REGISTRY_IMAGE/pharmagent-backend:$TAG
 
       - name: Build and Push Agent
         run: |
-          docker pull $REGISTRY_IMAGE/web-agent:$TAG || true
-          docker build --cache-from $REGISTRY_IMAGE/web-agent:$TAG -t $REGISTRY_IMAGE/web-agent:$TAG ./agent
-          docker push $REGISTRY_IMAGE/web-agent:$TAG
+          docker pull $REGISTRY_IMAGE/pharmagent-agent:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/pharmagent-agent:$TAG -t $REGISTRY_IMAGE/pharmagent-agent:$TAG ./agent
+          docker push $REGISTRY_IMAGE/pharmagent-agent:$TAG
 
       - name: Build and Push Frontend
         run: |
-          docker pull $REGISTRY_IMAGE/web-frontend:$TAG || true
-          docker build --cache-from $REGISTRY_IMAGE/web-frontend:$TAG -t $REGISTRY_IMAGE/web-frontend:$TAG ./frontend
-          docker push $REGISTRY_IMAGE/web-frontend:$TAG
+          docker pull $REGISTRY_IMAGE/pharmagent-frontend:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/pharmagent-frontend:$TAG -t $REGISTRY_IMAGE/pharmagent-frontend:$TAG ./frontend
+          docker push $REGISTRY_IMAGE/pharmagent-frontend:$TAG
 
       - name: Cleanup Docker System
         if: always() 
@@ -171,16 +176,20 @@ jobs:
       github.event_name == 'pull_request'
     env:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
-      REGISTRY_IMAGE: ${{ vars.DOCKER_REGISTRY }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+      - name: Convert repository owner to lowercase
+        run: echo "REGISTRY_IMAGE=ghcr.io/${OWNER,,}" >> ${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
 
-      - name: Log in to Docker Registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Environment Variables
         run: |
@@ -204,19 +213,18 @@ jobs:
           sleep 30
           docker compose ps
           docker compose logs --tail=200 backend || true
-          docker compose logs --tail=200 agent || true
-          docker compose logs --tail=200 frontend || true
 
       - name: Check Health and Accessibility
         run: |
-          # 1. Check xem Nginx có chuyển tiếp được sang Backend không (Cổng 80 chứ không phải 8080)
-          curl -f http://localhost:80/api/actuator/health || (echo "Nginx to Backend failed" && exit 1)
-          
-          # 2. Check xem Nginx có chuyển tiếp được sang Agent không (Cổng 80 chứ không phải 8000)
-          curl -f http://localhost:80/ai/api/health || (echo "Nginx to Agent failed" && exit 1)
-          
-          # 3. (Tùy chọn) Check trang chủ nếu bạn đã có index.html
-          # curl -f http://localhost:80/ || (echo "Frontend root 404 but proxy might work" && exit 1)
+          # Kiểm tra trạng thái của container backend từ docker compose ps
+          # Docker compose healthcheck sẽ đảm bảo backend sẵn sàng
+          if docker compose ps backend | grep -q "healthy"; then
+            echo "Backend is healthy!"
+          else
+            echo "Backend is NOT healthy!"
+            docker compose logs backend
+            exit 1
+          fi
 
       - name: Cleanup Docker System
         if: always()
@@ -267,16 +275,20 @@ jobs:
     continue-on-error: true  
     env:
       TAG: ${{ needs.tag_job.outputs.docker_tag }}
-      REGISTRY_IMAGE: ${{ vars.DOCKER_REGISTRY }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+      - name: Convert repository owner to lowercase
+        run: echo "REGISTRY_IMAGE=ghcr.io/${OWNER,,}" >> ${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
         
-      - name: Log in to Docker Registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Run Trivy vulnerability scanner - Filesystem
         uses: aquasecurity/trivy-action@master
@@ -289,21 +301,21 @@ jobs:
       - name: Run Trivy vulnerability scanner - Backend Image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY_IMAGE }}/web-backend:${{ env.TAG }}'
+          image-ref: '${{ env.REGISTRY_IMAGE }}/pharmagent-backend:${{ env.TAG }}'
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
 
       - name: Run Trivy vulnerability scanner - Agent Image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY_IMAGE }}/web-agent:${{ env.TAG }}'
+          image-ref: '${{ env.REGISTRY_IMAGE }}/pharmagent-agent:${{ env.TAG }}'
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
 
       - name: Run Trivy vulnerability scanner - Frontend Image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY_IMAGE }}/web-frontend:${{ env.TAG }}'
+          image-ref: '${{ env.REGISTRY_IMAGE }}/pharmagent-frontend:${{ env.TAG }}'
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
     
@@ -337,10 +349,10 @@ jobs:
       - name: Update Config Tag for Staging
         run: |
           cd Config
-          BACKEND_TARGET_FILE="app/spring/values-prod.yaml"
+          BACKEND_TARGET_FILE="app/backend/values-prod.yaml"
           yq -i '.backend.image.tag = strenv(TAG)' "$BACKEND_TARGET_FILE"
 
-          # FRONTEND_TARGET_FILE="app/react/values-prod.yaml"
+          # FRONTEND_TARGET_FILE="app/frontend/values-prod.yaml"
           # yq -i '.frontend.image.tag = strenv(TAG)' "$FRONTEND_TARGET_FILE"
           
           git config user.name "github-actions[bot]"

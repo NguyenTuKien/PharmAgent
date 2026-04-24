@@ -64,4 +64,12 @@ public class AuthController {
         passwordFacade.resetPassword(request);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            java.security.Principal principal) {
+        passwordFacade.changePassword(principal.getName(), request);
+        return ResponseEntity.ok().build();
+    }
 }
