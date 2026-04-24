@@ -46,6 +46,8 @@ mail:
   environment:
     SPRING_MAIL_USERNAME: "thechalksquad.work@gmail.com"
     SPRING_MAIL_PASSWORD: "vxagswcsettletgb"
+    SPRING_MAIL_HOST: "smtp.gmail.com"
+    SPRING_MAIL_PORT: "587"
 
 security:
   environment:

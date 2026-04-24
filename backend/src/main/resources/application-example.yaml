@@ -1,0 +1,52 @@
+spring:
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
+  main:
+    banner-mode: "off"
+  application:
+    name: backend
+  mongodb:
+    uri: mongodb+srv://dummy_user:dummy_password@dummy_cluster.mongodb.net/dummy_db?appName=TestCluster&retryWrites=true&w=majority&tls=true
+  data:
+    redis:
+      url: redis://dummy_user:dummy_password@dummy_redis_host:12345
+  rabbitmq:
+    addresses: amqps://dummy_user:dummy_password@dummy_rabbitmq_host/dummy_vhost
+
+  mail:
+    host: smtp.example.com
+    port: 587
+    username: dummy_email@example.com
+    password: dummy_email_password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+jwt:
+  secret: dummy_base64_encoded_secret_key_here=
+  auth-expiration-ms: 300000
+  access-expiration-ms: 900000
+  refresh-expiration-ms: 604800000
+
+server:
+  servlet:
+    context-path: /api
+  port: 8080
+
+cors:
+  allowed-origins: "*"
+
+logging:
+  level:
+    root: warn
+    org.springframework.data.mongodb: info
+    org.mongodb.driver: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
