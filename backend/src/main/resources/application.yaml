@@ -1,10 +1,10 @@
 spring:
   jackson:
     time-zone: Asia/Ho_Chi_Minh
-#   config:
-#     import:
-# #      - optional:file:./.env[.properties]
-#       - optional:file:./backend/.env[.properties]
+  config:
+     import:
+ #      - optional:file:./.env[.properties]
+       - optional:file:./PharmAgent/backend/.env[.properties]
 
   main:
     banner-mode: "off"

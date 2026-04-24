@@ -1,6 +1,8 @@
 package ct01.n07.backend.facade;
 
+import ct01.n07.backend.dto.auth.ChangePasswordRequest;
 import ct01.n07.backend.dto.auth.ResetPasswordRequest;
+import ct01.n07.backend.model.User;
 import ct01.n07.backend.producer.MailProducerService;
 import ct01.n07.backend.service.UserService;
 import ct01.n07.backend.util.OtpUtil;
@@ -8,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -22,6 +25,7 @@ public class PasswordFacade {
     private final OtpUtil otpUtil;
     private final RedisTemplate<String, String> redisTemplate;
     private final MailProducerService mailProducerService;
+    private final PasswordEncoder passwordEncoder;
 
     public void processForgotPassword(String email) {
         // Bước 1: Kiểm tra xem email có tồn tại trong MongoDB không
@@ -67,5 +71,18 @@ public class PasswordFacade {
         }
 
         userService.updatePassword(request.getEmail(), request.getNewPassword());
+    }
+
+    public void changePassword(String userId, ChangePasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới và xác nhận mật khẩu không khớp");
+        }
+
+        User user = userService.findById(userId);
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không đúng");
+        }
+
+        userService.updatePassword(user.getEmail(), request.getNewPassword());
     }
 }
