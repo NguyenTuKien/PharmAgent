@@ -45,7 +45,7 @@ services:
 
   backend:
     build: ./backend
-    image: ghcr.io/nguyentukien/pharmagent-backend:latest
+    image: ${DOCKER_REGISTRY:-ghcr.io/nguyentukien}/pharmagent-backend:${TAG:-latest}
     restart: always
     env_file: .env
     depends_on:
