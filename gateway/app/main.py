@@ -71,7 +71,11 @@ Central entry point cho toàn bộ hệ thống PharmAgent.
 ### Tính năng
 - **Xác thực** – JWT Bearer token (HMAC-SHA256, tương thích Spring Boot)
 - **Phân quyền** – Role-based: `ADMIN`, `CAREGIVER`, `ELDERLY`
+<<<<<<< HEAD
 - **Rate Limiting** – Fixed window qua Redis (60/200/500 req/min)
+=======
+- **Rate Limiting** – Sliding window qua Redis (60/200/500 req/min)
+>>>>>>> 524c29e (Add API Gateway)
 - **Proxy HTTP** – httpx async, connection pooling
 - **Proxy WebSocket** – Tunnel hai chiều tới Agent
 
@@ -92,12 +96,20 @@ Central entry point cho toàn bộ hệ thống PharmAgent.
 
 # 1. CORS
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+<<<<<<< HEAD
 allow_all_origins = origins == ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if allow_all_origins else origins,
     allow_origin_regex=None,
     allow_credentials=not allow_all_origins,
+=======
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins if origins != ["*"] else ["*"],
+    allow_origin_regex=r".*" if origins == ["*"] else None,
+    allow_credentials=True,
+>>>>>>> 524c29e (Add API Gateway)
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "X-Response-Time"],
@@ -144,8 +156,14 @@ async def list_routes():
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+<<<<<<< HEAD
     detail = str(exc) if settings.DEBUG else "Internal server error"
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"error": "Internal Gateway Error", "detail": detail},
+=======
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"error": "Internal Gateway Error", "detail": str(exc)},
+>>>>>>> 524c29e (Add API Gateway)
     )

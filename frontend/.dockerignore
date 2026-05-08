@@ -14,4 +14,8 @@ yarn-error.log*
 .vscode/
 .idea/
 dockerfile
+<<<<<<< HEAD
+=======
+nginx.conf
+>>>>>>> 524c29e (Add API Gateway)
 README.md

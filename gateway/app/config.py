@@ -34,7 +34,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_ADMIN_WINDOW: int = 60
 
     # ── CORS ───────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
     CORS_ORIGINS: str = "http://localhost:5173"
+=======
+    CORS_ORIGINS: str = "*"
+>>>>>>> 524c29e (Add API Gateway)
 
     class Config:
         env_file = ".env"

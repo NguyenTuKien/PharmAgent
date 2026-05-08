@@ -22,8 +22,13 @@ database:
     port: 27017
   environment:
     MONGO_DATABASE: PharmAgentDB
+<<<<<<< HEAD
     MONGO_USER: "<set-via-secret>"
     MONGO_PASSWORD: "<set-via-secret>"
+=======
+    MONGO_USER: appUser
+    MONGO_PASSWORD: appPassword123
+>>>>>>> 524c29e (Add API Gateway)
 
 redis:
   service:
@@ -38,9 +43,15 @@ rabbitmq:
     host: "gerbil.rmq.cloudamqp.com"
     port: 5671
   environment:
+<<<<<<< HEAD
     RABBITMQ_USER: "<set-via-secret>"
     RABBITMQ_PASSWORD: "<set-via-secret>"
     RABBITMQ_VHOST: "<set-via-secret>"
+=======
+    RABBITMQ_USER: "guest"
+    RABBITMQ_PASSWORD: "M9Em_GaseLCVB2pfFGVhoUD"
+    RABBITMQ_VHOST: "/"
+>>>>>>> 524c29e (Add API Gateway)
 
 mail:
   environment:

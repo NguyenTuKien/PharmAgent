@@ -1,5 +1,9 @@
 venv/
 __pycache__/
+<<<<<<< HEAD
+=======
+**/__init__.py
+>>>>>>> 524c29e (Add API Gateway)
 *.pyc
 *.pyo
 .env
