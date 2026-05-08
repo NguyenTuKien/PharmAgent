@@ -71,7 +71,7 @@ async def _proxy_stomp_ws(websocket: WebSocket, path: str = ""):
                 try:
                     async for msg in websocket.iter_text():
                         await upstream.send(msg)
-                except (WebSocketDisconnect, Exception):
+                except (WebSocketDisconnect, ws_lib.ConnectionClosed):
                     pass
 
             async def to_client():
@@ -81,7 +81,7 @@ async def _proxy_stomp_ws(websocket: WebSocket, path: str = ""):
                             await websocket.send_bytes(msg)
                         else:
                             await websocket.send_text(msg)
-                except Exception:
+                except (WebSocketDisconnect, ws_lib.ConnectionClosed):
                     pass
 
             await asyncio.gather(to_upstream(), to_client(), return_exceptions=True)
