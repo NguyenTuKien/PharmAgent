@@ -22,33 +22,33 @@ database:
     port: 27017
   environment:
     MONGO_DATABASE: PharmAgentDB
-    MONGO_USER: appUser
-    MONGO_PASSWORD: appPassword123
+    MONGO_USER: "<set-via-secret>"
+    MONGO_PASSWORD: "<set-via-secret>"
 
 redis:
   service:
     host: "redis-12088.c325.us-east-1-4.ec2.cloud.redislabs.com"
     port: 12088
   environment:
-    REDIS_USER: "default"
-    REDIS_PASSWORD: "hM3tdC4ETyAOXeoAtHjwKbHyTYJd6Wfq"
+    REDIS_USER: "<set-via-secret>"
+    REDIS_PASSWORD: "<set-via-secret>"
 
 rabbitmq:
   service:
     host: "gerbil.rmq.cloudamqp.com"
     port: 5671
   environment:
-    RABBITMQ_USER: "guest"
-    RABBITMQ_PASSWORD: "M9Em_GaseLCVB2pfFGVhoUD"
-    RABBITMQ_VHOST: "/"
+    RABBITMQ_USER: "<set-via-secret>"
+    RABBITMQ_PASSWORD: "<set-via-secret>"
+    RABBITMQ_VHOST: "<set-via-secret>"
 
 mail:
   environment:
-    SPRING_MAIL_USERNAME: "thechalksquad.work@gmail.com"
-    SPRING_MAIL_PASSWORD: "vxagswcsettletgb"
+    SPRING_MAIL_USERNAME: "<set-via-secret>"
+    SPRING_MAIL_PASSWORD: "<set-via-secret>"
     SPRING_MAIL_HOST: "smtp.gmail.com"
     SPRING_MAIL_PORT: "587"
 
 security:
   environment:
-    JWT_SECRET: "VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE="
+    JWT_SECRET: "<set-via-secret>"

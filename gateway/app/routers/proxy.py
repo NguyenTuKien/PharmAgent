@@ -75,8 +75,9 @@ async def proxy_http_request(
         for k, v in request.headers.items()
         if k.lower() not in _strip
     }
-    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "")
-    forward_headers["X-Forwarded-For"] = client_ip
+    client_ip = request.client.host if request.client else ""
+    if client_ip:
+        forward_headers["X-Forwarded-For"] = client_ip
     forward_headers["X-Forwarded-Proto"] = request.url.scheme
     forward_headers["X-Gateway"] = "pharmagent-gateway"
 
@@ -87,12 +88,13 @@ async def proxy_http_request(
     client = get_http_client()
 
     try:
-        upstream_response = await client.request(
+        upstream_request = client.build_request(
             method=request.method,
             url=target_url,
             headers=forward_headers,
             content=body,
         )
+        upstream_response = await client.send(upstream_request, stream=True)
     except httpx.ConnectError as exc:
         logger.error("Upstream connection failed [%s]: %s", target_url, exc)
         raise HTTPException(
@@ -113,8 +115,15 @@ async def proxy_http_request(
     }
     response_headers["X-Gateway"] = "pharmagent-gateway"
 
+    async def iter_bytes():
+        try:
+            async for chunk in upstream_response.aiter_bytes():
+                yield chunk
+        finally:
+            await upstream_response.aclose()
+
     return StreamingResponse(
-        content=upstream_response.aiter_bytes(),
+        content=iter_bytes(),
         status_code=upstream_response.status_code,
         headers=response_headers,
         media_type=upstream_response.headers.get("content-type"),

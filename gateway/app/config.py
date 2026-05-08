@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # ── JWT (phải giống backend Spring Boot) ──────────────────────────────────
-    JWT_SECRET: str = "VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE="
+    JWT_SECRET: str = "Q0hBTkdFX01FX0lOX0VOVg=="
     JWT_ALGORITHM: str = "HS256"
 
     # ── Upstream services ──────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     AGENT_URL: str = "http://agent:8000"
 
     # ── Redis (rate-limiting) ──────────────────────────────────────────────────
-    REDIS_URL: str = "redis://:hM3tdC4ETyAOXeoAtHjwKbHyTYJd6Wfq@redis:6379"
+    REDIS_URL: str = "redis://redis:6379"
 
     # ── Rate limit defaults ────────────────────────────────────────────────────
     # Số request tối đa / cửa sổ thời gian (giây)
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_ADMIN_WINDOW: int = 60
 
     # ── CORS ───────────────────────────────────────────────────────────────────
-    CORS_ORIGINS: str = "*"
+    CORS_ORIGINS: str = "http://localhost:5173"
 
     class Config:
         env_file = ".env"

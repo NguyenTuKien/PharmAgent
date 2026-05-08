@@ -38,18 +38,33 @@ async def agent_health():
         return {"status": "DOWN", "error": str(exc)}
 
 
+def _extract_ws_token(websocket: WebSocket, query_token: str | None) -> str | None:
+    auth_token = extract_bearer_token(websocket.headers.get("authorization", ""))
+    if auth_token:
+        return auth_token
+
+    protocol_header = websocket.headers.get("sec-websocket-protocol", "")
+    if protocol_header:
+        protocols = [p.strip() for p in protocol_header.split(",") if p.strip()]
+        for protocol in protocols:
+            if protocol.startswith("bearer."):
+                return protocol.split(".", 1)[1]
+        if len(protocols) >= 2 and protocols[0].lower() == "bearer":
+            return protocols[1]
+
+    return query_token
+
+
 @router.websocket("/ws/agent")
 async def ws_pill_scan(
     websocket: WebSocket,
-    token: str | None = None,  # ?token=<jwt> vì browser WS không có custom header
+    token: str | None = None,
 ):
     """
     WebSocket tunnel tới Agent /ws/agent (nhận diện thuốc real-time).
     Authenticated: token qua query string.
     """
-    raw_token = token or extract_bearer_token(
-        websocket.headers.get("authorization", "")
-    )
+    raw_token = _extract_ws_token(websocket, token)
     if not raw_token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return

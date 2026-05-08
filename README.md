@@ -19,7 +19,7 @@ graph TD
 ## 🚦 Luồng API (Frontend → Gateway → Upstream)
 
 ### 1. Cổng kết nối (Gateway)
-Mọi request từ Frontend phải gửi tới địa chỉ của Gateway (mặc định: `http://localhost:8000`). Gateway đóng vai trò:
+ Mọi request từ Frontend phải gửi tới địa chỉ của Gateway (mặc định: `http://localhost:9000`). Gateway đóng vai trò:
 - **Xác thực tập trung**: Kiểm tra tính hợp lệ của JWT.
 - **Phân quyền (RBAC)**: Đảm bảo chỉ `ADMIN` mới vào được `/api/admin/**`, v.v.
 - **Rate Limiting**: Giới hạn số lượng request để bảo vệ hệ thống.
@@ -44,10 +44,10 @@ Khi Gateway forward request xuống dịch vụ đích, nó tự động đính 
 
 ## 📂 Cấu trúc mã nguồn
 
-- [**gateway/**](file:///home/ngtukien/Documents/LTW_2026/PharmAgent/gateway/README.md): Cổng cửa ngõ, xử lý Security & Routing.
-- [**backend/**](file:///home/ngtukien/Documents/LTW_2026/PharmAgent/backend/README.md): Logic nghiệp vụ chính (Spring Boot).
-- [**agent/**](file:///home/ngtukien/Documents/LTW_2026/PharmAgent/agent/): Xử lý AI, nhận diện hình ảnh thuốc.
-- [**frontend/**](file:///home/ngtukien/Documents/LTW_2026/PharmAgent/frontend/): Giao diện người dùng (React).
+- [**gateway/**](./gateway/README.md): Cổng cửa ngõ, xử lý Security & Routing.
+- [**backend/**](./backend/README.md): Logic nghiệp vụ chính (Spring Boot).
+- [**agent/**](./agent/): Xử lý AI, nhận diện hình ảnh thuốc.
+- [**frontend/**](./frontend/): Giao diện người dùng (React).
 
 ---
 
@@ -59,4 +59,4 @@ Hệ thống được đóng gói hoàn toàn bằng Docker Compose:
 2. Khởi chạy toàn bộ: `docker-compose up --build -d`
 3. Truy cập:
    - Frontend: `http://localhost:5173`
-   - API Gateway (Swagger): `http://localhost:8000/docs`
+   - API Gateway (Swagger): `http://localhost:9000/docs`

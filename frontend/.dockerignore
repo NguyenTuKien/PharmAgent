@@ -14,5 +14,4 @@ yarn-error.log*
 .vscode/
 .idea/
 dockerfile
-nginx.conf
 README.md

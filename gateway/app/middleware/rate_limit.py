@@ -1,5 +1,5 @@
 """
-Rate Limiting Middleware – Sliding Window algorithm via Redis.
+Rate Limiting Middleware – Fixed Window Counter via Redis.
 
 Mỗi key = "rl:{tier}:{identifier}" (IP hoặc user-id).
 Dùng Redis INCR + EXPIRE để đếm request trong cửa sổ thời gian.
@@ -39,10 +39,12 @@ def _get_tier_limits(roles: list[str]) -> tuple[int, int]:
 
 
 def _get_identifier(request: Request) -> str:
+    if request.client and request.client.host:
+        return request.client.host
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+        return forwarded.split(",")[-1].strip()
+    return "unknown"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):

@@ -5,14 +5,16 @@ Routing:
   /ws/**              → backend (STOMP WebSocket, public – auth qua STOMP interceptor)
   /api/auth/**        → backend (public)
   /api/admin/**       → backend (ADMIN only)
-  /api/caregiver/**   → backend (CAREGIVER hoặc ADMIN)
-  /api/elderly/**     → backend (ELDERLY hoặc ADMIN)
+  /api/caregiver/**   → backend (CAREGIVER)
+  /api/elderly/**     → backend (ELDERLY)
   /api/**             → backend (mọi user đã đăng nhập)
   /actuator/**        → backend (public, health check)
 """
+import asyncio
 import logging
 
-from fastapi import APIRouter, Depends, Request
+import websockets as ws_lib
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 
 from app.config import get_settings
 from app.middleware.auth import TokenUser, get_current_user, require_admin, require_caregiver, require_elderly
@@ -23,14 +25,73 @@ settings = get_settings()
 
 router = APIRouter(tags=["Backend"])
 _BACKEND = settings.BACKEND_URL
+_BACKEND_WS = _BACKEND.replace("http://", "ws://").replace("https://", "wss://")
 
 
 # ── WebSocket STOMP (public catch-all) ────────────────────────────────────────
 
+def _ws_target(path: str = "") -> str:
+    target = f"{_BACKEND_WS}/ws"
+    if path:
+        target = f"{target}/{path.lstrip('/')}"
+    return target
+
+
+@router.api_route("/ws", methods=["GET", "POST", "OPTIONS"])
+async def proxy_stomp_root(request: Request):
+    """STOMP HTTP fallback (/ws) → backend."""
+    return await proxy_http_request(request, _BACKEND)
+
+
 @router.api_route("/ws/{path:path}", methods=["GET", "POST", "OPTIONS"])
-async def proxy_stomp(request: Request, path: str):
+async def proxy_stomp_http(request: Request, path: str):
     """STOMP WebSocket + SockJS fallback → backend. Auth do STOMP interceptor xử lý."""
     return await proxy_http_request(request, _BACKEND)
+
+
+@router.websocket("/ws")
+async def proxy_stomp_ws_root(websocket: WebSocket):
+    await _proxy_stomp_ws(websocket)
+
+
+@router.websocket("/ws/{path:path}")
+async def proxy_stomp_ws(websocket: WebSocket, path: str):
+    await _proxy_stomp_ws(websocket, path)
+
+
+async def _proxy_stomp_ws(websocket: WebSocket, path: str = ""):
+    await websocket.accept()
+    upstream_url = _ws_target(path)
+    if websocket.url.query:
+        upstream_url = f"{upstream_url}?{websocket.url.query}"
+
+    try:
+        async with ws_lib.connect(upstream_url) as upstream:
+            async def to_upstream():
+                try:
+                    async for msg in websocket.iter_text():
+                        await upstream.send(msg)
+                except (WebSocketDisconnect, Exception):
+                    pass
+
+            async def to_client():
+                try:
+                    async for msg in upstream:
+                        if isinstance(msg, bytes):
+                            await websocket.send_bytes(msg)
+                        else:
+                            await websocket.send_text(msg)
+                except Exception:
+                    pass
+
+            await asyncio.gather(to_upstream(), to_client(), return_exceptions=True)
+    except Exception as exc:
+        logger.error("Backend WS proxy error: %s", exc)
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 
 # ── Auth (public) ─────────────────────────────────────────────────────────────

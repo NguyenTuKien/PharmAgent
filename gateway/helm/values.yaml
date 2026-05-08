@@ -7,18 +7,18 @@ image:
 
 service:
   type: ClusterIP
-  port: 8000
+  port: 9000
 
 env:
   DEBUG: "false"
   BACKEND_URL: "http://backend-service:8080"
   AGENT_URL: "http://agent-service:8000"
   REDIS_URL: "redis://redis-master:6379"
-  CORS_ORIGINS: "*"
+  CORS_ORIGINS: "http://localhost:5173"
 
 # Các giá trị nhạy cảm nên để ở Secret
 secret:
-  JWT_SECRET: "VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE="
+  JWT_SECRET: "Q0hBTkdFX01FX0lOX0VOVg=="
 
 resources:
   limits:
