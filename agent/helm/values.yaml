@@ -1,0 +1,22 @@
+replicaCount: 1
+
+image:
+  repository: agent
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+env:
+  # Các biến môi trường cho AI Agent (nếu có)
+  LOG_LEVEL: "INFO"
