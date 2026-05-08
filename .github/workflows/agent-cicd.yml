@@ -180,14 +180,14 @@ jobs:
 
       - name: Start services with Docker Compose
         run: |
-          docker compose pull
-          docker compose up -d --no-build
+          docker compose pull agent
+          docker compose up -d --no-build agent
 
       - name: Wait and Check Logs
         run: |
           sleep 30
-          docker compose ps
-          docker compose logs --tail=200 agent || true
+          docker compose ps agent
+          docker compose logs --tail=100 agent || true
 
       - name: Check Agent Health
         run: |

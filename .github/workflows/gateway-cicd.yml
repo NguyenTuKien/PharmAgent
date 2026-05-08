@@ -187,14 +187,16 @@ jobs:
 
       - name: Start services with Docker Compose
         run: |
-          docker compose pull
-          docker compose up -d --no-build
+          # Pull image mới của gateway, các service khác dùng tag 'latest' đã có trên GHCR
+          docker compose pull gateway redis || true
+          # Tự động start theo dependency: gateway → backend+agent+redis → database+rabbitmq
+          docker compose up -d --no-build gateway
 
       - name: Wait and Check Logs
         run: |
-          sleep 30
+          sleep 60
           docker compose ps
-          docker compose logs --tail=200 gateway || true
+          docker compose logs --tail=100 gateway || true
 
       - name: Check Gateway Health and Accessibility
         run: |
@@ -203,6 +205,8 @@ jobs:
           else
             echo "❌ Gateway is NOT healthy!"
             docker compose logs gateway
+            docker compose logs backend || true
+            docker compose logs agent || true
             exit 1
           fi
 

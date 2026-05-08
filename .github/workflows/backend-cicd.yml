@@ -255,8 +255,10 @@ jobs:
 
       - name: Start services with Docker Compose
         run: |
-          docker compose pull
-          docker compose up -d --no-build
+          # Pull image backend mới, các dependency (mongo/redis/rabbitmq) là public image
+          docker compose pull backend
+          # docker compose tự động start database, redis, rabbitmq trước do depends_on
+          docker compose up -d --no-build backend
 
       - name: Wait and Check Logs
         run: |
