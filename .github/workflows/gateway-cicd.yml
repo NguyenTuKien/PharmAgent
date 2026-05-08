@@ -117,7 +117,7 @@ jobs:
         github.event_name == 'pull_request'
       )
     env:
-      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      BUILD_TAG: ${{ needs.tag_job.outputs.docker_tag }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -155,46 +155,48 @@ jobs:
     permissions:
       actions: read
     steps:
-      - name: Wait for Backend pipeline to complete
+      - name: Wait for Agent pipeline to complete
         run: |
-          echo "Waiting for backend-cicd workflow on branch ${{ github.ref_name }}..."
+          echo "Waiting for agent-cicd workflow on branch ${{ github.ref_name }}..."
           for i in $(seq 1 30); do
-            STATUS=$(gh run list \
-              --repo ${{ github.repository }} \
-              --workflow=backend-cicd.yml \
-              --branch=${{ github.ref_name }} \
-              --limit=1 \
-              --json conclusion \
-              --jq '.[0].conclusion' 2>/dev/null || echo "pending")
-            echo "  [${i}/30] Backend pipeline status: $STATUS"
-            if [ "$STATUS" = "success" ]; then
-              echo "✅ Backend pipeline succeeded!"; break
-            elif [ "$STATUS" = "failure" ] || [ "$STATUS" = "cancelled" ]; then
-              echo "⚠️ Backend pipeline $STATUS, but continuing (backend:latest may already exist)"
-              break
+            RUN_DATA=$(gh run list --repo ${{ github.repository }} --workflow=agent-cicd.yml --branch=${{ github.ref_name }} --limit=1 --json status,conclusion,databaseId 2>/dev/null || echo "[]")
+            STATUS=$(echo "$RUN_DATA" | jq -r '.[0].status // "unknown"')
+            CONCLUSION=$(echo "$RUN_DATA" | jq -r '.[0].conclusion // "null"')
+            RUN_ID=$(echo "$RUN_DATA" | jq -r '.[0].databaseId // "none"')
+            
+            echo "  [${i}/30] Agent Run ID: $RUN_ID | Status: $STATUS | Conclusion: $CONCLUSION"
+            
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ]; then
+                echo "✅ Agent pipeline succeeded!"; break
+              else
+                echo "⚠️ Agent pipeline completed with: $CONCLUSION. Continuing anyway..."
+                break
+              fi
             fi
             sleep 30
           done
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Wait for Agent pipeline to complete
+      - name: Wait for Backend pipeline to complete
         run: |
-          echo "Waiting for agent-cicd workflow on branch ${{ github.ref_name }}..."
+          echo "Waiting for backend-cicd workflow on branch ${{ github.ref_name }}..."
           for i in $(seq 1 30); do
-            STATUS=$(gh run list \
-              --repo ${{ github.repository }} \
-              --workflow=agent-cicd.yml \
-              --branch=${{ github.ref_name }} \
-              --limit=1 \
-              --json conclusion \
-              --jq '.[0].conclusion' 2>/dev/null || echo "pending")
-            echo "  [${i}/30] Agent pipeline status: $STATUS"
-            if [ "$STATUS" = "success" ]; then
-              echo "✅ Agent pipeline succeeded!"; break
-            elif [ "$STATUS" = "failure" ] || [ "$STATUS" = "cancelled" ]; then
-              echo "⚠️ Agent pipeline $STATUS, but continuing (agent:latest may already exist)"
-              break
+            RUN_DATA=$(gh run list --repo ${{ github.repository }} --workflow=backend-cicd.yml --branch=${{ github.ref_name }} --limit=1 --json status,conclusion,databaseId 2>/dev/null || echo "[]")
+            STATUS=$(echo "$RUN_DATA" | jq -r '.[0].status // "unknown"')
+            CONCLUSION=$(echo "$RUN_DATA" | jq -r '.[0].conclusion // "null"')
+            RUN_ID=$(echo "$RUN_DATA" | jq -r '.[0].databaseId // "none"')
+            
+            echo "  [${i}/30] Backend Run ID: $RUN_ID | Status: $STATUS | Conclusion: $CONCLUSION"
+            
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ]; then
+                echo "✅ Backend pipeline succeeded!"; break
+              else
+                echo "⚠️ Backend pipeline completed with: $CONCLUSION. Continuing anyway..."
+                break
+              fi
             fi
             sleep 30
           done
@@ -216,7 +218,7 @@ jobs:
         github.event_name == 'pull_request'
       )
     env:
-      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      BUILD_TAG: ${{ needs.tag_job.outputs.docker_tag }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -248,10 +250,10 @@ jobs:
 
       - name: Tag new Gateway image as latest
         run: |
-          # Pull image gateway vừa build (với SHA tag)
-          docker pull $REGISTRY_IMAGE/pharmagent-gateway:$TAG
+          # Pull image gateway vừa build (với BUILD_TAG)
+          docker pull $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG
           # Tag lại thành latest để docker compose dùng
-          docker tag $REGISTRY_IMAGE/pharmagent-gateway:$TAG $REGISTRY_IMAGE/pharmagent-gateway:latest
+          docker tag $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG $REGISTRY_IMAGE/pharmagent-gateway:latest
 
       - name: Start services with Docker Compose
         run: |
@@ -310,7 +312,7 @@ jobs:
       )
     continue-on-error: true
     env:
-      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      BUILD_TAG: ${{ needs.tag_job.outputs.docker_tag }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -358,7 +360,7 @@ jobs:
         github.event_name == 'pull_request'
       )
     env:
-      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      BUILD_TAG: ${{ needs.tag_job.outputs.docker_tag }}
       REPO_CONFIG: ${{ vars.REPO_CONFIG }}
     steps:
       - name: Checkout Source Code (GitHub)
