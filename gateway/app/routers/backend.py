@@ -86,7 +86,7 @@ async def _proxy_stomp_ws(websocket: WebSocket, path: str = ""):
 
             await asyncio.gather(to_upstream(), to_client(), return_exceptions=True)
     except Exception as exc:
-        logger.error("Backend WS proxy error: %s", exc)
+        logger.error("Backend WS proxy error for %s: %s", upstream_url, exc)
     finally:
         try:
             await websocket.close()

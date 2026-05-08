@@ -19,7 +19,7 @@ graph TD
 ## 🚦 Luồng API (Frontend → Gateway → Upstream)
 
 ### 1. Cổng kết nối (Gateway)
- Mọi request từ Frontend phải gửi tới địa chỉ của Gateway (mặc định: `http://localhost:9000`). Gateway đóng vai trò:
+Mọi request từ Frontend phải gửi tới địa chỉ của Gateway (mặc định: `http://localhost:9000`). Gateway đóng vai trò:
 - **Xác thực tập trung**: Kiểm tra tính hợp lệ của JWT.
 - **Phân quyền (RBAC)**: Đảm bảo chỉ `ADMIN` mới vào được `/api/admin/**`, v.v.
 - **Rate Limiting**: Giới hạn số lượng request để bảo vệ hệ thống.

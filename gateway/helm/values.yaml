@@ -18,7 +18,7 @@ env:
 
 # Các giá trị nhạy cảm nên để ở Secret
 secret:
-  JWT_SECRET: "Q0hBTkdFX01FX0lOX0VOVg=="
+  JWT_SECRET: "<set-via-secret>"
 
 resources:
   limits:
