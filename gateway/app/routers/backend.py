@@ -5,8 +5,8 @@ Routing:
   /ws/**              → backend (STOMP WebSocket, public – auth qua STOMP interceptor)
   /api/auth/**        → backend (public)
   /api/admin/**       → backend (ADMIN only)
-  /api/caregiver/**   → backend (CAREGIVER)
-  /api/elderly/**     → backend (ELDERLY)
+  /api/caregiver/**   → backend (CAREGIVER, theo backend security config hiện tại)
+  /api/elderly/**     → backend (ELDERLY, theo backend security config hiện tại)
   /api/**             → backend (mọi user đã đăng nhập)
   /actuator/**        → backend (public, health check)
 """

@@ -43,7 +43,7 @@ def _get_identifier(request: Request) -> str:
         return request.client.host
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        return forwarded.split(",")[-1].strip()
+        return forwarded.split(",")[0].strip()
     return "unknown"
 
 
