@@ -136,9 +136,9 @@ jobs:
 
       - name: Build and Push Gateway
         run: |
-          docker pull $REGISTRY_IMAGE/pharmagent-gateway:$TAG || true
-          docker build --cache-from $REGISTRY_IMAGE/pharmagent-gateway:$TAG -t $REGISTRY_IMAGE/pharmagent-gateway:$TAG ./gateway
-          docker push $REGISTRY_IMAGE/pharmagent-gateway:$TAG
+          docker pull $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG -t $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG ./gateway
+          docker push $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG
 
       - name: Cleanup Docker System
         if: always()
@@ -340,7 +340,7 @@ jobs:
       - name: Run Trivy vulnerability scanner - Gateway Image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY_IMAGE }}/pharmagent-gateway:${{ env.TAG }}'
+          image-ref: '${{ env.REGISTRY_IMAGE }}/pharmagent-gateway:${{ env.BUILD_TAG }}'
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
 
@@ -382,13 +382,13 @@ jobs:
           cd Config
           GATEWAY_TARGET_FILE="app/gateway/values-prod.yaml"
 
-          yq -i '.image.tag = strenv(TAG)' "$GATEWAY_TARGET_FILE"
+          yq -i '.image.tag = strenv(BUILD_TAG)' "$GATEWAY_TARGET_FILE"
           git add "$GATEWAY_TARGET_FILE"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git commit -m "CD: Update gateway image tag to ${{ env.TAG }}" || echo "No changes to commit"
+          git commit -m "CD: Update gateway image tag to ${{ env.BUILD_TAG }}" || echo "No changes to commit"
           git push origin main --force
 
   notify_success:
