@@ -1,0 +1,17 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.mvn/
+mvnw
+mvnw.cmd
+.git/
+.gitignore
+.vscode/
+.idea/
+.env
+Dockerfile
+HELP.md

@@ -1,0 +1,33 @@
+replicaCount: 1
+
+image:
+  repository: gateway
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+env:
+  DEBUG: "false"
+  BACKEND_URL: "http://backend-service:8080"
+  AGENT_URL: "http://agent-service:8000"
+  REDIS_URL: "redis://redis-master:6379"
+  CORS_ORIGINS: "*"
+
+# Các giá trị nhạy cảm nên để ở Secret
+secret:
+  JWT_SECRET: "VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE="
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

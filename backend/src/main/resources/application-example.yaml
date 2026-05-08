@@ -32,8 +32,6 @@ jwt:
   refresh-expiration-ms: 604800000
 
 server:
-  servlet:
-    context-path: /api
   port: 8080
 
 cors:

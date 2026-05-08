@@ -21,8 +21,8 @@ public class SignalingController {
                 signalPayload.getType(), signalPayload.getSenderId(), signalPayload.getReceiverId());
         
         // Forward signal directly to receiver via RabbitMQ routing
-        // This sends to queue: /queue/user.{receiverId}/call
-        String destination = "/queue/user." + signalPayload.getReceiverId() + "/call";
+        // This sends to queue: /queue/user.{receiverId}.call
+        String destination = "/queue/user." + signalPayload.getReceiverId() + ".call";
         messagingTemplate.convertAndSend(destination, signalPayload);
         
         // Note: For production, we should authenticate whether senderId == STOMP token principal

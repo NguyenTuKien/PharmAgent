@@ -33,14 +33,14 @@ class PillScanResponse(BaseModel):
     description: Optional[str] = "Kết quả nhận diện từ camera real-time"
 
 # --- ROUTER CONFIG ---
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/ws")
 
 @router.get("/health")
 async def health():
     return {"status": "UP", "mode": "real-time"}
 
 # --- REAL-TIME WEBSOCKET LOGIC ---
-@router.websocket("/pills/scan/ws")
+@router.websocket("/agent")
 async def websocket_pill_scan(websocket: WebSocket):
     """
     Endpoint phục vụ việc 'lia cam'. Frontend gửi các frame ảnh liên tục (Base64),

@@ -21,9 +21,9 @@ database:
     host: "database-pharmagent-nodeport"
     port: 27017
   environment:
-    MONGO_DATABASE: pharmagentdb
-    MONGO_USER: n07
-    MONGO_PASSWORD: LTW_2026
+    MONGO_DATABASE: PharmAgentDB
+    MONGO_USER: appUser
+    MONGO_PASSWORD: appPassword123
 
 redis:
   service:
@@ -38,9 +38,9 @@ rabbitmq:
     host: "gerbil.rmq.cloudamqp.com"
     port: 5671
   environment:
-    RABBITMQ_USER: "ynkhfetp"
-    RABBITMQ_PASSWORD: "iRicAptCctXzrsM4PC9RVBlV-LFlcsW4"
-    RABBITMQ_VHOST: "ynkhfetp"
+    RABBITMQ_USER: "guest"
+    RABBITMQ_PASSWORD: "M9Em_GaseLCVB2pfFGVhoUD"
+    RABBITMQ_VHOST: "/"
 
 mail:
   environment:

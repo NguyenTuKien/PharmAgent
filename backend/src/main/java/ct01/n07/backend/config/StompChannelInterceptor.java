@@ -42,11 +42,14 @@ public class StompChannelInterceptor implements ChannelInterceptor {
                             });
                             userPresenceService.setOnline(userId, sessionId);
                         } else {
-                            throw new IllegalArgumentException("Invalid JWT token in STOMP connection");
+                            throw new org.springframework.messaging.MessageDeliveryException("Invalid JWT token in STOMP connection");
                         }
                     } catch (Exception e) {
                         log.error("STOMP connect authentication failed: {}", e.getMessage());
+                        throw new org.springframework.messaging.MessageDeliveryException("Authentication failed");
                     }
+                } else {
+                    throw new org.springframework.messaging.MessageDeliveryException("Missing Authorization header in STOMP connection");
                 }
             } else if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
                 if (accessor.getUser() != null) {
