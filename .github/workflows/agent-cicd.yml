@@ -183,21 +183,20 @@ jobs:
           docker compose pull agent
           docker compose up -d --no-build agent
 
-      - name: Wait and Check Logs
+      - name: Wait for Agent to be Healthy
         run: |
-          sleep 30
-          docker compose ps agent
-          docker compose logs --tail=100 agent || true
-
-      - name: Check Agent Health
-        run: |
-          if docker compose ps agent | grep -q "healthy"; then
-            echo "✅ Agent is healthy!"
-          else
-            echo "❌ Agent is NOT healthy!"
-            docker compose logs agent
-            exit 1
-          fi
+          echo "Waiting for agent to be healthy (timeout: 100s)..."
+          for i in $(seq 1 10); do
+            if docker compose ps agent | grep -q "healthy"; then
+              echo "✅ Agent is healthy after $((i * 10))s!"
+              exit 0
+            fi
+            echo "  [${i}/10] Still starting... waiting 10s"
+            sleep 10
+          done
+          echo "❌ Agent did not become healthy after 100s!"
+          docker compose logs agent
+          exit 1
 
       - name: Cleanup Docker System
         if: always()

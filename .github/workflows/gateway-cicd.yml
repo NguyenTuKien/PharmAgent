@@ -192,24 +192,26 @@ jobs:
           # Tự động start theo dependency: gateway → backend+agent+redis → database+rabbitmq
           docker compose up -d --no-build gateway
 
-      - name: Wait and Check Logs
+      - name: Wait for Gateway to be Healthy
         run: |
-          sleep 60
-          docker compose ps
-          docker compose logs --tail=100 gateway || true
+          echo "Waiting for gateway to be healthy (timeout: 300s, backend+agent must start first)..."
+          for i in $(seq 1 20); do
+            if docker compose ps gateway | grep -q "healthy"; then
+              echo "✅ Gateway is healthy after $((i * 15))s!"
+              exit 0
+            fi
+            echo "  [${i}/20] Still starting... waiting 15s"
+            docker compose ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null || true
+            sleep 15
+          done
+          echo "❌ Gateway did not become healthy after 300s!"
+          docker compose logs gateway
+          docker compose logs backend || true
+          docker compose logs agent || true
+          exit 1
 
-      - name: Check Gateway Health and Accessibility
+      - name: Smoke Test Gateway HTTP
         run: |
-          if docker compose ps gateway | grep -q "healthy"; then
-            echo "✅ Gateway is healthy!"
-          else
-            echo "❌ Gateway is NOT healthy!"
-            docker compose logs gateway
-            docker compose logs backend || true
-            docker compose logs agent || true
-            exit 1
-          fi
-
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/health || echo "000")
           if [ "$STATUS" = "200" ]; then
             echo "✅ Gateway /health responded 200"

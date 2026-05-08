@@ -260,21 +260,21 @@ jobs:
           # docker compose tự động start database, redis, rabbitmq trước do depends_on
           docker compose up -d --no-build backend
 
-      - name: Wait and Check Logs
+      - name: Wait for Backend to be Healthy
         run: |
-          sleep 30
-          docker compose ps
-          docker compose logs --tail=200 backend || true
-
-      - name: Check Backend Health
-        run: |
-          if docker compose ps backend | grep -q "healthy"; then
-            echo "✅ Backend is healthy!"
-          else
-            echo "❌ Backend is NOT healthy!"
-            docker compose logs backend
-            exit 1
-          fi
+          echo "Waiting for backend to be healthy (timeout: 150s)..."
+          for i in $(seq 1 15); do
+            STATUS=$(docker compose ps backend --format json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('Health',''))" 2>/dev/null || echo "")
+            if docker compose ps backend | grep -q "healthy"; then
+              echo "✅ Backend is healthy after $((i * 10))s!"
+              exit 0
+            fi
+            echo "  [${i}/15] Still starting... waiting 10s"
+            sleep 10
+          done
+          echo "❌ Backend did not become healthy after 150s!"
+          docker compose logs backend
+          exit 1
 
       - name: Cleanup Docker System
         if: always()
