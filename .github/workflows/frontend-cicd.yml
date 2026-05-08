@@ -1,0 +1,345 @@
+name: Frontend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  statuses: write
+  packages: write
+
+jobs:
+  filter:
+    name: Check Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+
+  unit_test_job:
+    name: Lint Frontend (npm)
+    needs: filter
+    if: needs.filter.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run Lint
+        working-directory: ./frontend
+        run: |
+          npm run lint
+          echo "✅ Frontend lint OK" >> $GITHUB_STEP_SUMMARY
+
+  helm_lint_job:
+    name: Helm Chart Lint (Frontend)
+    needs: filter
+    if: needs.filter.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.12.0'
+
+      - name: Lint Frontend Helm Chart if exists
+        run: |
+          if [ -d ./frontend/helm ]; then
+            helm lint ./frontend/helm
+          else
+            echo "No Frontend Helm chart found, skip Helm lint"
+          fi
+
+  tag_job:
+    name: Get Image Tag
+    runs-on: ubuntu-latest
+    if: >
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'pull_request'
+    outputs:
+      docker_tag: ${{ steps.calc_tag.outputs.tag }}
+    steps:
+      - name: Tính toán Tag tự động
+        id: calc_tag
+        run: |
+          SHORT_SHA=$(echo "${{ github.event.pull_request.head.sha || github.sha }}" | cut -c1-7)
+          if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == 'pull_request' ]]; then
+            echo "tag=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          fi
+
+  build_job:
+    name: Build Docker Image (Frontend)
+    runs-on: ubuntu-latest
+    needs: [filter, unit_test_job, helm_lint_job, tag_job]
+    if: >
+      always() &&
+      needs.filter.outputs.frontend == 'true' &&
+      needs.unit_test_job.result == 'success' &&
+      needs.helm_lint_job.result == 'success' &&
+      needs.tag_job.result == 'success' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.event_name == 'pull_request'
+      )
+    env:
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Convert repository owner to lowercase
+        run: echo "REGISTRY_IMAGE=ghcr.io/${OWNER,,}" >> ${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Frontend
+        run: |
+          docker pull $REGISTRY_IMAGE/pharmagent-frontend:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/pharmagent-frontend:$TAG -t $REGISTRY_IMAGE/pharmagent-frontend:$TAG ./frontend
+          docker push $REGISTRY_IMAGE/pharmagent-frontend:$TAG
+
+      - name: Cleanup Docker System
+        if: always()
+        run: docker system prune -af
+
+  integration_test_job:
+    name: Integration Test (Frontend)
+    runs-on: ubuntu-latest
+    needs: [tag_job, build_job]
+    if: >
+      always() &&
+      needs.tag_job.result == 'success' &&
+      needs.build_job.result == 'success' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.event_name == 'pull_request'
+      )
+    env:
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Convert repository owner to lowercase
+        run: echo "REGISTRY_IMAGE=ghcr.io/${OWNER,,}" >> ${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Environment Variables
+        run: |
+          if [ -z "${{ secrets.ENV_FILE }}" ]; then
+            echo "ERROR: ENV_FILE secret is not set in GitHub"
+            exit 1
+          fi
+
+          echo "${{ secrets.ENV_FILE }}" > .env
+          echo "TAG=$TAG" >> .env
+          echo "DOCKER_REGISTRY=$REGISTRY_IMAGE" >> .env
+
+      - name: Start services with Docker Compose
+        run: |
+          docker compose pull
+          docker compose up -d --no-build
+
+      - name: Wait and Check Logs
+        run: |
+          sleep 30
+          docker compose ps
+          docker compose logs --tail=200 frontend || true
+
+      - name: Check Frontend Container
+        run: |
+          if docker compose ps frontend | grep -E "Up|healthy"; then
+            echo "✅ Frontend container is running!"
+          else
+            echo "❌ Frontend container is NOT running!"
+            docker compose logs frontend
+            exit 1
+          fi
+
+      - name: Cleanup Docker System
+        if: always()
+        run: |
+          docker compose down --volumes --rmi local
+          docker system prune -a -f
+
+  security_scan:
+    name: Security Scan (Frontend)
+    runs-on: ubuntu-latest
+    needs: [tag_job, build_job]
+    if: >
+      always() &&
+      needs.tag_job.result == 'success' &&
+      needs.build_job.result == 'success' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.event_name == 'pull_request'
+      )
+    continue-on-error: true
+    env:
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Convert repository owner to lowercase
+        run: echo "REGISTRY_IMAGE=ghcr.io/${OWNER,,}" >> ${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Trivy vulnerability scanner - Frontend Filesystem
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: './frontend'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+      - name: Run Trivy vulnerability scanner - Frontend Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.REGISTRY_IMAGE }}/pharmagent-frontend:${{ env.TAG }}'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+  update_config:
+    name: Update Config (Frontend)
+    needs: [filter, tag_job, helm_lint_job, integration_test_job, security_scan]
+    runs-on: ubuntu-latest
+    if: >
+      always() &&
+      needs.filter.outputs.frontend == 'true' &&
+      needs.tag_job.result == 'success' &&
+      needs.helm_lint_job.result == 'success' &&
+      needs.integration_test_job.result == 'success' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.event_name == 'pull_request'
+      )
+    env:
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      REPO_CONFIG: ${{ vars.REPO_CONFIG }}
+    steps:
+      - name: Checkout Source Code (GitHub)
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Clone Config Repo (GitLab)
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
+          git clone ${REPO_CONFIG} Config
+
+      - name: Update Frontend Config Tag for Staging
+        run: |
+          cd Config
+          TARGET_FILE="app/frontend/values-prod.yaml"
+
+          yq -i '.image.tag = strenv(TAG)' "$TARGET_FILE"
+          git add "$TARGET_FILE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git commit -m "CD: Update frontend image tag to ${{ env.TAG }}" || echo "No changes to commit"
+          git push origin main --force
+
+  notify_success:
+    name: Notify Success
+    runs-on: ubuntu-latest
+    needs: [update_config]
+    if: >
+      always() &&
+      needs.update_config.result == 'success' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.event_name == 'pull_request'
+      )
+    steps:
+      - name: Send Discord Notification - Success
+        run: |
+          curl -H "Content-Type: application/json" \
+          -d "{\"content\": \"✅ **FRONTEND PIPELINE SUCCESS!** 🚀\\n**Project:** ${{ github.repository }}\\n**${{ github.event_name == 'pull_request' && 'Pull Request' || 'Branch/Tag' }}:** ${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref_name }}\\n**User:** ${{ github.actor }}\\n**Service:** frontend\\n**Status:** 🟢 Thành công\\n👉 [Xem Pipeline](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\"}" \
+          ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  notify_fail:
+    name: Notify Fail
+    runs-on: ubuntu-latest
+    needs:
+      - filter
+      - unit_test_job
+      - helm_lint_job
+      - tag_job
+      - build_job
+      - integration_test_job
+      - security_scan
+      - update_config
+    if: always() && contains(needs.*.result, 'failure')
+    steps:
+      - name: Send Discord Notification - Failed
+        run: |
+          curl -H "Content-Type: application/json" \
+          -d "{\"content\": \"🚨 **FRONTEND PIPELINE FAILED!** 💥\\n**Project:** ${{ github.repository }}\\n**Branch/Tag:** ${{ github.ref_name }}\\n**User:** ${{ github.actor }}\\n**Service:** frontend\\n**Status:** 🔴 Thất bại\\n👉 [Xem lỗi tại đây](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\"}" \
+          ${{ secrets.DISCORD_WEBHOOK_URL }}
