@@ -117,7 +117,7 @@ jobs:
         github.event_name == 'pull_request'
       )
     env:
-      BUILD_TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -136,9 +136,9 @@ jobs:
 
       - name: Build and Push Gateway
         run: |
-          docker pull $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG || true
-          docker build --cache-from $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG -t $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG ./gateway
-          docker push $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG
+          docker pull $REGISTRY_IMAGE/pharmagent-gateway:$TAG || true
+          docker build --cache-from $REGISTRY_IMAGE/pharmagent-gateway:$TAG -t $REGISTRY_IMAGE/pharmagent-gateway:$TAG ./gateway
+          docker push $REGISTRY_IMAGE/pharmagent-gateway:$TAG
 
       - name: Cleanup Docker System
         if: always()
@@ -232,7 +232,7 @@ jobs:
         github.event_name == 'pull_request'
       )
     env:
-      BUILD_TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -257,24 +257,46 @@ jobs:
           fi
 
           echo "${{ secrets.ENV_FILE }}" > .env
-          # Dùng tag 'latest' cho tất cả services để backend/agent tìm đúng image trên GHCR
-          # Gateway image mới sẽ được tag lại thành latest ở bước tiếp theo
-          echo "TAG=latest" >> .env
+          # Dùng TAG đúng được tính từ tag_job (SHA hoặc latest nếu ở main)
+          echo "TAG=$TAG" >> .env
           echo "DOCKER_REGISTRY=$REGISTRY_IMAGE" >> .env
 
-      - name: Tag new Gateway image as latest
+      - name: Pull Gateway image
+        run: docker pull $REGISTRY_IMAGE/pharmagent-gateway:$TAG
+
+      - name: Resolve & Pull dependency images (Backend & Agent)
         run: |
-          # Pull image gateway vừa build (với BUILD_TAG)
-          docker pull $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG
-          # Tag lại thành latest để docker compose dùng
-          docker tag $REGISTRY_IMAGE/pharmagent-gateway:$BUILD_TAG $REGISTRY_IMAGE/pharmagent-gateway:latest
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+
+          for svc in backend agent; do
+            echo "=== Resolving image for $svc ==="
+            # Thử pull đúng SHA trước (service này vừa được build ở cùng commit)
+            if docker pull $REGISTRY_IMAGE/pharmagent-$svc:$TAG 2>/dev/null; then
+              echo "✅ Pulled $svc:$TAG from GHCR"
+            else
+              echo "ℹ️  $svc:$TAG not found. Querying GitHub Packages API for latest SHA..."
+              # Lấy tag SHA mới nhất của service (không phải 'latest') qua GitHub API
+              LATEST_SHA=$(curl -s \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/users/${OWNER}/packages/container/pharmagent-${svc}/versions?per_page=5" \
+                | jq -r '[.[] | select(.metadata.container.tags[]? | (. != "latest"))] | .[0].metadata.container.tags[] | select(. != "latest")' 2>/dev/null | head -1)
+
+              if [ -n "$LATEST_SHA" ] && [ "$LATEST_SHA" != "null" ]; then
+                echo "Found latest SHA for $svc: $LATEST_SHA"
+                docker pull $REGISTRY_IMAGE/pharmagent-$svc:$LATEST_SHA
+                # Retag cục bộ thành $TAG để docker-compose nhận diện được
+                docker tag $REGISTRY_IMAGE/pharmagent-$svc:$LATEST_SHA $REGISTRY_IMAGE/pharmagent-$svc:$TAG
+                echo "✅ Retagged $svc:$LATEST_SHA → $svc:$TAG (local only)"
+              else
+                echo "❌ Could not resolve any image for $svc. Aborting."
+                exit 1
+              fi
+            fi
+          done
 
       - name: Start services with Docker Compose
-        run: |
-          # Pull backend và agent latest từ GHCR (đã build từ pipeline trước)
-          docker compose pull backend agent redis || true
-          # docker compose up gateway sẽ dùng: gateway:latest (local), backend:latest, agent:latest (GHCR)
-          docker compose up -d --no-build gateway
+        run: docker compose up -d --no-build gateway
 
       - name: Wait for Gateway to be Healthy
         run: |
@@ -326,7 +348,7 @@ jobs:
       )
     continue-on-error: true
     env:
-      BUILD_TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -354,7 +376,7 @@ jobs:
       - name: Run Trivy vulnerability scanner - Gateway Image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY_IMAGE }}/pharmagent-gateway:${{ env.BUILD_TAG }}'
+          image-ref: '${{ env.REGISTRY_IMAGE }}/pharmagent-gateway:${{ env.TAG }}'
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
 
@@ -374,7 +396,7 @@ jobs:
         github.event_name == 'pull_request'
       )
     env:
-      BUILD_TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
       REPO_CONFIG: ${{ vars.REPO_CONFIG }}
     steps:
       - name: Checkout Source Code (GitHub)
@@ -396,13 +418,13 @@ jobs:
           cd Config
           GATEWAY_TARGET_FILE="app/gateway/values-prod.yaml"
 
-          yq -i '.image.tag = strenv(BUILD_TAG)' "$GATEWAY_TARGET_FILE"
+          yq -i '.image.tag = strenv(TAG)' "$GATEWAY_TARGET_FILE"
           git add "$GATEWAY_TARGET_FILE"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git commit -m "CD: Update gateway image tag to ${{ env.BUILD_TAG }}" || echo "No changes to commit"
+          git commit -m "CD: Update gateway image tag to ${{ env.TAG }}" || echo "No changes to commit"
           git push origin main --force
 
   notify_success:
