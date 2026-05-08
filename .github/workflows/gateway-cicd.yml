@@ -182,14 +182,23 @@ jobs:
           fi
 
           echo "${{ secrets.ENV_FILE }}" > .env
-          echo "TAG=$TAG" >> .env
+          # Dùng tag 'latest' cho tất cả services để backend/agent tìm đúng image trên GHCR
+          # Gateway image mới sẽ được tag lại thành latest ở bước tiếp theo
+          echo "TAG=latest" >> .env
           echo "DOCKER_REGISTRY=$REGISTRY_IMAGE" >> .env
+
+      - name: Tag new Gateway image as latest
+        run: |
+          # Pull image gateway vừa build (với SHA tag)
+          docker pull $REGISTRY_IMAGE/pharmagent-gateway:$TAG
+          # Tag lại thành latest để docker compose dùng
+          docker tag $REGISTRY_IMAGE/pharmagent-gateway:$TAG $REGISTRY_IMAGE/pharmagent-gateway:latest
 
       - name: Start services with Docker Compose
         run: |
-          # Pull image mới của gateway, các service khác dùng tag 'latest' đã có trên GHCR
-          docker compose pull gateway redis || true
-          # Tự động start theo dependency: gateway → backend+agent+redis → database+rabbitmq
+          # Pull backend và agent latest từ GHCR (đã build từ pipeline trước)
+          docker compose pull backend agent redis || true
+          # docker compose up gateway sẽ dùng: gateway:latest (local), backend:latest, agent:latest (GHCR)
           docker compose up -d --no-build gateway
 
       - name: Wait for Gateway to be Healthy
