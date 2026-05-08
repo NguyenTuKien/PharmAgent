@@ -46,11 +46,11 @@ public class SecurityConfiguration {
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/auth/change-password").authenticated()
-                        .requestMatchers("/auth/**", "/actuator/**").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/caregiver/**").hasRole("CAREGIVER")
-                        .requestMatchers("/elderly/**").hasRole("ELDERLY")
+                        .requestMatchers("/api/auth/change-password").authenticated()
+                        .requestMatchers("/api/auth/**", "/actuator/**", "/ws/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/caregiver/**").hasRole("CAREGIVER")
+                        .requestMatchers("/api/elderly/**").hasRole("ELDERLY")
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
