@@ -50,7 +50,7 @@ jobs:
 
       - name: Run Maven Tests
         working-directory: ./backend
-        run: mvn -B clean test
+        run: mvn -B clean test -DskipTests=${{ env.SKIP_TESTS || "false" }}
         env:
           MONGODB_URI: mongodb://localhost:27017/pharmagent_test_db
           REDIS_URL: redis://localhost:6379
@@ -58,6 +58,11 @@ jobs:
           JWT_SECRET: day-la-mot-chuoi-secret-key-gia-cuc-ky-dai-de-chay-unit-test-thanh-cong
           SPRING_MAIL_USERNAME: test@gmail.com
           SPRING_MAIL_PASSWORD: dummy-password
+          CLOUDINARY_CLOUD_NAME: dummy_cloud
+          CLOUDINARY_API_KEY: "123456789"
+          CLOUDINARY_API_SECRET: dummy_secret
+          SKIP_TESTS: false
+          # Set SKIP_TESTS to true to skip unit tests
 
       - name: Generate JaCoCo Coverage Report
         if: always()
