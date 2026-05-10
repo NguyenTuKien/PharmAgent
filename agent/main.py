@@ -76,18 +76,16 @@ async def upload_frame_to_cloudinary(frame_bytes: bytes, pill_id: Optional[str])
             secure_url = upload_resp.json().get("secure_url")
             logger.info(f"Uploaded scan image to Cloudinary: {secure_url}")
 
-            # 3. Nếu có pillId thì gọi backend để add image vào pill
+            # 3. Không gọi endpoint admin từ agent vì request này không kèm Authorization/JWT
+            #    và sẽ luôn bị từ chối bởi backend. Ảnh vẫn được upload thành công lên Cloudinary
+            #    và secure_url sẽ được trả về cho caller xử lý ở luồng phù hợp.
             if pill_id and secure_url:
-                add_resp = await client.post(
-                    f"{BACKEND_URL}/api/admin/pills/{pill_id}/images",
-                    json={
-                        "imageUrl":  secure_url,
-                        "viewType":  "FRONT",
-                        "isPrimary": False
-                    }
+                logger.info(
+                    "Skipping backend pill image association for pillId=%s because "
+                    "the available endpoint is admin-protected and this agent request "
+                    "does not include Authorization/JWT.",
+                    pill_id,
                 )
-                if add_resp.status_code not in (200, 201):
-                    logger.warning(f"Add pill image failed: {add_resp.status_code} {add_resp.text}")
 
             return secure_url
 
