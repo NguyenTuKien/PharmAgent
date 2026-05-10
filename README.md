@@ -90,7 +90,7 @@ graph TD
     GW -->|Forward| BE[Backend - Spring Boot]
     GW -->|Forward| AG[AI Agent - Python]
     BE --> DB1[(MongoDB)]
-    BE --> DB2[(MySQL/Redis)]
+    BE --> DB2[(Redis)]
     AG --> AI[AI Model - Pill Scan]
 ```
 ### 3.4. Phân chia công việc
