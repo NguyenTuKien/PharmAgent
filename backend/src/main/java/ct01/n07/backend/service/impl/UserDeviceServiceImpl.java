@@ -37,7 +37,7 @@ public class UserDeviceServiceImpl implements UserDeviceService {
                 })
                 .orElseGet(() -> {
                     if (userDeviceRepository.findByDeviceToken(deviceToken).isPresent()) {
-                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token already registered");
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token is already registered to another user");
                     }
 
                     return UserDevice.builder()
@@ -62,9 +62,9 @@ public class UserDeviceServiceImpl implements UserDeviceService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found"));
 
         userDeviceRepository.findByDeviceToken(deviceToken)
-                .filter(existing -> !existing.getUserId().equals(userId) && !existing.getId().equals(deviceId))
+                .filter(existing -> !existing.getUserId().equals(userId))
                 .ifPresent(existing -> {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token already registered");
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token is already registered to another user");
                 });
 
         device.setDeviceName(request.getDeviceName());
