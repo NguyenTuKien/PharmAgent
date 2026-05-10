@@ -25,9 +25,9 @@ public class UserDeviceServiceImpl implements UserDeviceService {
     @Override
     public UserDeviceResponse addDevice(UserDeviceRequest request) {
         String userId = profileAccessContext.getCurrentUserId();
+        String deviceToken = request.getDeviceToken();
 
-        // Nếu device token đã tồn tại, cập nhật thay vì tạo mới
-        UserDevice device = userDeviceRepository.findByDeviceToken(request.getDeviceToken())
+        UserDevice device = userDeviceRepository.findByDeviceTokenAndUserId(deviceToken, userId)
                 .map(existing -> {
                     existing.setDeviceName(request.getDeviceName());
                     existing.setDeviceType(request.getDeviceType());
@@ -35,14 +35,20 @@ public class UserDeviceServiceImpl implements UserDeviceService {
                     existing.setLastSeenAt(Instant.now());
                     return existing;
                 })
-                .orElseGet(() -> UserDevice.builder()
-                        .userId(userId)
-                        .deviceName(request.getDeviceName())
-                        .deviceToken(request.getDeviceToken())
-                        .deviceType(request.getDeviceType())
-                        .isActive(request.isActive())
-                        .lastSeenAt(Instant.now())
-                        .build());
+                .orElseGet(() -> {
+                    if (userDeviceRepository.findByDeviceToken(deviceToken).isPresent()) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token already registered");
+                    }
+
+                    return UserDevice.builder()
+                            .userId(userId)
+                            .deviceName(request.getDeviceName())
+                            .deviceToken(deviceToken)
+                            .deviceType(request.getDeviceType())
+                            .isActive(request.isActive())
+                            .lastSeenAt(Instant.now())
+                            .build();
+                });
 
         return toResponse(userDeviceRepository.save(device));
     }
@@ -50,12 +56,19 @@ public class UserDeviceServiceImpl implements UserDeviceService {
     @Override
     public UserDeviceResponse updateDevice(String deviceId, UserDeviceRequest request) {
         String userId = profileAccessContext.getCurrentUserId();
+        String deviceToken = request.getDeviceToken();
 
         UserDevice device = userDeviceRepository.findByIdAndUserId(deviceId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found"));
 
+        userDeviceRepository.findByDeviceToken(deviceToken)
+                .filter(existing -> !existing.getUserId().equals(userId) && !existing.getId().equals(deviceId))
+                .ifPresent(existing -> {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token already registered");
+                });
+
         device.setDeviceName(request.getDeviceName());
-        device.setDeviceToken(request.getDeviceToken());
+        device.setDeviceToken(deviceToken);
         device.setDeviceType(request.getDeviceType());
         device.setActive(request.isActive());
         device.setLastSeenAt(Instant.now());
