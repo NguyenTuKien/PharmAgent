@@ -1,7 +1,6 @@
 package ct01.n07.backend.dto.user;
 
 import ct01.n07.backend.model.UserContact;
-import ct01.n07.backend.model.UserDevice;
 import ct01.n07.backend.model.enums.Gender;
 import ct01.n07.backend.model.enums.Role;
 import lombok.Data;
@@ -22,7 +21,6 @@ public class UserProfileResponse {
     private String address;
     private String avatarUrl;
     private List<UserContact> userContacts;
-    private List<UserDevice> userDevices;
     private Role role;
     private Instant createdAt;
     private Instant updatedAt;

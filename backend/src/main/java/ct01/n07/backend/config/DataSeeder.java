@@ -1,22 +1,8 @@
 package ct01.n07.backend.config;
 
-import ct01.n07.backend.model.Medication;
-import ct01.n07.backend.model.Pill;
-import ct01.n07.backend.model.PillImage;
-import ct01.n07.backend.model.UserContact;
-import ct01.n07.backend.model.User;
-import ct01.n07.backend.model.UserDevice;
-import ct01.n07.backend.model.UserProfile;
-import ct01.n07.backend.model.enums.DeviceType;
-import ct01.n07.backend.model.enums.Gender;
-import ct01.n07.backend.model.enums.MealRelation;
-import ct01.n07.backend.model.enums.Role;
-import ct01.n07.backend.model.enums.UserStatus;
-import ct01.n07.backend.model.enums.ViewType;
-import ct01.n07.backend.repository.MedicationRepository;
-import ct01.n07.backend.repository.PillRepository;
-import ct01.n07.backend.repository.UserProfileRepository;
-import ct01.n07.backend.repository.UserRepository;
+import ct01.n07.backend.model.*;
+import ct01.n07.backend.model.enums.*;
+import ct01.n07.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -27,6 +13,8 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -39,8 +27,17 @@ public class DataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final UserDeviceRepository userDeviceRepository;
     private final PillRepository pillRepository;
     private final MedicationRepository medicationRepository;
+    
+    private final RelationshipRepository relationshipRepository;
+    private final ChatRoomRepository chatRoomRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final CallLogRepository callLogRepository;
+    private final NotificationRepository notificationRepository;
+    private final EventDoseRepository eventDoseRepository;
+
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -48,16 +45,25 @@ public class DataSeeder implements CommandLineRunner {
         log.info("== Seed sample data started ==");
 
         User admin = upsertUser("admin@pharmagent.local", "Admin@123", UserStatus.ACTIVE);
-        User familyAccount = upsertUser("family@pharmagent.local", "Family@123", UserStatus.ACTIVE);
+        User elderly = upsertUser("elderly@pharmagent.local", "Elderly@123", UserStatus.ACTIVE);
+        User caregiver = upsertUser("caregiver@pharmagent.local", "Caregiver@123", UserStatus.ACTIVE);
 
         upsertAdminProfile(admin);
-        upsertElderlyProfile(familyAccount);
-        upsertCaregiverProfile(familyAccount);
+        upsertElderlyProfile(elderly);
+        upsertCaregiverProfile(caregiver);
+
+        upsertDevice(elderly, "fcm_elderly_123", "iPad cua Ong", DeviceType.IOS);
+        upsertDevice(caregiver, "fcm_caregiver_123", "iPhone cua Con", DeviceType.IOS);
+
+        upsertRelationship(caregiver, elderly);
+        upsertChatAndCall(caregiver, elderly);
+        upsertNotification(caregiver, elderly);
 
         Pill paracetamol = upsertParacetamol();
         upsertAmlodipine();
 
-        upsertMedication(familyAccount, paracetamol);
+        Medication medication = upsertMedication(elderly, paracetamol);
+        upsertEventDose(elderly, medication);
 
         log.info("== Seed sample data completed ==");
     }
@@ -85,12 +91,11 @@ public class DataSeeder implements CommandLineRunner {
             profile.setAddress(null);
             profile.setAvatarUrl(null);
             profile.setUserContacts(List.of());
-            profile.setUserDevices(List.of());
         });
     }
 
-    private void upsertElderlyProfile(User familyAccount) {
-        upsertProfile(familyAccount, Role.ELDERLY, profile -> {
+    private void upsertElderlyProfile(User elderly) {
+        upsertProfile(elderly, Role.ELDERLY, profile -> {
             profile.setFirstName("Kien");
             profile.setLastName("Nguyen");
             profile.setPhone("0900000002");
@@ -103,19 +108,11 @@ public class DataSeeder implements CommandLineRunner {
                             .name("Con trai Dai")
                             .phone("0987654321")
                             .build()));
-            profile.setUserDevices(List.of(
-                    UserDevice.builder()
-                            .deviceName("iPad cua ong")
-                            .deviceToken("fcm_token_sample_123")
-                            .deviceType(DeviceType.IOS)
-                            .isActive(true)
-                            .lastSeenAt(Instant.now())
-                            .build()));
         });
     }
 
-    private void upsertCaregiverProfile(User familyAccount) {
-        upsertProfile(familyAccount, Role.CAREGIVER, profile -> {
+    private void upsertCaregiverProfile(User caregiver) {
+        upsertProfile(caregiver, Role.CAREGIVER, profile -> {
             profile.setFirstName("Anh");
             profile.setLastName("Nguyen");
             profile.setPhone("0900000003");
@@ -124,7 +121,6 @@ public class DataSeeder implements CommandLineRunner {
             profile.setAddress("Ha Noi, Viet Nam");
             profile.setAvatarUrl(null);
             profile.setUserContacts(List.of());
-            profile.setUserDevices(List.of());
         });
     }
 
@@ -150,6 +146,101 @@ public class DataSeeder implements CommandLineRunner {
                 .min(Comparator.comparing(UserProfile::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())));
     }
 
+    private void upsertDevice(User user, String token, String name, DeviceType type) {
+        if (userDeviceRepository.findByDeviceToken(token).isEmpty()) {
+            UserDevice device = UserDevice.builder()
+                    .userId(user.getId())
+                    .deviceName(name)
+                    .deviceToken(token)
+                    .deviceType(type)
+                    .isActive(true)
+                    .lastSeenAt(Instant.now())
+                    .build();
+            userDeviceRepository.save(device);
+        }
+    }
+
+    private void upsertRelationship(User caregiver, User elderly) {
+        if (!relationshipRepository.existsByCaregiverIdAndElderlyId(caregiver.getId(), elderly.getId())) {
+            Relationship relationship = Relationship.builder()
+                    .caregiverId(caregiver.getId())
+                    .elderlyId(elderly.getId())
+                    .caregiverTitle("Con trai")
+                    .elderlyTitle("Bố")
+                    .permissionLevel(PermissionLevel.MANAGE_ALL)
+                    .status(RelationStatus.ACCEPTED)
+                    .startDate(LocalDate.now().minusDays(10))
+                    .createdAt(Instant.now())
+                    .build();
+            relationshipRepository.save(relationship);
+        }
+    }
+
+    private void upsertChatAndCall(User caregiver, User elderly) {
+        // ChatRoom
+        ChatRoom room = chatRoomRepository.findByTypeAndParticipantIdsContainingAndParticipantIdsContaining(
+                "DIRECT", caregiver.getId(), elderly.getId()
+        ).orElseGet(() -> {
+            ChatRoom newRoom = ChatRoom.builder()
+                    .type("DIRECT")
+                    .participantIds(List.of(caregiver.getId(), elderly.getId()))
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+            return chatRoomRepository.save(newRoom);
+        });
+
+        // ChatMessage
+        if (chatMessageRepository.count() == 0) {
+            ChatMessage msg1 = ChatMessage.builder()
+                    .roomId(room.getId())
+                    .senderId(caregiver.getId())
+                    .content("Bố nhớ uống thuốc nhé!")
+                    .type("TEXT")
+                    .readBy(List.of(caregiver.getId(), elderly.getId()))
+                    .sentAt(Instant.now().minus(1, ChronoUnit.HOURS))
+                    .build();
+            ChatMessage msg2 = ChatMessage.builder()
+                    .roomId(room.getId())
+                    .senderId(elderly.getId())
+                    .content("Bố uống rồi con nhé.")
+                    .type("TEXT")
+                    .readBy(List.of(caregiver.getId(), elderly.getId()))
+                    .sentAt(Instant.now().minus(30, ChronoUnit.MINUTES))
+                    .build();
+            chatMessageRepository.saveAll(List.of(msg1, msg2));
+
+            room.setLastMessageId(msg2.getId());
+            chatRoomRepository.save(room);
+        }
+
+        // CallLog
+        if (callLogRepository.findByCallerIdOrReceiverId(caregiver.getId(), elderly.getId()).isEmpty()) {
+            CallLog call = CallLog.builder()
+                    .callerId(caregiver.getId())
+                    .receiverId(elderly.getId())
+                    .startedAt(Instant.now().minus(2, ChronoUnit.HOURS))
+                    .endedAt(Instant.now().minus(1, ChronoUnit.HOURS).minus(50, ChronoUnit.MINUTES))
+                    .durationInSeconds(600L)
+                    .status("COMPLETED")
+                    .build();
+            callLogRepository.save(call);
+        }
+    }
+
+    private void upsertNotification(User caregiver, User elderly) {
+        if (notificationRepository.count() == 0) {
+            Notification notif = Notification.builder()
+                    .senderId(caregiver.getId())
+                    .receiverId(elderly.getId())
+                    .content("Tài khoản của bạn đã được kết nối với người chăm sóc.")
+                    .sentAt(Instant.now())
+                    .status(NotificationStatus.SUCCESS)
+                    .build();
+            notificationRepository.save(notif);
+        }
+    }
+
     private Pill upsertParacetamol() {
         Pill pill = pillRepository.findByNameAndStrength("Paracetamol 500mg", "500mg").orElseGet(Pill::new);
         if (pill.getId() == null) {
@@ -163,9 +254,9 @@ public class DataSeeder implements CommandLineRunner {
         pill.setDosageForm("Vien nen");
         pill.setColor("Trang");
         pill.setShape("Tron");
-        pill.setDescription(null);
+        pill.setDescription("Thuoc giam dau ha sot");
         pill.setUsageInstructions("Uong sau khi an no. Khong uong qua 4 vien/ngay.");
-        pill.setWarning(null);
+        pill.setWarning("Khong dung cho nguoi suy gan");
         pill.setSideEffects("Co the gay buon ngu nhe.");
         pill.setManufacturer("GlaxoSmithKline");
         pill.setActive(true);
@@ -192,7 +283,7 @@ public class DataSeeder implements CommandLineRunner {
         pill.setDosageForm("Vien nang");
         pill.setColor("Vang");
         pill.setShape(null);
-        pill.setDescription(null);
+        pill.setDescription("Thuoc huyet ap");
         pill.setUsageInstructions("Uong vao buoi sang, truoc hoac sau an deu duoc.");
         pill.setWarning(null);
         pill.setSideEffects(null);
@@ -203,17 +294,17 @@ public class DataSeeder implements CommandLineRunner {
         pillRepository.save(pill);
     }
 
-    private void upsertMedication(User familyAccount, Pill paracetamol) {
+    private Medication upsertMedication(User elderly, Pill paracetamol) {
         String nickname = "Thuoc dau dau (hop xanh)";
         Medication medication = medicationRepository
-                .findByPatientIdAndPillIdAndNickname(familyAccount.getId(), paracetamol.getId(), nickname)
+                .findByPatientIdAndPillIdAndNickname(elderly.getId(), paracetamol.getId(), nickname)
                 .orElseGet(Medication::new);
 
         if (medication.getId() == null) {
             medication.setCreatedAt(Instant.now());
         }
 
-        medication.setPatientId(familyAccount.getId());
+        medication.setPatientId(elderly.getId());
         medication.setPillId(paracetamol.getId());
         medication.setNickname(nickname);
         medication.setDosageAmount(new BigDecimal("1.0"));
@@ -228,6 +319,22 @@ public class DataSeeder implements CommandLineRunner {
         medication.setActive(true);
         medication.setMedicationSchedules(List.of());
 
-        medicationRepository.save(medication);
+        return medicationRepository.save(medication);
+    }
+
+    private void upsertEventDose(User elderly, Medication medication) {
+        if (eventDoseRepository.count() == 0) {
+            EventDose event = EventDose.builder()
+                    .medicationId(medication.getId())
+                    .scheduledAt(LocalDateTime.now().minusHours(2))
+                    .status(DoseStatus.TAKEN)
+                    .takenAt(LocalDateTime.now().minusHours(1).minusMinutes(55))
+                    .confirmedBy(elderly.getId())
+                    .note("Uống sau khi ăn sáng")
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+            eventDoseRepository.save(event);
+        }
     }
 }

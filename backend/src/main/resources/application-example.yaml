@@ -48,3 +48,8 @@ management:
     web:
       exposure:
         include: health
+
+cloudinary:
+  cloud-name: dummy_cloud_name
+  api-key: "000000000000000"
+  api-secret: dummy_api_secret_here

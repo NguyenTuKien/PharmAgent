@@ -5,9 +5,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
-import org.bson.types.ObjectId; // Import class này của MongoDB
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
 
 import java.time.Instant;
 
@@ -15,9 +18,14 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Document(collection = "user_devices")
 public class UserDevice {
-    @Builder.Default
-    private String id = new ObjectId().toString();
+    @Id
+    private String id;
+
+    @Indexed
+    @Field(targetType = FieldType.OBJECT_ID)
+    private String userId; // Trỏ đến users._id
 
     private String deviceName;
 
@@ -27,6 +35,6 @@ public class UserDevice {
     private DeviceType deviceType;
     private boolean isActive;
 
-    @LastModifiedBy
+    @LastModifiedDate
     private Instant lastSeenAt;
 }

@@ -2,6 +2,7 @@ package ct01.n07.backend.service.impl;
 
 import ct01.n07.backend.constant.ProfileConstant;
 import ct01.n07.backend.dto.user.CreateProfileRequest;
+import ct01.n07.backend.dto.user.UpdateAvatarRequest;
 import ct01.n07.backend.dto.user.UserProfileResponse;
 import ct01.n07.backend.dto.user.UserProfileSummaryResponse;
 import ct01.n07.backend.dto.user.UpdateProfileRequest;
@@ -153,6 +154,13 @@ public class UserProfileServiceImpl implements UserProfileService {
         }
 
         userProfileMapper.updateUserProfile(request, currentProfile);
+        return userProfileMapper.toResponse(userProfileRepository.save(currentProfile));
+    }
+
+    @Override
+    public UserProfileResponse updateAvatar(UpdateAvatarRequest request) {
+        UserProfile currentProfile = getCurrentUserProfile();
+        currentProfile.setAvatarUrl(request.getAvatarUrl());
         return userProfileMapper.toResponse(userProfileRepository.save(currentProfile));
     }
 
