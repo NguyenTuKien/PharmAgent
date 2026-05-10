@@ -328,8 +328,8 @@ jobs:
           fi
 
       - name: Cleanup Docker System
-        if: alway
-P     run: |
+        if: always()
+        run: |
           docker compose down --volumes --rmi local
           docker system prune -a -f
 

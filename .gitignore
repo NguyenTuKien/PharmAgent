@@ -2,6 +2,7 @@
 **/.env
 **/logs
 **/.idea
+**/postman
 **/application.yaml
 **/.idea
 **/vscode
