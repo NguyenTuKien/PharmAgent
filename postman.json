@@ -1,0 +1,3009 @@
+{
+  "info": {
+    "name": "PharmAgent Full API (By Controller Structure)",
+    "description": "Auto-generated Postman collection mirroring the controller folder structure, complete with test scripts to capture ids and tokens automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:9000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "profileId",
+      "value": ""
+    },
+    {
+      "key": "adminProfileId",
+      "value": ""
+    },
+    {
+      "key": "caregiverProfileId",
+      "value": ""
+    },
+    {
+      "key": "elderlyProfileId",
+      "value": ""
+    },
+    {
+      "key": "pillId",
+      "value": ""
+    },
+    {
+      "key": "medicationId",
+      "value": ""
+    },
+    {
+      "key": "scheduleId",
+      "value": ""
+    },
+    {
+      "key": "timeId",
+      "value": ""
+    },
+    {
+      "key": "eventId",
+      "value": ""
+    },
+    {
+      "key": "roomId",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "contactId",
+      "value": ""
+    },
+    {
+      "key": "deviceId",
+      "value": ""
+    },
+    {
+      "key": "relationshipId",
+      "value": ""
+    },
+    {
+      "key": "targetElderlyId",
+      "value": ""
+    },
+    {
+      "key": "imageId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "gateway",
+      "item": [
+        {
+          "name": "Gateway Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "Gateway Routes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/routes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "routes"
+              ]
+            },
+            "header": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "websockets",
+      "item": [
+        {
+          "name": "AI Agent Pill Scan (WS)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ws/agent?token={{accessToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ws",
+                "agent"
+              ],
+              "protocol": "ws",
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}"
+                }
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "Backend Chat STOMP (WS)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ws",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ws"
+              ],
+              "protocol": "ws"
+            },
+            "header": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "root",
+      "item": [
+        {
+          "name": "AuthController",
+          "item": [
+            {
+              "name": "Login",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.authToken) pm.collectionVariables.set('accessToken', jsonData.authToken);",
+                      "if (jsonData.refreshToken) pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+                      "\nfunction saveProfileByRole(profile) {\n    if (!profile || !profile.id) return;\n    pm.collectionVariables.set('profileId', profile.id);\n    if (profile.role === 'ADMIN') pm.collectionVariables.set('adminProfileId', profile.id);\n    if (profile.role === 'CAREGIVER') pm.collectionVariables.set('caregiverProfileId', profile.id);\n    if (profile.role === 'ELDERLY') pm.collectionVariables.set('elderlyProfileId', profile.id);\n}\n",
+                      "if (jsonData.profiles && jsonData.profiles.content && jsonData.profiles.content.length > 0) {",
+                      "    saveProfileByRole(jsonData.profiles.content[0]);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Select Profile",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/profiles/{{profileId}}/select",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "profiles",
+                    "{{profileId}}",
+                    "select"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.accessToken) pm.collectionVariables.set('accessToken', jsonData.accessToken);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Refresh Token",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "refresh"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\",\n  \"profileId\": \"{{profileId}}\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.accessToken) pm.collectionVariables.set('accessToken', jsonData.accessToken);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Signup",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/signup",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "signup"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\",\n  \"caregiver\": {\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"phone\": \"0912345678\",\n    \"dateOfBirth\": \"1990-01-01\",\n    \"gender\": \"MALE\"\n  },\n  \"elderly\": {\n    \"firstName\": \"Jane\",\n    \"lastName\": \"Doe\",\n    \"phone\": \"0987654321\",\n    \"dateOfBirth\": \"1950-01-01\",\n    \"gender\": \"FEMALE\",\n    \"address\": \"123 Elderly St\",\n    \"caregiverTitle\": \"Son\",\n    \"elderlyTitle\": \"Mother\",\n    \"permissionLevel\": \"MANAGE_ALL\"\n  }\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.authToken) pm.collectionVariables.set('accessToken', jsonData.authToken);",
+                      "if (jsonData.refreshToken) pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+                      "\nfunction saveProfileByRole(profile) {\n    if (!profile || !profile.id) return;\n    pm.collectionVariables.set('profileId', profile.id);\n    if (profile.role === 'ADMIN') pm.collectionVariables.set('adminProfileId', profile.id);\n    if (profile.role === 'CAREGIVER') pm.collectionVariables.set('caregiverProfileId', profile.id);\n    if (profile.role === 'ELDERLY') pm.collectionVariables.set('elderlyProfileId', profile.id);\n}\n",
+                      "if (jsonData.profiles && jsonData.profiles.content && jsonData.profiles.content.length > 0) {",
+                      "    saveProfileByRole(jsonData.profiles.content[0]);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/logout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "logout"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"authToken\": \"{{accessToken}}\",\n  \"accessToken\": \"{{accessToken}}\",\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Forgot Password",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/forgot-password?email=user@example.com",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "forgot-password"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "user@example.com"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Reset Password",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/reset-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "reset-password"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"New123!\",\n  \"confirmPassword\": \"New123!\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Change Password",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/change-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "change-password"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"currentPassword\": \"Password123!\",\n  \"newPassword\": \"New123!\",\n  \"confirmPassword\": \"New123!\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ChatController",
+          "item": [
+            {
+              "name": "Get Rooms",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/chat/rooms",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "chat",
+                    "rooms"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (Array.isArray(jsonData) && jsonData.length > 0) pm.collectionVariables.set('roomId', jsonData[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create Direct Room",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/chat/rooms/direct/{{targetElderlyId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "chat",
+                    "rooms",
+                    "direct",
+                    "{{targetElderlyId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.id) pm.collectionVariables.set('roomId', jsonData.id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Room Messages",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/chat/rooms/{{roomId}}/messages?page=0&size=50",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "chat",
+                    "rooms",
+                    "{{roomId}}",
+                    "messages"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "50"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "EventDoseController",
+          "item": [
+            {
+              "name": "Get Today Doses",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/today?patientId={{elderlyProfileId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "events",
+                    "today"
+                  ],
+                  "query": [
+                    {
+                      "key": "patientId",
+                      "value": "{{elderlyProfileId}}"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.content && jsonData.content.length > 0) pm.collectionVariables.set('eventId', jsonData.content[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Pending Doses",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/pending?patientId={{elderlyProfileId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "events",
+                    "pending"
+                  ],
+                  "query": [
+                    {
+                      "key": "patientId",
+                      "value": "{{elderlyProfileId}}"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.content && jsonData.content.length > 0) pm.collectionVariables.set('eventId', jsonData.content[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Processed Doses",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/processed?patientId={{elderlyProfileId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "events",
+                    "processed"
+                  ],
+                  "query": [
+                    {
+                      "key": "patientId",
+                      "value": "{{elderlyProfileId}}"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.content && jsonData.content.length > 0) pm.collectionVariables.set('eventId', jsonData.content[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "MedicationController",
+          "item": [
+            {
+              "name": "Get Medications",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/medications?patientId={{elderlyProfileId}}&isActive=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "medications"
+                  ],
+                  "query": [
+                    {
+                      "key": "patientId",
+                      "value": "{{elderlyProfileId}}"
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.content && jsonData.content.length > 0) {",
+                      "    var firstMed = jsonData.content[0];",
+                      "    pm.collectionVariables.set('medicationId', firstMed.id);",
+                      "    if (firstMed.schedules && firstMed.schedules.length > 0) {",
+                      "        pm.collectionVariables.set('scheduleId', firstMed.schedules[0].id);",
+                      "        if (firstMed.schedules[0].medDoses && firstMed.schedules[0].medDoses.length > 0) {",
+                      "            pm.collectionVariables.set('timeId', firstMed.schedules[0].medDoses[0].id);",
+                      "        }",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Medication By Id",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/medications/{{medicationId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "medications",
+                    "{{medicationId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.id) pm.collectionVariables.set('medicationId', jsonData.id);",
+                      "if (jsonData.schedules && jsonData.schedules.length > 0) {",
+                      "    pm.collectionVariables.set('scheduleId', jsonData.schedules[0].id);",
+                      "    if (jsonData.schedules[0].medDoses && jsonData.schedules[0].medDoses.length > 0) {",
+                      "        pm.collectionVariables.set('timeId', jsonData.schedules[0].medDoses[0].id);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "NotificationController",
+          "item": [
+            {
+              "name": "Send Notification",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/notifications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "notifications"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"receiverId\": \"{{profileId}}\",\n  \"content\": \"\\u0110\\u1ebfn gi\\u1edd u\\u1ed1ng thu\\u1ed1c r\\u1ed3i!\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Get My Notifications",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/notifications?page=0&size=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "notifications"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "PillController",
+          "item": [
+            {
+              "name": "Get Pill Catalog",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/pills?page=0&size=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "pills"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.content && jsonData.content.length > 0) pm.collectionVariables.set('pillId', jsonData.content[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Pill By Id",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/pills/{{pillId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "pills",
+                    "{{pillId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Search Pills",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/pills/search?keyword=Paracetamol",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "pills",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "keyword",
+                      "value": "Paracetamol"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.content && jsonData.content.length > 0) pm.collectionVariables.set('pillId', jsonData.content[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "StatsController",
+          "item": [
+            {
+              "name": "Get Adherence",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/stats/adherence?patientId={{elderlyProfileId}}&startDate=2024-05-01&endDate=2024-05-31",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stats",
+                    "adherence"
+                  ],
+                  "query": [
+                    {
+                      "key": "patientId",
+                      "value": "{{elderlyProfileId}}"
+                    },
+                    {
+                      "key": "startDate",
+                      "value": "2024-05-01"
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2024-05-31"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Get Doses By Medication",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/stats/doses-by-medication?patientId={{elderlyProfileId}}&startDate=2024-05-01&endDate=2024-05-31",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stats",
+                    "doses-by-medication"
+                  ],
+                  "query": [
+                    {
+                      "key": "patientId",
+                      "value": "{{elderlyProfileId}}"
+                    },
+                    {
+                      "key": "startDate",
+                      "value": "2024-05-01"
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2024-05-31"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Get Inventory Warnings",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/stats/inventory-warnings?patientId={{elderlyProfileId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stats",
+                    "inventory-warnings"
+                  ],
+                  "query": [
+                    {
+                      "key": "patientId",
+                      "value": "{{elderlyProfileId}}"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "UploadController",
+          "item": [
+            {
+              "name": "Get Presigned Upload",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/upload/presign?folder=avatar",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "upload",
+                    "presign"
+                  ],
+                  "query": [
+                    {
+                      "key": "folder",
+                      "value": "avatar"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "UserDeviceController",
+          "item": [
+            {
+              "name": "Get My Devices",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/devices/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "devices",
+                    "me"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (Array.isArray(jsonData) && jsonData.length > 0) pm.collectionVariables.set('deviceId', jsonData[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Add Device",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/devices/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "devices",
+                    "me"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"deviceName\": \"Samsung S21\",\n  \"deviceToken\": \"fcm-token\",\n  \"deviceType\": \"ANDROID\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Update Device",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/devices/me/{{deviceId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "devices",
+                    "me",
+                    "{{deviceId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"deviceName\": \"Samsung S21 Plus\",\n  \"deviceToken\": \"fcm-token-updated\",\n  \"deviceType\": \"ANDROID\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete Device",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/devices/me/{{deviceId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "devices",
+                    "me",
+                    "{{deviceId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "UserProfileController",
+          "item": [
+            {
+              "name": "Get Profiles",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/profiles?page=0&size=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profiles"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "\nfunction saveProfileByRole(profile) {\n    if (!profile || !profile.id) return;\n    pm.collectionVariables.set('profileId', profile.id);\n    if (profile.role === 'ADMIN') pm.collectionVariables.set('adminProfileId', profile.id);\n    if (profile.role === 'CAREGIVER') pm.collectionVariables.set('caregiverProfileId', profile.id);\n    if (profile.role === 'ELDERLY') pm.collectionVariables.set('elderlyProfileId', profile.id);\n}\n",
+                      "if (jsonData.content && jsonData.content.length > 0) {",
+                      "    saveProfileByRole(jsonData.content[0]);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get My Profile",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/profiles/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profiles",
+                    "me"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "\nfunction saveProfileByRole(profile) {\n    if (!profile || !profile.id) return;\n    pm.collectionVariables.set('profileId', profile.id);\n    if (profile.role === 'ADMIN') pm.collectionVariables.set('adminProfileId', profile.id);\n    if (profile.role === 'CAREGIVER') pm.collectionVariables.set('caregiverProfileId', profile.id);\n    if (profile.role === 'ELDERLY') pm.collectionVariables.set('elderlyProfileId', profile.id);\n}\n",
+                      "saveProfileByRole(jsonData);",
+                      "if (jsonData.userContacts && jsonData.userContacts.length > 0) {",
+                      "    pm.collectionVariables.set('contactId', jsonData.userContacts[0].id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update My Profile",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/profiles/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profiles",
+                    "me"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Update Avatar",
+              "request": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/api/profiles/me/avatar",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profiles",
+                    "me",
+                    "avatar"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"avatarUrl\": \"http://example.com/avatar.jpg\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Get My Contacts",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/profiles/me/contacts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profiles",
+                    "me",
+                    "contacts"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (Array.isArray(jsonData) && jsonData.length > 0) pm.collectionVariables.set('contactId', jsonData[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Add User Contact",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/profiles/me/contacts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profiles",
+                    "me",
+                    "contacts"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Emergency\",\n  \"phone\": \"0911223344\",\n  \"relationship\": \"Brother\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.id) pm.collectionVariables.set('contactId', jsonData.id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update User Contact",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/profiles/me/contacts/{{contactId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profiles",
+                    "me",
+                    "contacts",
+                    "{{contactId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Emergency\",\n  \"phone\": \"0911223344\",\n  \"relationship\": \"Brother\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete Contact",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/profiles/me/contacts/{{contactId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profiles",
+                    "me",
+                    "contacts",
+                    "{{contactId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "admin",
+      "item": [
+        {
+          "name": "AdminPillController",
+          "item": [
+            {
+              "name": "Add Pill",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/pills",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "pills"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pillName\": \"Aspirin\",\n  \"description\": \"Pain reliever\",\n  \"mainIngredient\": \"Acid\",\n  \"dosageForm\": \"VIEN\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.id) pm.collectionVariables.set('pillId', jsonData.id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Pill",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/pills/{{pillId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "pills",
+                    "{{pillId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pillName\": \"Aspirin\",\n  \"description\": \"Pain reliever\",\n  \"mainIngredient\": \"Acid\",\n  \"dosageForm\": \"VIEN\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete Pill",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/pills/{{pillId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "pills",
+                    "{{pillId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Add Pill Image",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/pills/{{pillId}}/images",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "pills",
+                    "{{pillId}}",
+                    "images"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"imageUrl\": \"http://img.com/pill.jpg\",\n  \"viewType\": \"FRONT\",\n  \"isPrimary\": true\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete Pill Image",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/pills/{{pillId}}/images/{{imageId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "pills",
+                    "{{pillId}}",
+                    "images",
+                    "{{imageId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "AdminUserController",
+          "item": [
+            {
+              "name": "Get All Users",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/users?page=0&size=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.content && jsonData.content.length > 0) pm.collectionVariables.set('userId', jsonData.content[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create User",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "users"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"Password123!\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.id) pm.collectionVariables.set('userId', jsonData.id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update User",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/users/{{userId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "users",
+                    "{{userId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"newuser@example.com\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete User",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/users/{{userId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "users",
+                    "{{userId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Lock User",
+              "request": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/users/{{userId}}/lock",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "users",
+                    "{{userId}}",
+                    "lock"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Unlock User",
+              "request": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/users/{{userId}}/unlock",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "users",
+                    "{{userId}}",
+                    "unlock"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "caregiver",
+      "item": [
+        {
+          "name": "CaregiverEventController",
+          "item": [
+            {
+              "name": "Update Dose Status",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/events/{{eventId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "events",
+                    "{{eventId}}",
+                    "status"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"TAKEN\",\n  \"note\": \"Confirmed\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CaregiverMedicationController",
+          "item": [
+            {
+              "name": "Create Medication",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/medications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "medications"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"patientId\": \"{{elderlyProfileId}}\",\n  \"pillId\": \"{{pillId}}\",\n  \"dosageAmount\": 1,\n  \"dosageUnit\": \"Vi\\u00ean\",\n  \"route\": \"U\\u1ed1ng\",\n  \"mealRelation\": \"AFTER_MEAL\",\n  \"startDate\": \"2024-05-10\",\n  \"totalQuantity\": 10,\n  \"schedules\": []\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.id) pm.collectionVariables.set('medicationId', jsonData.id);",
+                      "if (jsonData.schedules && jsonData.schedules.length > 0) {",
+                      "    pm.collectionVariables.set('scheduleId', jsonData.schedules[0].id);",
+                      "    if (jsonData.schedules[0].medDoses && jsonData.schedules[0].medDoses.length > 0) {",
+                      "        pm.collectionVariables.set('timeId', jsonData.schedules[0].medDoses[0].id);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Medication",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/medications/{{medicationId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "medications",
+                    "{{medicationId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nickname\": \"Updated Med\",\n  \"dosageAmount\": 2\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete Medication",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/medications/{{medicationId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "medications",
+                    "{{medicationId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Add Schedule",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/medications/{{medicationId}}/schedules",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "medications",
+                    "{{medicationId}}",
+                    "schedules"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"scheduleType\": \"DAILY\",\n  \"frequencyInterval\": 1,\n  \"startDate\": \"2024-05-10\",\n  \"medDoseRequests\": []\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.id) pm.collectionVariables.set('scheduleId', jsonData.id);",
+                      "if (jsonData.medDoses && jsonData.medDoses.length > 0) pm.collectionVariables.set('timeId', jsonData.medDoses[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Schedule",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/medications/{{medicationId}}/schedules/{{scheduleId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "medications",
+                    "{{medicationId}}",
+                    "schedules",
+                    "{{scheduleId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"scheduleType\": \"DAILY\",\n  \"frequencyInterval\": 2,\n  \"startDate\": \"2024-05-10\",\n  \"medDoseRequests\": []\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete Schedule",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/medications/{{medicationId}}/schedules/{{scheduleId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "medications",
+                    "{{medicationId}}",
+                    "schedules",
+                    "{{scheduleId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Add Time",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/medications/{{medicationId}}/schedules/{{scheduleId}}/times",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "medications",
+                    "{{medicationId}}",
+                    "schedules",
+                    "{{scheduleId}}",
+                    "times"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"takenTime\": \"08:00:00\",\n  \"quantity\": 1\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.id) pm.collectionVariables.set('timeId', jsonData.id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Time",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/medications/{{medicationId}}/schedules/{{scheduleId}}/times/{{timeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "medications",
+                    "{{medicationId}}",
+                    "schedules",
+                    "{{scheduleId}}",
+                    "times",
+                    "{{timeId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"takenTime\": \"09:00:00\",\n  \"quantity\": 1\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete Time",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/medications/{{medicationId}}/schedules/{{scheduleId}}/times/{{timeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "medications",
+                    "{{medicationId}}",
+                    "schedules",
+                    "{{scheduleId}}",
+                    "times",
+                    "{{timeId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "CaregiverProfileController",
+          "item": [
+            {
+              "name": "Create Profile",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/profiles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "profiles"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Grandma\",\n  \"lastName\": \"Smith\",\n  \"phone\": \"0911223344\",\n  \"dateOfBirth\": \"1950-01-01\",\n  \"gender\": \"FEMALE\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "\nfunction saveProfileByRole(profile) {\n    if (!profile || !profile.id) return;\n    pm.collectionVariables.set('profileId', profile.id);\n    if (profile.role === 'ADMIN') pm.collectionVariables.set('adminProfileId', profile.id);\n    if (profile.role === 'CAREGIVER') pm.collectionVariables.set('caregiverProfileId', profile.id);\n    if (profile.role === 'ELDERLY') pm.collectionVariables.set('elderlyProfileId', profile.id);\n}\n",
+                      "saveProfileByRole(jsonData);",
+                      "if (jsonData.userContacts && jsonData.userContacts.length > 0) {",
+                      "    pm.collectionVariables.set('contactId', jsonData.userContacts[0].id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete Profile",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/profiles/{{profileId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "profiles",
+                    "{{profileId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Search Elderly Profiles",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/profiles/search?query=Smith&role=ELDERLY",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "profiles",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "query",
+                      "value": "Smith"
+                    },
+                    {
+                      "key": "role",
+                      "value": "ELDERLY"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "CaregiverRelationshipController",
+          "item": [
+            {
+              "name": "Get Relative Elderly Profiles",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/relationship",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "relationship"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (Array.isArray(jsonData) && jsonData.length > 0) pm.collectionVariables.set('targetElderlyId', jsonData[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Pending Elderly Profiles",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/relationship/pending",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "relationship",
+                    "pending"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (Array.isArray(jsonData) && jsonData.length > 0) pm.collectionVariables.set('targetElderlyId', jsonData[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Send Invitation",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/relationship/invite",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "relationship",
+                    "invite"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"elderlyEmail\": \"grandma@example.com\",\n  \"permissionLevel\": \"VIEW\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Update Relationship",
+              "request": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/api/caregiver/relationship/{{targetElderlyId}}?permissionLevel=MANAGE_ALL",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "caregiver",
+                    "relationship",
+                    "{{targetElderlyId}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "permissionLevel",
+                      "value": "MANAGE_ALL"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "elderly",
+      "item": [
+        {
+          "name": "ElderlyEventController",
+          "item": [
+            {
+              "name": "Confirm Dose",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/elderly/events/{{eventId}}/confirm",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "elderly",
+                    "events",
+                    "{{eventId}}",
+                    "confirm"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "ElderlyRelationshipController",
+          "item": [
+            {
+              "name": "Get Relative Caregiver Profiles",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/elderly/relationship",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "elderly",
+                    "relationship"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Get Pending Caregiver Profiles",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/elderly/relationship/pending",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "elderly",
+                    "relationship",
+                    "pending"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (Array.isArray(jsonData) && jsonData.length > 0) pm.collectionVariables.set('relationshipId', jsonData[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Accept Invitation",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/elderly/relationship/{{relationshipId}}/accept",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "elderly",
+                    "relationship",
+                    "{{relationshipId}}",
+                    "accept"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            },
+            {
+              "name": "Refuse Invitation",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/elderly/relationship/{{relationshipId}}/refuse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "elderly",
+                    "relationship",
+                    "{{relationshipId}}",
+                    "refuse"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": []
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

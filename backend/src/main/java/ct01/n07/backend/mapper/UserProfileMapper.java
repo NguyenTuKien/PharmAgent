@@ -28,7 +28,6 @@ public interface UserProfileMapper {
     @Mapping(target = "avatarUrl", source = "req.caregiver.avatarUrl")
     @Mapping(target = "role", constant = "CAREGIVER")
     @Mapping(target = "userContacts", expression = "java(new java.util.ArrayList<>())")
-    @Mapping(target = "userDevices", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     UserProfile toCaregiverProfile(SignupRequest req, String userId);
@@ -44,7 +43,6 @@ public interface UserProfileMapper {
     @Mapping(target = "avatarUrl", source = "req.elderly.avatarUrl")
     @Mapping(target = "role", constant = "ELDERLY")
     @Mapping(target = "userContacts", expression = "java(new java.util.ArrayList<>())")
-    @Mapping(target = "userDevices", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     UserProfile toElderlyProfile(SignupRequest req, String userId);
@@ -52,7 +50,6 @@ public interface UserProfileMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "userContacts", expression = "java(new java.util.ArrayList<>())")
-    @Mapping(target = "userDevices", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     UserProfile toUserProfile(CreateProfileRequest request);
@@ -80,7 +77,6 @@ public interface UserProfileMapper {
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "role", ignore = true)
     @Mapping(target = "userContacts", ignore = true)
-    @Mapping(target = "userDevices", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateUserProfile(UpdateProfileRequest request, @MappingTarget UserProfile userProfile);

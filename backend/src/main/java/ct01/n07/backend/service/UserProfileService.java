@@ -1,5 +1,6 @@
 package ct01.n07.backend.service;
 
+import ct01.n07.backend.dto.user.UpdateAvatarRequest;
 import ct01.n07.backend.dto.user.CreateProfileRequest;
 import ct01.n07.backend.dto.user.UpdateProfileRequest;
 import ct01.n07.backend.dto.user.UserProfileResponse;
@@ -33,6 +34,8 @@ public interface UserProfileService {
     UserProfileResponse getMyProfile();
 
     UserProfileResponse updateMyProfile(UpdateProfileRequest request);
+
+    UserProfileResponse updateAvatar(UpdateAvatarRequest request);
 
     boolean findByPhone(@NotBlank(message = "Số điện thoại không được để trống") @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$", message = "Số điện thoại không đúng định dạng (Ví dụ: 0912345678)") String phone);
 

@@ -1,14 +1,12 @@
 package ct01.n07.backend.controller;
 
+import ct01.n07.backend.dto.user.UpdateAvatarRequest;
 import ct01.n07.backend.dto.user.UserContactRequest;
 import ct01.n07.backend.dto.user.UpdateProfileRequest;
-import ct01.n07.backend.dto.user.UserDeviceRequest;
 import ct01.n07.backend.dto.user.UserProfileResponse;
 import ct01.n07.backend.dto.user.UserProfileSummaryResponse;
 import ct01.n07.backend.model.UserContact;
-import ct01.n07.backend.model.UserDevice;
 import ct01.n07.backend.service.UserContactService;
-import ct01.n07.backend.service.UserDeviceService;
 import ct01.n07.backend.service.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +25,6 @@ public class UserProfileController {
 
     private final UserProfileService userProfileService;
     private final UserContactService userContactService;
-    private final UserDeviceService userDeviceService;
 
     // ── Mọi role đều có thể xem danh sách profile trong tài khoản ──
     @GetMapping
@@ -46,6 +43,12 @@ public class UserProfileController {
     public ResponseEntity<UserProfileResponse> updateMyProfile(
             @Valid @RequestBody UpdateProfileRequest request) {
         return ResponseEntity.ok(userProfileService.updateMyProfile(request));
+    }
+
+    @PatchMapping("/me/avatar")
+    public ResponseEntity<UserProfileResponse> updateAvatar(
+            @Valid @RequestBody UpdateAvatarRequest request) {
+        return ResponseEntity.ok(userProfileService.updateAvatar(request));
     }
 
     // ── Quản lý liên hệ người dùng (User Contacts) ──
@@ -72,31 +75,5 @@ public class UserProfileController {
     public ResponseEntity<UserProfileResponse> deleteContact(
             @PathVariable String contactId) {
         return ResponseEntity.ok(userContactService.deleteContact(contactId));
-    }
-
-    // ── Quản lý thiết bị (User Devices) ──
-
-    @GetMapping("/me/devices")
-    public ResponseEntity<List<UserDevice>> getMyDevices() {
-        return ResponseEntity.ok(userDeviceService.getMyDevices());
-    }
-
-    @PostMapping("/me/devices")
-    public ResponseEntity<UserProfileResponse> addDevice(
-            @Valid @RequestBody UserDeviceRequest request) {
-        return ResponseEntity.ok(userDeviceService.addDevice(request));
-    }
-
-    @PutMapping("/me/devices/{deviceId}")
-    public ResponseEntity<UserProfileResponse> updateDevice(
-            @PathVariable String deviceId,
-            @Valid @RequestBody UserDeviceRequest request) {
-        return ResponseEntity.ok(userDeviceService.updateDevice(deviceId, request));
-    }
-
-    @DeleteMapping("/me/devices/{deviceId}")
-    public ResponseEntity<UserProfileResponse> deleteDevice(
-            @PathVariable String deviceId) {
-        return ResponseEntity.ok(userDeviceService.deleteDevice(deviceId));
     }
 }

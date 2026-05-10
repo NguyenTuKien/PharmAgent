@@ -16,7 +16,7 @@ public class MedicationController {
 
     private final MedicationFacade medicationFacade;
 
-    @GetMapping(params = "patientId")
+    @GetMapping
     public ResponseEntity<Page<MedicationResponse>> getActiveMedications(
             @RequestParam String patientId,
             @RequestParam(required = false) Boolean isActive,

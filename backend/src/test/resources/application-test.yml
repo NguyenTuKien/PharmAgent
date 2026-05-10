@@ -23,3 +23,8 @@ jwt:
 logging:
   level:
     root: error
+
+cloudinary:
+  cloud-name: dummy_cloud
+  api-key: "123456789"
+  api-secret: dummy_secret

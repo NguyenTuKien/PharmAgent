@@ -41,8 +41,6 @@ public class UserProfile {
 
     private List<UserContact> userContacts;
 
-    private List<UserDevice> userDevices;
-
     private Role role;
 
     @CreatedDate
