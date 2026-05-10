@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,28 +28,29 @@ public class UserDeviceServiceImpl implements UserDeviceService {
         String userId = profileAccessContext.getCurrentUserId();
         String deviceToken = request.getDeviceToken();
 
-        UserDevice device = userDeviceRepository.findByDeviceTokenAndUserId(deviceToken, userId)
-                .map(existing -> {
-                    existing.setDeviceName(request.getDeviceName());
-                    existing.setDeviceType(request.getDeviceType());
-                    existing.setActive(request.isActive());
-                    existing.setLastSeenAt(Instant.now());
-                    return existing;
-                })
-                .orElseGet(() -> {
-                    if (userDeviceRepository.findByDeviceToken(deviceToken).isPresent()) {
-                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token is already registered to another user");
-                    }
+        Optional<UserDevice> existingByToken = userDeviceRepository.findByDeviceToken(deviceToken);
+        UserDevice device;
 
-                    return UserDevice.builder()
-                            .userId(userId)
-                            .deviceName(request.getDeviceName())
-                            .deviceToken(deviceToken)
-                            .deviceType(request.getDeviceType())
-                            .isActive(request.isActive())
-                            .lastSeenAt(Instant.now())
-                            .build();
-                });
+        if (existingByToken.isPresent()) {
+            device = existingByToken.get();
+            if (!userId.equals(device.getUserId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token is already registered to another user");
+            }
+
+            device.setDeviceName(request.getDeviceName());
+            device.setDeviceType(request.getDeviceType());
+            device.setActive(request.isActive());
+            device.setLastSeenAt(Instant.now());
+        } else {
+            device = UserDevice.builder()
+                    .userId(userId)
+                    .deviceName(request.getDeviceName())
+                    .deviceToken(deviceToken)
+                    .deviceType(request.getDeviceType())
+                    .isActive(request.isActive())
+                    .lastSeenAt(Instant.now())
+                    .build();
+        }
 
         return toResponse(userDeviceRepository.save(device));
     }
@@ -62,6 +64,7 @@ public class UserDeviceServiceImpl implements UserDeviceService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found"));
 
         userDeviceRepository.findByDeviceToken(deviceToken)
+                .filter(existing -> !existing.getId().equals(deviceId))
                 .filter(existing -> !existing.getUserId().equals(userId))
                 .ifPresent(existing -> {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token is already registered to another user");

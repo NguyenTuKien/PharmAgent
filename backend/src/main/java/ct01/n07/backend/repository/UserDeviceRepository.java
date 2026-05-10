@@ -14,8 +14,6 @@ public interface UserDeviceRepository extends MongoRepository<UserDevice, String
 
     Optional<UserDevice> findByDeviceToken(String deviceToken);
 
-    Optional<UserDevice> findByDeviceTokenAndUserId(String deviceToken, String userId);
-
     Optional<UserDevice> findByIdAndUserId(String id, String userId);
 
     List<UserDevice> findAllByUserIdAndIsActive(String userId, boolean isActive);
