@@ -49,7 +49,7 @@ spec:
               mountPath: /app/logs
           livenessProbe:
             httpGet:
-              path: /api/actuator/health
+              path: /actuator/health
               port: {{ .Values.backend.service.port }}
             initialDelaySeconds: 120
             periodSeconds: 10
