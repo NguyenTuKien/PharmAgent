@@ -21,11 +21,10 @@ data:
   # RabbitMQ configuration
   SPRING_RABBITMQ_HOST: "{{ .Values.rabbitmq.service.host }}"
   SPRING_RABBITMQ_PORT: "{{ .Values.rabbitmq.service.port }}"
-  SPRING_RABBITMQ_ADDRESSES: "{{ .Values.rabbitmq.service.host }}:{{ .Values.rabbitmq.service.port }}"
-  SPRING_RABBITMQ_VIRTUAL_HOST: "{{ .Values.rabbitmq.environment.RABBITMQ_VHOST }}"
   {{- if eq .Values.rabbitmq.service.protocol "amqps" }}
   SPRING_RABBITMQ_SSL_ENABLED: "true"
   {{- end }}
+  SPRING_RABBITMQ_VIRTUAL_HOST: "{{ .Values.rabbitmq.environment.RABBITMQ_VHOST }}"
 
   # Mail configuration
   SPRING_MAIL_USERNAME: "{{ .Values.mail.environment.SPRING_MAIL_USERNAME }}"
