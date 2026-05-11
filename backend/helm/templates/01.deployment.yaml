@@ -51,16 +51,17 @@ spec:
             httpGet:
               path: /actuator/health
               port: {{ .Values.backend.service.port }}
-            initialDelaySeconds: 120
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 180
+            periodSeconds: 20
+            timeoutSeconds: 15
             failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: {{ .Values.backend.service.port }}
-            initialDelaySeconds: 60
-            periodSeconds: 10
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 15
             successThreshold: 1
             failureThreshold: 3
       volumes:
