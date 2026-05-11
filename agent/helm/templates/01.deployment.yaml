@@ -22,6 +22,9 @@ spec:
             - name: http
               containerPort: 8000
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "agent.fullname" . }}-config
           livenessProbe:
             httpGet:
               path: /ws/health

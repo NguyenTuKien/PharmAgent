@@ -204,4 +204,117 @@ Khi Gateway forward request xuống dịch vụ đích, nó tự động đính 
 ## 10. CI/CD.
 - **Github Actions**: Tự động hóa quy trình build, test và deploy khi có thay đổi trên nhánh `main` hoặc `dev`.
 - **Github Packages**: Lưu trữ image Docker đã build để dễ dàng triển khai lên môi trường staging/production.
+- **ArgoCD**: Quản lý việc triển khai tự động lên Kubernetes cluster (nếu có) hoặc các môi trường đám mây khác.
+- **Heml chart**: Quản lý cấu hình và triển khai dịch vụ trên Kubernetes (nếu có).
 
+## 11. Kubernetes 
+- 
+
+# III. KIẾN TRÚC VÀ CÀI ĐẶT CHI TIẾT HỆ THỐNG
+
+Dựa trên yêu cầu về độ chi tiết và cấu trúc từ báo cáo mẫu, phần này sẽ đi sâu vào phân tích kiến trúc hạ tầng và các luồng xử lý logic cốt lõi của PharmAgent, bóc tách qua từng giai đoạn từ Controller đến Service.
+
+## 1. Phân hệ Xác thực và Quản lý Người dùng đa hồ sơ
+### 1.1. Tổng quan Module
+Phân hệ này không chỉ dừng lại ở việc đăng nhập mà còn giải quyết bài toán quản lý tập trung: Một tài khoản duy nhất có thể quản lý nhiều hồ sơ sức khỏe khác nhau (ví dụ: Người chăm sóc quản lý cả Bố và Mẹ). Hệ thống phân tách rõ ràng giữa **User** (Xác thực) và **UserProfile** (Nghiệp vụ).
+
+### 1.2. Quy trình Xác thực đa tầng (Two-Step Authentication)
+Hệ thống sử dụng cơ chế cấp phát Token 2 bước để đảm bảo tính cô lập dữ liệu.
+
+**Giai đoạn 1 — Đăng nhập hệ thống (Identity Verification):**
+- **Controller**: `AuthController.login()` nhận email/password.
+- **Service Logic**: `AuthFacade` gọi `UserService` để kiểm tra mật khẩu (BCrypt). Nếu thành công, `JwtService` cấp phát một **AuthToken** (chỉ chứa `userId`) và trả về danh sách các `UserProfile` liên kết.
+
+**Giai đoạn 2 — Lựa chọn hồ sơ (Context Selection):**
+- **Controller**: `AuthController.selectProfile()` nhận Profile ID.
+- **Service Logic**: `AuthFacade` kiểm tra quyền sở hữu của User đối với Profile đó. Nếu hợp lệ, hệ thống cấp một **AccessToken** ngắn hạn chứa `profile_id` và `role`. Mọi API nghiệp vụ phía sau chỉ tin tưởng vào `profile_id` này.
+
+**Code tiêu biểu (AuthController.java):**
+```java
+@PostMapping("/profiles/{profileId}/select")
+public ResponseEntity<Map<String, String>> selectProfile(@PathVariable String profileId) {
+    // Chuyển đổi ngữ cảnh sang profile cụ thể, nhận Access Token mới
+    String accessToken = authFacade.selectProfile(header, profileId);
+    return ResponseEntity.ok(Map.of("accessToken", accessToken));
+}
+```
+
+---
+
+## 2. Phân hệ Quản lý Thuốc và Pipeline Hình ảnh (Cloudinary HLS-like Pipeline)
+### 2.1. Quy trình Upload ảnh bằng chứng (Presigned Pipeline)
+Tương tự như luồng upload video trong báo cáo mẫu, PharmAgent sử dụng cơ chế **Presigned URL** để tối ưu hóa hiệu năng server.
+
+- **Giai đoạn 1 — Request Presign**: Frontend gọi `UploadController` để xin "chữ ký" upload.
+- **Giai đoạn 2 — Signature Generation**: `CloudinaryService` sinh HMAC signature dựa trên API Secret.
+- **Giai đoạn 3 — Client Direct Upload**: Frontend upload ảnh pill trực tiếp lên Cloudinary.
+- **Giai đoạn 4 — Metadata Update**: Sau khi có `secure_url`, Frontend gửi về Backend để lưu vào hồ sơ thuốc.
+
+**Code tiêu biểu (UploadController.java):**
+```java
+@GetMapping("/presign")
+public ResponseEntity<PresignedUploadResponse> getPresignedUpload(@RequestParam String folder) {
+    // Backend không nhận file, chỉ cấp "giấy thông hành" có chữ ký số
+    return ResponseEntity.ok(cloudinaryService.generatePresignedUpload(folder));
+}
+```
+
+### 2.2. Giao dịch nghiệp vụ: Xác nhận uống thuốc (Dose Transaction)
+Hành động xác nhận uống thuốc được xử lý như một giao dịch nguyên tử (Atomic Transaction) để đảm bảo tính chính xác của báo cáo tuân thủ.
+- **Logic Service**: `DoseConfirmationFacade` so sánh `now()` với `scheduledAt`. Nếu trễ quá 30 phút, trạng thái được ghi nhận là `OVERDUE`.
+- **Side Effect**: Kích hoạt luồng gửi thông báo khẩn cấp cho người thân qua Notification Service.
+
+---
+
+## 3. Phân hệ Tương tác thời gian thực (Real-time Engine)
+### 3.1. Kiến trúc nhắn tin STOMP over RabbitMQ
+Hệ thống sử dụng **RabbitMQ** làm Message Broker để điều phối tin nhắn giữa các microservices và hàng ngàn kết nối WebSocket đồng thời.
+
+**Luồng xử lý dữ liệu:**
+1. **Reception**: `ChatWebSocketController` tiếp nhận Payload.
+2. **Persistence**: `ChatMessageService` lưu tin nhắn vào MongoDB để phục vụ tra cứu lịch sử (History Retrieval).
+3. **Broadcasting**: Tin nhắn được đẩy vào RabbitMQ exchange và định tuyến tới các topic theo định dạng `/topic/room.{roomId}`.
+
+**Code tiêu biểu (ChatWebSocketController.java):**
+```java
+@MessageMapping("/chat.send")
+public void sendMessage(@Payload ChatPayload chatPayload) {
+    ChatMessage savedMessage = chatMessageService.saveMessage(chatPayload);
+    // Phát tán tin nhắn tới tất cả người dùng trong phòng chat
+    messagingTemplate.convertAndSend("/topic/room." + chatPayload.getRoomId(), savedMessage);
+}
+```
+
+---
+
+## 4. Phân hệ Trợ lý ảo AI (Real-time Pill Scanning Agent)
+### 4.1. Kiến trúc AI Agent (FastAPI + WebSocket)
+Dịch vụ Agent được thiết kế theo mô hình **Streaming Pipeline** tương tự như luồng xử lý HLS trong báo cáo mẫu, nhưng dành cho frame ảnh từ camera.
+
+### 4.2. Luồng xử lý dữ liệu Online (Real-time Scanning)
+1. **Frame Ingestion**: Frontend gửi luồng frame ảnh Base64 (10fps) qua WebSocket tới `/ws/agent`.
+2. **Preprocessing**: Agent sử dụng `OpenCV` để resize và chuẩn hóa ảnh cho Model AI.
+3. **Identification**: Model YOLO/TensorFlow thực hiện nhận diện loại thuốc, hàm lượng.
+4. **Confidence-based Callback**: 
+   - Nếu `confidence < 0.8`: Chỉ trả về kết quả text (dự đoán).
+   - Nếu `confidence >= 0.8`: Tự động kích hoạt luồng upload ảnh "bằng chứng" lên Cloudinary và trả về URL kèm kết quả JSON.
+
+**Code tiêu biểu (agent/main.py):**
+```python
+@router.websocket("/agent")
+async def websocket_pill_scan(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        frame = decode_base64_to_cv2(data) # Tiền xử lý ảnh
+        result = ai_model.predict(frame)   # Nhận diện AI
+        
+        if result.confidence >= 0.8:
+            # Tự động lưu bằng chứng khi AI chắc chắn
+            result.imageUrl = await upload_to_cloudinary(frame)
+            
+        await websocket.send_text(result.json())
+```
+
+### 4.3. Định hướng RAG (Future Implementation)
+Tương tự kiến trúc RAG trong báo cáo mẫu, PharmAgent định hướng sử dụng Pill ID nhận diện được để truy vấn vào Vector Database (ChromaDB) chứa thông tin tương tác thuốc và tác dụng phụ, từ đó tư vấn thông minh cho người dùng qua Chatbot.
