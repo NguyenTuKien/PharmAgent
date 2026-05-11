@@ -21,6 +21,8 @@ spec:
       labels:
         {{- include "helm.selectorLabels" . | nindent 8 }}
     spec:
+      imagePullSecrets:
+        - name: {{ .Values.backend.image.pullSecret | default "ghcr-pull-secret" }}
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
