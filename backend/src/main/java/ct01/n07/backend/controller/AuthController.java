@@ -47,10 +47,6 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(registrationFacade.signup(signupRequest));
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<AuthMessageResponse> register(@Valid @RequestBody SignupRequest signupRequest) {
-        return signup(signupRequest);
-    }
 
     @PostMapping("/verify-email")
     public ResponseEntity<AuthMessageResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
