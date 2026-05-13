@@ -9,7 +9,7 @@ export async function loginRequest(credentials) {
 }
 
 export async function registerRequest(payload) {
-  const response = await apiClient.post('/auth/register', payload, {
+  const response = await apiClient.post('/auth/signup', payload, {
     skipAuthHeader: true,
     skipAuthRefresh: true,
   })
