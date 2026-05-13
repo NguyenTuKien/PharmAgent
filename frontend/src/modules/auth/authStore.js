@@ -1,0 +1,150 @@
+import { create } from 'zustand'
+
+import { setApiAuthHandlers } from '../../lib/apiClient.js'
+import {
+  loginRequest,
+  logoutRequest,
+  refreshTokensRequest,
+  selectProfileRequest,
+} from './authApi.js'
+import {
+  buildSessionSnapshot,
+  clearSession,
+  loadSession,
+  normalizeProfilesPage,
+  saveSession,
+} from './session.js'
+
+const persistedSession = loadSession()
+const persistedProfile = persistedSession.activeProfileId
+  ? {
+      id: persistedSession.activeProfileId,
+      role: persistedSession.activeRole,
+    }
+  : null
+
+const initialAuthState = {
+  authToken: persistedSession.authToken ?? null,
+  refreshToken: persistedSession.refreshToken ?? null,
+  accessToken: persistedSession.accessToken ?? null,
+  profiles: [],
+  activeProfile: persistedProfile,
+  status: persistedSession.refreshToken ? 'authenticated' : 'anonymous',
+  error: null,
+}
+
+export const useAuthStore = create((set, get) => ({
+  ...initialAuthState,
+
+  login: async (credentials) => {
+    set({ status: 'authenticating', error: null })
+    const response = await loginRequest(credentials)
+    const profiles = normalizeProfilesPage(response.profiles)
+
+    saveSession({
+      authToken: response.authToken,
+      refreshToken: response.refreshToken,
+    })
+
+    set({
+      authToken: response.authToken,
+      refreshToken: response.refreshToken,
+      accessToken: null,
+      profiles,
+      activeProfile: null,
+      status: 'profile_required',
+      error: null,
+    })
+
+    return profiles
+  },
+
+  selectProfile: async (profileId) => {
+    const { authToken, refreshToken, profiles } = get()
+    const profile = profiles.find((item) => item.id === profileId) ?? { id: profileId }
+    const response = await selectProfileRequest(authToken, profileId)
+    const activeProfile = {
+      ...profile,
+      id: profileId,
+    }
+
+    const snapshot = buildSessionSnapshot({
+      authToken,
+      refreshToken,
+      accessToken: response.accessToken,
+      activeProfile,
+    })
+    saveSession(snapshot)
+
+    set({
+      accessToken: response.accessToken,
+      activeProfile,
+      status: 'authenticated',
+      error: null,
+    })
+
+    return activeProfile
+  },
+
+  refreshSession: async () => {
+    const { refreshToken, activeProfile, authToken } = get()
+    if (!refreshToken || !activeProfile?.id) {
+      get().clearLocalSession()
+      throw new Error('Missing refresh token or active profile')
+    }
+
+    const response = await refreshTokensRequest(refreshToken, activeProfile.id)
+    const nextAuthToken = response.authToken ?? authToken
+    const nextRefreshToken = response.refreshToken ?? refreshToken
+    const nextAccessToken = response.accessToken
+
+    const snapshot = buildSessionSnapshot({
+      authToken: nextAuthToken,
+      refreshToken: nextRefreshToken,
+      accessToken: nextAccessToken,
+      activeProfile,
+    })
+    saveSession(snapshot)
+
+    set({
+      authToken: nextAuthToken,
+      refreshToken: nextRefreshToken,
+      accessToken: nextAccessToken,
+      status: 'authenticated',
+      error: null,
+    })
+
+    return nextAccessToken
+  },
+
+  logout: async () => {
+    const { authToken, accessToken, refreshToken } = get()
+
+    try {
+      if (refreshToken) {
+        await logoutRequest({ authToken, accessToken, refreshToken })
+      }
+    } finally {
+      get().clearLocalSession()
+    }
+  },
+
+  clearLocalSession: () => {
+    clearSession()
+    set({
+      authToken: null,
+      refreshToken: null,
+      accessToken: null,
+      profiles: [],
+      activeProfile: null,
+      status: 'anonymous',
+      error: null,
+    })
+  },
+}))
+
+setApiAuthHandlers({
+  getAccessToken: () => useAuthStore.getState().accessToken,
+  refreshSession: () => useAuthStore.getState().refreshSession(),
+  clearSession: () => useAuthStore.getState().clearLocalSession(),
+})

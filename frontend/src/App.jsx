@@ -1,33 +1,106 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+
+import { AppShell } from './layout/AppShell.jsx'
+import { useAuthStore } from './modules/auth/authStore.js'
+import { DashboardPage } from './pages/DashboardPage.jsx'
+import { LoginPage } from './pages/LoginPage.jsx'
+import { NotFoundPage } from './pages/NotFoundPage.jsx'
+import { ProfileSelectPage } from './pages/ProfileSelectPage.jsx'
+import { ScanPage } from './pages/ScanPage.jsx'
+import { UnauthorizedPage } from './pages/UnauthorizedPage.jsx'
+import { WorkspacePage } from './pages/WorkspacePage.jsx'
+import {
+  GuestRoute,
+  ProfileSelectionRoute,
+  ProtectedRoute,
+  RoleRoute,
+} from './routes/guards.jsx'
+
+function SessionBootstrap() {
+  const { accessToken, activeProfile, refreshSession, refreshToken } = useAuthStore((state) => ({
+    accessToken: state.accessToken,
+    activeProfile: state.activeProfile,
+    refreshSession: state.refreshSession,
+    refreshToken: state.refreshToken,
+  }))
+
+  useEffect(() => {
+    if (!accessToken && refreshToken && activeProfile?.id) {
+      refreshSession().catch(() => undefined)
+    }
+  }, [accessToken, activeProfile?.id, refreshSession, refreshToken])
+
+  return null
+}
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <SessionBootstrap />
+      <Routes>
+        <Route element={<GuestRoute />}>
+          <Route element={<LoginPage />} path="/login" />
+        </Route>
+
+        <Route element={<ProfileSelectionRoute />}>
+          <Route element={<ProfileSelectPage />} path="/profiles" />
+        </Route>
+
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppShell />}>
+            <Route element={<Navigate replace to="/dashboard" />} index />
+            <Route element={<DashboardPage />} path="/dashboard" />
+            <Route
+              element={
+                <WorkspacePage
+                  description="Khung module quan ly thuoc da san sang de gan CRUD, upload anh va lich lieu uong."
+                  title="Don thuoc"
+                />
+              }
+              path="/medications"
+            />
+            <Route element={<ScanPage />} path="/scan" />
+            <Route
+              element={
+                <WorkspacePage
+                  description="Khu vuc nay se gan API moi quan he caregiver/elderly va quyen truy cap theo profile."
+                  title="Nguoi cham soc"
+                />
+              }
+              path="/relationships"
+            />
+
+            <Route element={<RoleRoute roles={['CAREGIVER', 'ADMIN']} />}>
+              <Route
+                element={
+                  <WorkspacePage
+                    description="Bao cao dung thuoc, ton kho va canh bao se dung chart component da cai san."
+                    title="Bao cao"
+                  />
+                }
+                path="/reports"
+              />
+            </Route>
+
+            <Route element={<RoleRoute roles={['ADMIN']} />}>
+              <Route
+                element={
+                  <WorkspacePage
+                    description="Khu vuc quan tri danh cho role ADMIN va cac endpoint /api/admin."
+                    title="Quan tri"
+                  />
+                }
+                path="/admin"
+              />
+            </Route>
+
+            <Route element={<UnauthorizedPage />} path="/unauthorized" />
+          </Route>
+        </Route>
+
+        <Route element={<NotFoundPage />} path="*" />
+      </Routes>
     </>
   )
 }
