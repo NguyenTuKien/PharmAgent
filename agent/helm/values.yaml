@@ -1,3 +1,5 @@
+fullnameOverride: agent-service
+
 replicaCount: 1
 
 image:

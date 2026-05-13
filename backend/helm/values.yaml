@@ -1,3 +1,5 @@
+fullnameOverride: backend-service
+
 backend:
   name: backend 
   replicaCount: 3
