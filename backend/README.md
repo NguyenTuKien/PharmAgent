@@ -29,10 +29,10 @@ Lưu ý:
  |  | PUT | `/api/profiles/me/contacts/{contactId}` | Cập nhật user contact. | `{"name":"Bác sĩ B","phone":"090333444"}` | Updated profile (contacts) | Auth |
  |  | DELETE | `/api/profiles/me/contacts/{contactId}` | Xóa user contact. | - | Updated profile | Auth |
 ||
- | **3. Thiết bị (Devices)** | GET | `/api/profiles/me/devices` | Lấy danh sách device token của profile. | Header: `Bearer <AuthToken>` | `[{"deviceId":"d1","deviceName":"iPhone 15","type":"MOBILE"}]` | Auth |
- |  | POST | `/api/profiles/me/devices` | Đăng ký device token. | `{"deviceName":"iPhone 15","deviceToken":"Expo[...]","type":"MOBILE"}` | Updated profile (devices) | Auth |
- |  | PUT | `/api/profiles/me/devices/{id}` | Cập nhật device. | `{"deviceName":"iPhone 16",...}` | Updated profile | Auth |
- |  | DELETE | `/api/profiles/me/devices/{id}` | Xóa device. | - | Updated profile | Auth |
+ | **3. Thiết bị (Devices)** | GET | `/api/devices/me` | Lấy danh sách device token của profile. | Header: `Bearer <AuthToken>` | `[{"deviceId":"d1","deviceName":"iPhone 15","type":"MOBILE"}]` | Auth |
+ |  | POST | `/api/devices/me` | Đăng ký device token. | `{"deviceName":"iPhone 15","deviceToken":"Expo[...]","type":"MOBILE"}` | Updated profile (devices) | Auth |
+ |  | PUT | `/api/devices/me/{id}` | Cập nhật device. | `{"deviceName":"iPhone 16",...}` | Updated profile | Auth |
+ |  | DELETE | `/api/devices/me/{id}` | Xóa device. | - | Updated profile | Auth |
 ||
  | **4. Kết nối Người thân (Relationships)** | GET | `/api/caregiver/relationship` | CAREGIVER: lấy danh sách elderly đang theo dõi. | Header: `Bearer <AuthToken>` | List | CAREGIVER |
  |  | GET | `/api/caregiver/relationship/pending` | CAREGIVER: lấy lời mời đang chờ. | - | List | CAREGIVER |
@@ -43,8 +43,8 @@ Lưu ý:
  |  | PUT | `/api/elderly/relationship/{id}/accept` | ELDERLY: chấp nhận lời mời. | - | 200 OK | ELDERLY |
  |  | PUT | `/api/elderly/relationship/{id}/refuse` | ELDERLY: từ chối lời mời. | - | 200 OK | ELDERLY |
 ||
- | **5. Messages** | POST | `/api/messages` | Gửi tin nhắn (ví dụ thông báo). | `{"toProfileId":"...","title":"...","body":"..."}` | Created message | Auth |
- |  | GET | `/api/messages` | Lấy danh sách tin nhắn của user (paginated). | Pageable | Page<MessageResponse> | Auth |
+ | **5. Thông báo (Notifications)** | POST | `/api/notifications` | Gửi tin nhắn (ví dụ thông báo). | `{"toProfileId":"...","title":"...","body":"..."}` | Created message | Auth |
+ |  | GET | `/api/notifications` | Lấy danh sách tin nhắn của user (paginated). | Pageable | Page<NotificationResponse> | Auth |
 ||
  | **6. Events / Doses** | GET | `/api/events/today` | Lấy events (doses) hôm nay cho patientId. | `?patientId=...` | Page<EventDoseResponse> | Auth |
  |  | GET | `/api/events/pending` | Lấy pending doses. | `?patientId=...` | Page | Auth |
@@ -67,7 +67,7 @@ Lưu ý:
  | **8. Pills (Catalog & AI scan)** | GET | `/api/pills` | Danh mục thuốc (paginated, optional search). | `?search=...` | Page<PillCatalogResponse> | Auth |
  |  | GET | `/api/pills/{id}` | Chi tiết thuốc. | - | Pill | Auth |
  |  | GET | `/api/pills/search` | Tìm nhanh theo keyword. | `?keyword=Panadol` | List<Pill> | Auth |
- |  | POST | `/api/pills/scan` | Scan ảnh thuốc (multipart file). | Multipart file | PillScanResponse | Auth |
+ |  | WS | `/ws/agent` | (WebSocket) Gửi ảnh scan qua agent. | STOMP message | Scan result | Auth |
 ||
  | **9. Admin (CMS)** | POST | `/api/admin/pills` | Thêm thuốc (CMS). | PillCreateRequest | Created PillResponse | ADMIN |
  |  | PUT | `/api/admin/pills/{id}` | Cập nhật thuốc. | PillRequest | PillResponse | ADMIN |
