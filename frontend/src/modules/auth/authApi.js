@@ -8,6 +8,54 @@ export async function loginRequest(credentials) {
   return response.data
 }
 
+export async function registerRequest(payload) {
+  const response = await apiClient.post('/auth/register', payload, {
+    skipAuthHeader: true,
+    skipAuthRefresh: true,
+  })
+  return response.data
+}
+
+export async function verifyEmailRequest(payload) {
+  const response = await apiClient.post('/auth/verify-email', payload, {
+    skipAuthHeader: true,
+    skipAuthRefresh: true,
+  })
+  return response.data
+}
+
+export async function resendVerificationRequest(email) {
+  const response = await apiClient.post(
+    '/auth/resend-verification',
+    { email },
+    {
+      skipAuthHeader: true,
+      skipAuthRefresh: true,
+    },
+  )
+  return response.data
+}
+
+export async function forgotPasswordRequest(email) {
+  const response = await apiClient.post(
+    '/auth/forgot-password',
+    { email },
+    {
+      skipAuthHeader: true,
+      skipAuthRefresh: true,
+    },
+  )
+  return response.data
+}
+
+export async function resetPasswordRequest(payload) {
+  const response = await apiClient.post('/auth/reset-password', payload, {
+    skipAuthHeader: true,
+    skipAuthRefresh: true,
+  })
+  return response.data
+}
+
 export async function selectProfileRequest(authToken, profileId) {
   const response = await apiClient.post(`/auth/profiles/${profileId}/select`, undefined, {
     headers: {

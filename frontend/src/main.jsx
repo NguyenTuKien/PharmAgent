@@ -1,11 +1,14 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { defineCustomElements } from 'ionicons/loader'
 import './index.css'
 import 'goey-toast/styles.css'
 import 'gooey-search-tabs/styles.css'
 import App from './App.jsx'
 import { ToastProvider } from './components/ui/ToastProvider.jsx'
+
+defineCustomElements(window)
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

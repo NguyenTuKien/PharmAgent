@@ -9,8 +9,10 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequiredArgsConstructor
@@ -41,10 +43,24 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<LoginResponse> signup(
-            @PageableDefault(page = 0, size = 10) Pageable pageable,
-            @Valid @RequestBody SignupRequest signupRequest) {
-        return ResponseEntity.ok(registrationFacade.signup(signupRequest, pageable));
+    public ResponseEntity<AuthMessageResponse> signup(@Valid @RequestBody SignupRequest signupRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(registrationFacade.signup(signupRequest));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthMessageResponse> register(@Valid @RequestBody SignupRequest signupRequest) {
+        return signup(signupRequest);
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<AuthMessageResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        return ResponseEntity.ok(registrationFacade.verifyEmail(request));
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<AuthMessageResponse> resendVerification(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(registrationFacade.resendVerificationEmail(request.getEmail()));
     }
 
     @PostMapping("/logout")
@@ -54,9 +70,19 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> forgotPassword(@Valid @RequestParam String email) {
-        passwordFacade.processForgotPassword(email);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<AuthMessageResponse> forgotPassword(
+            @RequestParam(required = false) String email,
+            @Valid @RequestBody(required = false) ForgotPasswordRequest request) {
+        String targetEmail = request != null ? request.getEmail() : email;
+        if (targetEmail == null || targetEmail.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email không được để trống");
+        }
+
+        passwordFacade.processForgotPassword(targetEmail);
+        return ResponseEntity.ok(AuthMessageResponse.builder()
+                .email(targetEmail.trim().toLowerCase())
+                .message("Nếu email tồn tại, mã OTP đặt lại mật khẩu đã được gửi.")
+                .build());
     }
 
     @PostMapping("/reset-password")

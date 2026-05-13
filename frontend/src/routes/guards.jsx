@@ -5,11 +5,9 @@ import { canAccessRoles } from '../modules/auth/session.js'
 
 export function GuestRoute() {
   const location = useLocation()
-  const { accessToken, activeProfile, authToken } = useAuthStore((state) => ({
-    accessToken: state.accessToken,
-    activeProfile: state.activeProfile,
-    authToken: state.authToken,
-  }))
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const activeProfile = useAuthStore((state) => state.activeProfile)
+  const authToken = useAuthStore((state) => state.authToken)
 
   if (accessToken && activeProfile) {
     return <Navigate replace to={location.state?.from?.pathname ?? '/dashboard'} />
@@ -23,12 +21,10 @@ export function GuestRoute() {
 }
 
 export function ProfileSelectionRoute() {
-  const { accessToken, activeProfile, authToken, refreshToken } = useAuthStore((state) => ({
-    accessToken: state.accessToken,
-    activeProfile: state.activeProfile,
-    authToken: state.authToken,
-    refreshToken: state.refreshToken,
-  }))
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const activeProfile = useAuthStore((state) => state.activeProfile)
+  const authToken = useAuthStore((state) => state.authToken)
+  const refreshToken = useAuthStore((state) => state.refreshToken)
 
   if (accessToken && activeProfile) {
     return <Navigate replace to="/dashboard" />
@@ -43,11 +39,9 @@ export function ProfileSelectionRoute() {
 
 export function ProtectedRoute() {
   const location = useLocation()
-  const { accessToken, activeProfile, authToken } = useAuthStore((state) => ({
-    accessToken: state.accessToken,
-    activeProfile: state.activeProfile,
-    authToken: state.authToken,
-  }))
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const activeProfile = useAuthStore((state) => state.activeProfile)
+  const authToken = useAuthStore((state) => state.authToken)
 
   if (!accessToken || !activeProfile) {
     return (

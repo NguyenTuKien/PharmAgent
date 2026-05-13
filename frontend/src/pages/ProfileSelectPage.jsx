@@ -12,10 +12,8 @@ function profileLabel(profile) {
 
 export function ProfileSelectPage() {
   const navigate = useNavigate()
-  const { profiles, selectProfile } = useAuthStore((state) => ({
-    profiles: state.profiles,
-    selectProfile: state.selectProfile,
-  }))
+  const profiles = useAuthStore((state) => state.profiles)
+  const selectProfile = useAuthStore((state) => state.selectProfile)
 
   const handleSelect = async (profileId) => {
     try {
