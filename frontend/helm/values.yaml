@@ -1,13 +1,26 @@
+fullnameOverride: frontend
+
 replicaCount: 1
 
 image:
-  repository: frontend
+  repository: ghcr.io/nguyentukien/pharmagent-frontend
   pullPolicy: IfNotPresent
   tag: "latest"
 
 service:
   type: ClusterIP
   port: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: pharmagent.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
 
 resources:
   limits:
