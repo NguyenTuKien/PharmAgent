@@ -5,6 +5,8 @@ React + Vite frontend scaffold for PharmAgent.
 ## Stack
 
 - Routing: `react-router-dom`
+- Styling: Tailwind CSS v4, project font `Momo Trust Sans`
+- Icons: Ionicons filled icons through the `ionicons` package
 - API client: `axios`
 - Auth store: `zustand`
 - Form validation: `react-hook-form`, `zod`, `@hookform/resolvers`
@@ -22,6 +24,7 @@ VITE_API_BASE_URL=/api
 VITE_WS_BASE_URL=/ws
 VITE_CAMERA_WS_PATH=/ws/agent
 VITE_GATEWAY_PROXY_TARGET=http://localhost:9000
+VITE_FRONTEND_URL=http://localhost:5173
 ```
 
 Vite dev server proxies `/api` and `/ws` to the gateway on port `9000`.

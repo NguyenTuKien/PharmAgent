@@ -2,6 +2,7 @@ package ct01.n07.backend.service;
 
 import ct01.n07.backend.dto.auth.*;
 import ct01.n07.backend.model.User;
+import ct01.n07.backend.model.enums.UserStatus;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,8 @@ public interface UserService {
     User findByEmail(String email);
 
     User createUser(LoginRequest loginRequest);
+
+    User createUser(LoginRequest loginRequest, UserStatus status);
 
     User verifyUserCredentials(@NotBlank String email, @NotBlank String password);
 
@@ -28,4 +31,6 @@ public interface UserService {
     AdminUserResponse unlockUser(String id);
 
     void updatePassword(String email, String newPassword);
+
+    User updateStatus(String id, UserStatus status);
 }

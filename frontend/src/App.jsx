@@ -4,7 +4,11 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './layout/AppShell.jsx'
 import { useAuthStore } from './modules/auth/authStore.js'
 import { DashboardPage } from './pages/DashboardPage.jsx'
-import { LoginPage } from './pages/LoginPage.jsx'
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.jsx'
+import { LoginPage } from './pages/auth/LoginPage.jsx'
+import { RegisterPage } from './pages/auth/RegisterPage.jsx'
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage.jsx'
+import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.jsx'
 import { NotFoundPage } from './pages/NotFoundPage.jsx'
 import { ProfileSelectPage } from './pages/ProfileSelectPage.jsx'
 import { ScanPage } from './pages/ScanPage.jsx'
@@ -18,18 +22,16 @@ import {
 } from './routes/guards.jsx'
 
 function SessionBootstrap() {
-  const { accessToken, activeProfile, refreshSession, refreshToken } = useAuthStore((state) => ({
-    accessToken: state.accessToken,
-    activeProfile: state.activeProfile,
-    refreshSession: state.refreshSession,
-    refreshToken: state.refreshToken,
-  }))
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const activeProfileId = useAuthStore((state) => state.activeProfile?.id)
+  const refreshSession = useAuthStore((state) => state.refreshSession)
+  const refreshToken = useAuthStore((state) => state.refreshToken)
 
   useEffect(() => {
-    if (!accessToken && refreshToken && activeProfile?.id) {
+    if (!accessToken && refreshToken && activeProfileId) {
       refreshSession().catch(() => undefined)
     }
-  }, [accessToken, activeProfile?.id, refreshSession, refreshToken])
+  }, [accessToken, activeProfileId, refreshSession, refreshToken])
 
   return null
 }
@@ -41,6 +43,10 @@ function App() {
       <Routes>
         <Route element={<GuestRoute />}>
           <Route element={<LoginPage />} path="/login" />
+          <Route element={<RegisterPage />} path="/register" />
+          <Route element={<ForgotPasswordPage />} path="/forgot-password" />
+          <Route element={<ResetPasswordPage />} path="/reset-password" />
+          <Route element={<VerifyEmailPage />} path="/verify-email" />
         </Route>
 
         <Route element={<ProfileSelectionRoute />}>

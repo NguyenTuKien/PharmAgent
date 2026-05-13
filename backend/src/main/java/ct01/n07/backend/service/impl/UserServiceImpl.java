@@ -25,9 +25,19 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User verifyUserCredentials(String email, String password){
-        return userRepository.findByEmail(email)
-                .filter(user -> passwordEncoder.matches(password, user.getPassword()))
+        User user = userRepository.findByEmail(normalizeEmail(email))
+                .filter(foundUser -> passwordEncoder.matches(password, foundUser.getPassword()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+
+        if (user.getUserStatus() == UserStatus.INACTIVE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Vui lòng xác minh email trước khi đăng nhập");
+        }
+
+        if (user.getUserStatus() == UserStatus.LOCKED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài khoản đã bị khóa");
+        }
+
+        return user;
     }
 
 
@@ -39,19 +49,26 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findByEmail(String mail) {
-        return userRepository.findByEmail(mail)
+        return userRepository.findByEmail(normalizeEmail(mail))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
     }
 
     @Override
     public User createUser(LoginRequest loginRequest) {
-        if (userRepository.findByEmail(loginRequest.getEmail()).isPresent()) {
+        return createUser(loginRequest, UserStatus.ACTIVE);
+    }
+
+    @Override
+    public User createUser(LoginRequest loginRequest, UserStatus status) {
+        String email = normalizeEmail(loginRequest.getEmail());
+        if (userRepository.findByEmail(email).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
 
+        loginRequest.setEmail(email);
         User user = userMapper.toModel(loginRequest);
         user.setPassword(passwordEncoder.encode(loginRequest.getPassword()));
-        user.setUserStatus(UserStatus.ACTIVE);
+        user.setUserStatus(status);
 
         return userRepository.save(user);
     }
@@ -64,10 +81,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public AdminUserResponse adminCreateUser(AdminUserCreateRequest request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.findByEmail(email).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại");
         }
 
+        request.setEmail(email);
         User user = userMapper.toModel(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setUserStatus(UserStatus.ACTIVE);
@@ -82,11 +101,12 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
         // Check email conflict if changed
-        if (!user.getEmail().equals(request.getEmail())) {
-            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        String email = normalizeEmail(request.getEmail());
+        if (!user.getEmail().equals(email)) {
+            if (userRepository.findByEmail(email).isPresent()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại");
             }
-            user.setEmail(request.getEmail());
+            user.setEmail(email);
         }
 
         user.setUserStatus(request.getUserStatus());
@@ -128,10 +148,21 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void updatePassword(String email, String newPassword) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
         
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    @Override
+    public User updateStatus(String id, UserStatus status) {
+        User user = findById(id);
+        user.setUserStatus(status);
+        return userRepository.save(user);
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 }

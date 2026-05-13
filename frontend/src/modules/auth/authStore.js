@@ -2,10 +2,15 @@ import { create } from 'zustand'
 
 import { setApiAuthHandlers } from '../../lib/apiClient.js'
 import {
+  forgotPasswordRequest,
   loginRequest,
   logoutRequest,
+  registerRequest,
+  resendVerificationRequest,
+  resetPasswordRequest,
   refreshTokensRequest,
   selectProfileRequest,
+  verifyEmailRequest,
 } from './authApi.js'
 import {
   buildSessionSnapshot,
@@ -58,6 +63,30 @@ export const useAuthStore = create((set, get) => ({
 
     return profiles
   },
+
+  registerAccount: async (payload) => {
+    set({ status: 'authenticating', error: null })
+    try {
+      const response = await registerRequest(payload)
+      set({ status: 'verification_required', error: null })
+      return response
+    } catch (error) {
+      set({ status: 'anonymous', error })
+      throw error
+    }
+  },
+
+  verifyEmail: async (payload) => {
+    const response = await verifyEmailRequest(payload)
+    set({ status: 'anonymous', error: null })
+    return response
+  },
+
+  resendVerification: async (email) => resendVerificationRequest(email),
+
+  requestPasswordReset: async (email) => forgotPasswordRequest(email),
+
+  resetPassword: async (payload) => resetPasswordRequest(payload),
 
   selectProfile: async (profileId) => {
     const { authToken, refreshToken, profiles } = get()

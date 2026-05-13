@@ -18,15 +18,18 @@ public class MailProducerService {
     }
 
     public void sendOtpToQueue(String email, String otpCode) {
-        OtpMailMessage message = new OtpMailMessage(email, otpCode);
+        sendOtpToQueue(email, otpCode, "PASSWORD_RESET", null);
+    }
 
-        // Đẩy tin nhắn vào Exchange kèm Routing Key
+    public void sendOtpToQueue(String email, String otpCode, String purpose, String actionUrl) {
+        OtpMailMessage message = new OtpMailMessage(email, otpCode, purpose, actionUrl);
+
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.EXCHANGE_NAME,
                 RabbitMQConfig.ROUTING_KEY,
                 message
         );
 
-        log.info("Producer: Đã đẩy yêu cầu gửi mail OTP cho [{}] vào RabbitMQ", email);
+        log.info("Producer: Đã đẩy yêu cầu gửi mail OTP [{}] cho [{}] vào RabbitMQ", purpose, email);
     }
 }

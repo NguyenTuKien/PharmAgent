@@ -31,6 +31,9 @@ jwt:
   access-expiration-ms: 900000
   refresh-expiration-ms: 604800000
 
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+
 server:
   port: 8080
 

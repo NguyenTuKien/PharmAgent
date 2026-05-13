@@ -19,10 +19,8 @@ export function Topbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const { activeProfile, logout } = useAuthStore((state) => ({
-    activeProfile: state.activeProfile,
-    logout: state.logout,
-  }))
+  const activeProfile = useAuthStore((state) => state.activeProfile)
+  const logout = useAuthStore((state) => state.logout)
   const visibleItems = navigationItems.filter((item) =>
     canAccessRoles(activeProfile?.role, item.roles ?? []),
   )

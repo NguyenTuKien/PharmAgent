@@ -99,22 +99,24 @@ services:
     networks:
       - pharmagent-network
 
-#  frontend:
-#    build: ./frontend
-#    image: ${DOCKER_REGISTRY:-ghcr.io/nguyentukien}/pharmagent-frontend:${TAG:-latest}
-#    restart: always
-#    ports:
-#      - "80:80"
-#    depends_on:
-#      gateway:
-#        condition: service_healthy
-#    healthcheck:
-#      test: ["CMD-SHELL", "wget -qO- http://localhost:80 | grep -q html || exit 1"]
-#      interval: 15s
-#      timeout: 5s
-#      retries: 5
-#    networks:
-#      - pharmagent-network
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+    image: ${DOCKER_REGISTRY:-ghcr.io/nguyentukien}/pharmagent-frontend:${TAG:-latest}
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ | grep -qi '<html' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pharmagent-network
 
 #  cloudflare:
 #    image: cloudflare/cloudflared:2024.6.0

@@ -6,6 +6,7 @@ export const env = {
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '/api',
   wsBaseUrl: import.meta.env.VITE_WS_BASE_URL || '/ws',
   cameraWsPath: import.meta.env.VITE_CAMERA_WS_PATH || '/ws/agent',
+  frontendUrl: import.meta.env.VITE_FRONTEND_URL || globalThis.location?.origin || 'http://localhost:5173',
 }
 
 export function getHttpEndpoint(path = env.wsBaseUrl) {
