@@ -207,114 +207,799 @@ Khi Gateway forward request xuống dịch vụ đích, nó tự động đính 
 - **ArgoCD**: Quản lý việc triển khai tự động lên Kubernetes cluster (nếu có) hoặc các môi trường đám mây khác.
 - **Heml chart**: Quản lý cấu hình và triển khai dịch vụ trên Kubernetes (nếu có).
 
-## 11. Kubernetes 
-- 
+## 11. Kubernetes (Bổ xung sau)
 
 # III. KIẾN TRÚC VÀ CÀI ĐẶT CHI TIẾT HỆ THỐNG
 
-Dựa trên yêu cầu về độ chi tiết và cấu trúc từ báo cáo mẫu, phần này sẽ đi sâu vào phân tích kiến trúc hạ tầng và các luồng xử lý logic cốt lõi của PharmAgent, bóc tách qua từng giai đoạn từ Controller đến Service.
+## 1. Phân hệ Xác thực và Quản lý người dùng đa hồ sơ
 
-## 1. Phân hệ Xác thực và Quản lý Người dùng đa hồ sơ
-### 1.1. Tổng quan Module
-Phân hệ này không chỉ dừng lại ở việc đăng nhập mà còn giải quyết bài toán quản lý tập trung: Một tài khoản duy nhất có thể quản lý nhiều hồ sơ sức khỏe khác nhau (ví dụ: Người chăm sóc quản lý cả Bố và Mẹ). Hệ thống phân tách rõ ràng giữa **User** (Xác thực) và **UserProfile** (Nghiệp vụ).
+### 1.1. Tổng quan module
 
-### 1.2. Quy trình Xác thực đa tầng (Two-Step Authentication)
-Hệ thống sử dụng cơ chế cấp phát Token 2 bước để đảm bảo tính cô lập dữ liệu.
+Phân hệ xác thực của PharmAgent không chỉ xử lý đăng nhập/đăng ký thông thường, mà còn giải quyết bài toán đặc thù của hệ thống chăm sóc sức khỏe: **một tài khoản có thể quản lý nhiều hồ sơ sức khỏe khác nhau**.
 
-**Giai đoạn 1 — Đăng nhập hệ thống (Identity Verification):**
-- **Controller**: `AuthController.login()` nhận email/password.
-- **Service Logic**: `AuthFacade` gọi `UserService` để kiểm tra mật khẩu (BCrypt). Nếu thành công, `JwtService` cấp phát một **AuthToken** (chỉ chứa `userId`) và trả về danh sách các `UserProfile` liên kết.
+Ví dụ, một người chăm sóc có thể có một tài khoản đăng nhập duy nhất, nhưng bên trong tài khoản đó có thể quản lý nhiều hồ sơ người thân như bố, mẹ hoặc ông bà. Vì vậy, hệ thống tách rõ hai khái niệm:
 
-**Giai đoạn 2 — Lựa chọn hồ sơ (Context Selection):**
-- **Controller**: `AuthController.selectProfile()` nhận Profile ID.
-- **Service Logic**: `AuthFacade` kiểm tra quyền sở hữu của User đối với Profile đó. Nếu hợp lệ, hệ thống cấp một **AccessToken** ngắn hạn chứa `profile_id` và `role`. Mọi API nghiệp vụ phía sau chỉ tin tưởng vào `profile_id` này.
+* **User**: đại diện cho tài khoản đăng nhập, dùng để xác thực danh tính.
+* **UserProfile**: đại diện cho hồ sơ nghiệp vụ, gắn với vai trò cụ thể như `ELDERLY`, `CAREGIVER`, `ADMIN`.
 
-**Code tiêu biểu (AuthController.java):**
-```java
-@PostMapping("/profiles/{profileId}/select")
-public ResponseEntity<Map<String, String>> selectProfile(@PathVariable String profileId) {
-    // Chuyển đổi ngữ cảnh sang profile cụ thể, nhận Access Token mới
-    String accessToken = authFacade.selectProfile(header, profileId);
-    return ResponseEntity.ok(Map.of("accessToken", accessToken));
-}
+Theo README của PharmAgent, hệ thống đặt mục tiêu xây dựng nền tảng HealthTech cho người cao tuổi, gồm quản lý lịch uống thuốc, AI nhận diện thuốc, kết nối caregiver–elderly và kiến trúc microservices có API Gateway, Spring Boot backend, JWT và RBAC. ([GitHub][1])
+
+Các thành phần chính của module:
+
+| Thành phần              | Vai trò                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `AuthController`        | Tiếp nhận request đăng nhập, đăng ký, refresh token, chọn profile, đổi/quên mật khẩu |
+| `AuthFacade`            | Điều phối luồng xác thực chính                                                       |
+| `RegistrationFacade`    | Xử lý đăng ký tài khoản                                                              |
+| `PasswordFacade`        | Xử lý quên mật khẩu, reset password, đổi mật khẩu                                    |
+| `JwtService`            | Sinh, kiểm tra và thu hồi JWT                                                        |
+| `SecurityConfiguration` | Cấu hình phân quyền route, CORS, stateless session                                   |
+| Redis                   | Lưu token blacklist, OTP, dữ liệu ngắn hạn                                           |
+| MongoDB                 | Lưu user, profile và dữ liệu nghiệp vụ                                               |
+
+---
+
+### 1.2. Luồng đăng ký tài khoản
+
+Luồng đăng ký được sử dụng khi người dùng mới tạo tài khoản trên hệ thống.
+
+**Quy trình xử lý:**
+
+1. Người dùng nhập thông tin đăng ký trên frontend.
+2. Frontend gửi request đến API:
+
+```http
+POST /api/auth/signup
+```
+
+3. API Gateway nhận request và forward xuống Backend Spring Boot.
+4. `AuthController.signup()` tiếp nhận dữ liệu.
+5. `RegistrationFacade` kiểm tra tính hợp lệ của email, mật khẩu và thông tin đăng ký.
+6. Hệ thống mã hóa mật khẩu bằng `BCryptPasswordEncoder`.
+7. Backend tạo bản ghi `User`.
+8. Backend tạo hồ sơ mặc định tương ứng với vai trò người dùng.
+9. Trả về thông tin đăng ký thành công cho frontend.
+
+**Ý nghĩa nghiệp vụ:**
+
+Luồng này đảm bảo mỗi người dùng có một tài khoản định danh riêng trong hệ thống. Việc mã hóa mật khẩu giúp hệ thống không lưu mật khẩu gốc, giảm rủi ro lộ thông tin nhạy cảm nếu cơ sở dữ liệu bị truy cập trái phép.
+
+---
+
+### 1.3. Luồng đăng nhập hai bước
+
+PharmAgent sử dụng cơ chế đăng nhập hai bước để tách biệt giữa **xác thực tài khoản** và **lựa chọn ngữ cảnh hồ sơ**.
+
+Trong mã nguồn, `AuthController` có các endpoint như `/login`, `/profiles/{profileId}/select`, `/refresh`, `/signup`, `/logout`, `/forgot-password`, `/reset-password`, `/change-password`. ([GitHub][2])
+
+#### Giai đoạn 1 — Đăng nhập tài khoản
+
+1. Người dùng nhập email/password.
+2. Frontend gọi:
+
+```http
+POST /api/auth/login
+```
+
+3. Backend kiểm tra tài khoản và mật khẩu.
+4. Nếu hợp lệ, hệ thống trả về:
+
+   * `authToken`
+   * `refreshToken`
+   * danh sách các `UserProfile` mà tài khoản có quyền truy cập.
+
+Ở giai đoạn này, người dùng mới chỉ được xác minh là chủ tài khoản, chưa được thao tác nghiệp vụ trên dữ liệu thuốc.
+
+#### Giai đoạn 2 — Chọn hồ sơ sử dụng
+
+1. Frontend hiển thị danh sách hồ sơ.
+2. Người dùng chọn một hồ sơ cụ thể.
+3. Frontend gọi:
+
+```http
+POST /api/auth/profiles/{profileId}/select
+```
+
+4. Backend kiểm tra tài khoản có quyền truy cập profile đó hay không.
+5. Nếu hợp lệ, hệ thống cấp `accessToken` mới chứa:
+
+   * `userId`
+   * `profileId`
+   * `role`
+
+Từ thời điểm này, mọi API nghiệp vụ sẽ dựa trên `profileId` và `role` trong token để phân quyền.
+
+**Ý nghĩa thiết kế:**
+
+Cách làm này phù hợp với hệ thống chăm sóc sức khỏe gia đình, vì một người chăm sóc có thể quản lý nhiều người cao tuổi. Nếu chỉ dùng `userId` thì khó xác định request hiện tại đang thao tác trên hồ sơ nào. Việc đưa `profileId` vào access token giúp backend xử lý đúng ngữ cảnh dữ liệu.
+
+---
+
+### 1.4. Luồng refresh token và logout
+
+#### Refresh token
+
+1. Khi access token hết hạn, frontend gọi:
+
+```http
+POST /api/auth/refresh
+```
+
+2. Backend kiểm tra refresh token.
+3. Nếu token còn hợp lệ và chưa bị thu hồi, backend sinh access token mới.
+4. Frontend cập nhật token mới và tiếp tục phiên làm việc.
+
+#### Logout
+
+1. Người dùng bấm đăng xuất.
+2. Frontend gọi:
+
+```http
+POST /api/auth/logout
+```
+
+3. Backend đưa token hiện tại vào blacklist Redis.
+4. Các request sau dùng token cũ sẽ bị từ chối.
+
+README mô tả Redis được dùng cho JWT blacklist, OTP reset password, trạng thái online và rate limiting; JWT blacklist giúp chặn ngay token đã logout thay vì chờ token tự hết hạn. ([GitHub][1])
+
+---
+
+### 1.5. Luồng quên mật khẩu và OTP email
+
+Luồng quên mật khẩu được thiết kế theo hướng bất đồng bộ để không làm chậm request chính.
+
+**Quy trình xử lý:**
+
+1. Người dùng nhập email quên mật khẩu.
+2. Frontend gọi:
+
+```http
+POST /api/auth/forgot-password?email=...
+```
+
+3. Backend kiểm tra email có tồn tại hay không.
+4. Backend sinh mã OTP.
+5. OTP được lưu trong Redis với TTL ngắn.
+6. Backend đẩy message gửi mail vào RabbitMQ.
+7. `MailConsumerService` lắng nghe queue và gửi email OTP cho người dùng.
+8. Người dùng nhập OTP và mật khẩu mới.
+9. Frontend gọi:
+
+```http
+POST /api/auth/reset-password
+```
+
+10. Backend xác minh OTP.
+11. Nếu OTP hợp lệ, backend mã hóa mật khẩu mới và cập nhật vào database.
+
+Trong code, RabbitMQ tạo queue `email.otp.queue`, exchange `email.exchange`, routing key `email.otp.routing.key`; consumer dùng `@RabbitListener` để nhận message và gửi email OTP. ([GitHub][3])
+
+**Ý nghĩa thiết kế:**
+
+Việc tách gửi email qua RabbitMQ giúp API quên mật khẩu trả phản hồi nhanh hơn. Nếu mail server tạm chậm, request chính vẫn không bị block. Đây là điểm phù hợp để trình bày khi bị hỏi “RabbitMQ dùng để làm gì trong hệ thống”.
+
+---
+
+## 2. Phân hệ Quản lý hồ sơ và kết nối Caregiver – Elderly
+
+### 2.1. Tổng quan module
+
+Phân hệ này xử lý mối quan hệ giữa người cao tuổi và người chăm sóc. Đây là domain trung tâm của PharmAgent, vì hệ thống không chỉ cho người cao tuổi tự quản lý thuốc, mà còn cho phép caregiver theo dõi từ xa.
+
+Các đối tượng chính:
+
+| Đối tượng      | Ý nghĩa                           |
+| -------------- | --------------------------------- |
+| `UserProfile`  | Hồ sơ người dùng theo vai trò     |
+| `Relationship` | Quan hệ giữa caregiver và elderly |
+| `UserContact`  | Thông tin liên hệ                 |
+| `UserDevice`   | Thiết bị nhận thông báo           |
+| `Notification` | Thông báo giữa các vai trò        |
+
+README nêu các entity/schema chính gồm `User`, `UserProfile`, `Relationship`, `UserDevice`, `Medication`, `EventDose`, `Notification`, `ChatRoom`, `ChatMessage`, `CallLog`. ([GitHub][1])
+
+---
+
+### 2.2. Luồng caregiver gửi lời mời kết nối
+
+1. Caregiver đăng nhập và chọn profile `CAREGIVER`.
+2. Frontend gọi API tạo lời mời kết nối người thân.
+3. Backend kiểm tra:
+
+   * caregiver đã đăng nhập hợp lệ chưa;
+   * người được mời có tồn tại không;
+   * quan hệ này đã tồn tại chưa.
+4. Backend tạo bản ghi `Relationship` với trạng thái chờ xác nhận.
+5. Backend tạo `Notification` gửi đến người cao tuổi.
+6. Người cao tuổi nhìn thấy lời mời trong giao diện thông báo.
+
+**Ý nghĩa nghiệp vụ:**
+
+Luồng này đảm bảo caregiver không thể tự ý truy cập dữ liệu thuốc của người cao tuổi. Mọi quyền truy cập phải bắt đầu từ một quan hệ được xác nhận.
+
+---
+
+### 2.3. Luồng người cao tuổi chấp nhận hoặc từ chối kết nối
+
+1. Người cao tuổi mở danh sách lời mời.
+2. Frontend gọi API chấp nhận hoặc từ chối.
+3. Backend kiểm tra lời mời còn hiệu lực không.
+4. Nếu chấp nhận:
+
+   * cập nhật `Relationship.status = ACCEPTED`;
+   * caregiver được phép xem/quản lý dữ liệu được cấp quyền.
+5. Nếu từ chối:
+
+   * cập nhật trạng thái quan hệ thành `REFUSED` hoặc xóa lời mời.
+6. Backend gửi thông báo phản hồi cho caregiver.
+
+**Ý nghĩa thiết kế:**
+
+Đây là cơ chế phân quyền theo quan hệ thực tế, không chỉ theo role. Một người có role `CAREGIVER` chưa chắc được xem mọi hồ sơ elderly; họ chỉ được xem các hồ sơ đã có `Relationship` hợp lệ.
+
+---
+
+### 2.4. Luồng caregiver xem dữ liệu người thân
+
+1. Caregiver truy cập dashboard người thân.
+2. Frontend gửi request kèm access token.
+3. Backend lấy `profileId` caregiver từ JWT.
+4. Backend kiểm tra caregiver có quan hệ hợp lệ với elderly profile không.
+5. Nếu hợp lệ, backend trả về:
+
+   * danh sách thuốc;
+   * lịch uống hôm nay;
+   * các liều đã uống/chưa uống;
+   * cảnh báo nếu có liều quá hạn;
+   * thống kê tuân thủ.
+
+**Ý nghĩa nghiệp vụ:**
+
+Luồng này giúp caregiver theo dõi người cao tuổi từ xa, nhưng vẫn đảm bảo dữ liệu y tế không bị truy cập trái phép.
+
+---
+
+## 3. Phân hệ Quản lý thuốc, lịch uống và liều uống
+
+### 3.1. Tổng quan module
+
+Phân hệ thuốc là lõi nghiệp vụ của PharmAgent. Module này quản lý từ danh mục thuốc, thuốc của từng người dùng, lịch uống thuốc, đến từng liều uống cụ thể theo ngày.
+
+Các model chính:
+
+| Model         | Vai trò                                 |
+| ------------- | --------------------------------------- |
+| `Pill`        | Danh mục thuốc chuẩn                    |
+| `PillImage`   | Ảnh nhận diện thuốc                     |
+| `Medication`  | Thuốc được kê/gắn cho người dùng        |
+| `MedSchedule` | Lịch uống thuốc                         |
+| `MedDose`     | Cấu hình liều lượng                     |
+| `EventDose`   | Một lần uống thuốc cụ thể trong thực tế |
+
+---
+
+### 3.2. Luồng thêm thuốc cho người cao tuổi
+
+1. Người dùng hoặc caregiver chọn chức năng thêm thuốc.
+2. Frontend gửi thông tin thuốc:
+
+   * tên thuốc;
+   * liều lượng;
+   * thời điểm uống;
+   * ngày bắt đầu/kết thúc;
+   * ghi chú;
+   * ảnh thuốc nếu có.
+3. Backend kiểm tra quyền thao tác:
+
+   * elderly được thêm thuốc cho chính mình;
+   * caregiver chỉ được thêm thuốc nếu có quan hệ hợp lệ.
+4. Backend kiểm tra dữ liệu đầu vào.
+5. Backend tạo `Medication`.
+6. Backend tạo lịch uống `MedSchedule`.
+7. Backend tạo thông tin liều `MedDose`.
+8. Backend trả dữ liệu thuốc mới cho frontend.
+
+**Ý nghĩa nghiệp vụ:**
+
+Một thuốc không chỉ là tên thuốc, mà phải đi kèm lịch uống và liều lượng. Việc tách `Medication`, `MedSchedule`, `MedDose` giúp hệ thống dễ mở rộng cho các lịch phức tạp như uống nhiều lần trong ngày, uống theo ngày trong tuần hoặc uống theo đợt điều trị.
+
+---
+
+### 3.3. Luồng sinh danh sách liều uống trong ngày
+
+1. Người dùng mở màn hình “Hôm nay”.
+2. Frontend gọi API lấy danh sách liều uống hôm nay.
+3. Backend xác định profile hiện tại từ access token.
+4. Backend tìm các thuốc đang còn hiệu lực.
+5. Backend dựa trên `MedSchedule` để xác định hôm nay có cần uống thuốc không.
+6. Backend tạo hoặc truy xuất các `EventDose` tương ứng.
+7. Backend trả về danh sách:
+
+   * liều sắp uống;
+   * liều đã uống;
+   * liều bị trễ;
+   * liều đã bỏ qua.
+
+**Ý nghĩa thiết kế:**
+
+`EventDose` đóng vai trò như nhật ký thực tế. Lịch uống là kế hoạch, còn `EventDose` là kết quả diễn ra theo từng ngày. Cách tách này giúp hệ thống thống kê được mức độ tuân thủ điều trị.
+
+---
+
+### 3.4. Luồng xác nhận đã uống thuốc
+
+1. Đến giờ uống thuốc, người dùng nhận thông báo.
+2. Người dùng bấm “Đã uống”.
+3. Frontend gọi API xác nhận liều uống.
+4. Backend kiểm tra:
+
+   * liều uống có tồn tại không;
+   * liều này thuộc profile hiện tại không;
+   * liều đã được xác nhận trước đó chưa.
+5. Backend cập nhật `EventDose.status`.
+6. Backend ghi nhận thời gian xác nhận.
+7. Nếu xác nhận trễ, backend đánh dấu trạng thái trễ.
+8. Backend gửi thông báo cho caregiver nếu cần.
+9. Frontend cập nhật giao diện lịch uống.
+
+README hiện có đoạn mô tả giao dịch xác nhận uống thuốc theo hướng so sánh thời gian hiện tại với lịch uống và kích hoạt thông báo cho người thân nếu có tình huống trễ/quá hạn. ([GitHub][1])
+
+---
+
+### 3.5. Luồng bỏ qua hoặc xử lý liều quá hạn
+
+1. Hệ thống phát hiện một `EventDose` đã qua giờ uống nhưng chưa được xác nhận.
+2. Backend cập nhật trạng thái liều thành `MISSED` hoặc `OVERDUE`.
+3. Backend tạo cảnh báo.
+4. Notification Service gửi thông báo đến caregiver.
+5. Caregiver có thể mở dashboard để xem chi tiết.
+6. Dữ liệu này được dùng trong thống kê tuân thủ.
+
+**Ý nghĩa nghiệp vụ:**
+
+Đây là điểm quan trọng của hệ thống chăm sóc người cao tuổi. Mục tiêu không chỉ là nhắc uống thuốc, mà còn phát hiện khi người dùng không uống thuốc đúng giờ để caregiver can thiệp kịp thời.
+
+---
+
+## 4. Phân hệ Thông báo và xử lý bất đồng bộ
+
+### 4.1. Tổng quan module
+
+Phân hệ thông báo chịu trách nhiệm gửi các tín hiệu quan trọng đến người dùng và caregiver. Các thông báo có thể đến từ nhiều nguồn:
+
+* OTP quên mật khẩu;
+* nhắc uống thuốc;
+* cảnh báo quên liều;
+* caregiver gửi lời mời;
+* tin nhắn mới;
+* sự kiện hệ thống.
+
+RabbitMQ được sử dụng để tách các tác vụ chậm ra khỏi luồng chính. README cũng mô tả RabbitMQ có vai trò tách luồng bất đồng bộ và làm broker realtime cho WebSocket, giúp hệ thống không bị block khi xử lý tác vụ chậm. ([GitHub][1])
+
+---
+
+### 4.2. Luồng gửi OTP email qua RabbitMQ
+
+1. Người dùng yêu cầu quên mật khẩu.
+2. Backend sinh OTP và lưu Redis.
+3. Backend đóng gói message gồm email và mã OTP.
+4. Producer gửi message vào `email.exchange`.
+5. RabbitMQ định tuyến message theo `email.otp.routing.key`.
+6. Message đi vào queue `email.otp.queue`.
+7. `MailConsumerService` nhận message.
+8. Consumer gửi email bằng `JavaMailSender`.
+9. Nếu gửi thành công, hệ thống ghi log.
+10. Nếu gửi thất bại, có thể mở rộng bằng Dead Letter Queue.
+
+---
+
+### 4.3. Luồng tạo thông báo khi quên uống thuốc
+
+1. Hệ thống kiểm tra các liều uống đến hạn.
+2. Nếu người dùng chưa xác nhận, backend tạo bản ghi `Notification`.
+3. Nếu caregiver có quan hệ hợp lệ với elderly, backend gửi cảnh báo đến caregiver.
+4. Nếu người dùng đang online, thông báo có thể được đẩy realtime qua WebSocket.
+5. Nếu người dùng offline, thông báo vẫn được lưu trong database để đọc lại sau.
+
+**Ý nghĩa thiết kế:**
+
+Thông báo vừa có tính realtime, vừa có tính lưu trữ. Người dùng online sẽ nhận ngay, người dùng offline vẫn xem được lịch sử thông báo khi quay lại hệ thống.
+
+---
+
+## 5. Phân hệ Tương tác thời gian thực
+
+### 5.1. Tổng quan module
+
+Phân hệ realtime của PharmAgent phục vụ các chức năng:
+
+* chat giữa caregiver và elderly;
+* thông báo realtime;
+* trạng thái online/offline;
+* tín hiệu cuộc gọi;
+* cập nhật sự kiện uống thuốc theo thời gian thực.
+
+Backend sử dụng WebSocket/STOMP. Trong code, `WebSocketConfig` đăng ký endpoint `/ws`, app prefix `/app`, và nếu có cấu hình RabbitMQ thì bật STOMP broker relay cho `/topic` và `/queue` qua port 61613. ([GitHub][4])
+
+---
+
+### 5.2. Kiến trúc STOMP over WebSocket
+
+Mô hình hoạt động:
+
+```text
+Frontend
+   |
+   | WebSocket /ws
+   v
+Backend Spring Boot
+   |
+   | STOMP Broker Relay
+   v
+RabbitMQ
+   |
+   | /topic, /queue
+   v
+Các client đang subscribe
+```
+
+Các loại kênh chính:
+
+| Kênh         | Mục đích                                              |
+| ------------ | ----------------------------------------------------- |
+| `/topic/...` | Gửi cho nhiều người cùng subscribe, ví dụ phòng chat  |
+| `/queue/...` | Gửi riêng cho một người dùng, ví dụ thông báo cá nhân |
+| `/app/...`   | Client gửi message vào backend xử lý                  |
+
+---
+
+### 5.3. Luồng gửi tin nhắn chat
+
+1. Người dùng mở phòng chat.
+2. Frontend kết nối WebSocket tới `/ws`.
+3. Frontend subscribe vào topic của phòng chat, ví dụ:
+
+```text
+/topic/room.{roomId}
+```
+
+4. Người dùng nhập tin nhắn.
+5. Frontend gửi message đến backend qua STOMP destination.
+6. Backend kiểm tra người gửi có thuộc phòng chat không.
+7. Backend lưu `ChatMessage` vào MongoDB.
+8. Backend publish tin nhắn đến topic phòng.
+9. Các client đang subscribe nhận message và render ngay.
+
+README mô tả luồng realtime gồm tiếp nhận payload, lưu tin nhắn vào MongoDB, rồi broadcast tới topic `/topic/room.{roomId}`. ([GitHub][1])
+
+---
+
+### 5.4. Luồng thông báo realtime cá nhân
+
+1. Backend phát sinh thông báo, ví dụ elderly quên uống thuốc.
+2. Backend xác định caregiver cần nhận thông báo.
+3. Backend lưu notification vào MongoDB.
+4. Backend gửi message đến queue cá nhân:
+
+```text
+/queue/user.{profileId}.notifications
+```
+
+5. Nếu caregiver đang online, frontend nhận thông báo ngay.
+6. Nếu caregiver offline, thông báo vẫn tồn tại trong database.
+
+**Ý nghĩa thiết kế:**
+
+Cách chia topic/queue giúp hệ thống phân biệt rõ thông báo công khai theo phòng và thông báo cá nhân theo người dùng.
+
+---
+
+### 5.5. Luồng mở rộng khi scale nhiều backend instance
+
+Nếu chỉ dùng WebSocket in-memory, khi hệ thống có nhiều backend instance, user ở instance A có thể không nhận được message do instance B phát ra. Vì vậy, PharmAgent dùng RabbitMQ làm STOMP broker relay.
+
+**Quy trình khi scale:**
+
+1. Client A kết nối vào backend instance 1.
+2. Client B kết nối vào backend instance 2.
+3. Backend instance 1 publish message vào RabbitMQ.
+4. RabbitMQ phân phối message đến đúng topic.
+5. Backend instance 2 nhận message và đẩy đến client B.
+
+**Ý nghĩa kiến trúc:**
+
+Realtime không phụ thuộc vào một server duy nhất. Đây là điểm quan trọng khi bảo vệ kiến trúc microservices.
+
+---
+
+## 6. Phân hệ AI Agent nhận diện thuốc thời gian thực
+
+### 6.1. Tổng quan module
+
+Phân hệ AI Agent xử lý chức năng nhận diện thuốc qua camera. Đây là service tách riêng bằng FastAPI để xử lý luồng ảnh realtime, tránh làm nặng backend nghiệp vụ chính.
+
+Thành phần chính:
+
+| Thành phần            | Vai trò                                     |
+| --------------------- | ------------------------------------------- |
+| `agent/main.py`       | FastAPI app xử lý WebSocket nhận diện thuốc |
+| WebSocket `/ws/agent` | Nhận frame ảnh base64 từ frontend           |
+| OpenCV                | Decode và xử lý frame ảnh                   |
+| AI Model              | Vị trí tích hợp model YOLO/TensorFlow       |
+| Cloudinary            | Lưu ảnh bằng chứng khi nhận diện đủ tin cậy |
+| Backend Upload API    | Cấp presigned upload info                   |
+
+Trong code hiện tại, agent có endpoint health `/ws/health`, WebSocket `/ws/agent`, nhận frame base64, decode bằng OpenCV, mock kết quả Paracetamol/Hapacol 500 với confidence 0.95, sau đó upload ảnh lên Cloudinary nếu confidence >= 0.8. ([GitHub][5])
+
+---
+
+### 6.2. Luồng nhận diện thuốc realtime
+
+1. Người dùng mở chức năng scan thuốc.
+2. Frontend bật camera.
+3. Frontend lấy frame ảnh từ camera.
+4. Frame được encode sang Base64.
+5. Frontend gửi frame qua WebSocket:
+
+```text
+WS /ws/agent
+```
+
+6. AI Agent nhận dữ liệu frame.
+7. Agent decode Base64 thành ảnh OpenCV.
+8. Agent tiền xử lý ảnh.
+9. Agent gọi model nhận diện thuốc.
+10. Model trả về:
+
+    * `pillId`
+    * tên thuốc;
+    * hoạt chất;
+    * hàm lượng;
+    * độ tin cậy.
+11. Nếu confidence thấp, agent chỉ trả kết quả dự đoán.
+12. Nếu confidence >= 0.8, agent upload ảnh lên Cloudinary.
+13. Agent trả kết quả JSON về frontend.
+14. Frontend hiển thị tên thuốc và ảnh bằng chứng.
+
+---
+
+### 6.3. Luồng upload ảnh bằng chứng lên Cloudinary
+
+1. Agent phát hiện thuốc với độ tin cậy đủ cao.
+2. Agent encode frame hiện tại thành JPEG.
+3. Agent gọi backend:
+
+```http
+GET /api/upload/presign?folder=pill
+```
+
+4. Backend tạo thông tin upload có chữ ký.
+5. Agent upload ảnh trực tiếp lên Cloudinary.
+6. Cloudinary trả về `secure_url`.
+7. Agent gắn `imageUrl` vào kết quả scan.
+8. Frontend nhận kết quả và có thể lưu URL ảnh vào hồ sơ thuốc hoặc lịch sử xác nhận.
+
+README mô tả PharmAgent dùng presigned pipeline với các giai đoạn: xin chữ ký upload, sinh signature, upload trực tiếp lên Cloudinary và cập nhật metadata sau khi có `secure_url`. ([GitHub][1])
+
+---
+
+### 6.4. Ghi chú về trạng thái AI hiện tại
+
+Trong mã nguồn hiện tại, phần nhận diện AI đang là mock logic, tức là pipeline kỹ thuật đã có nhưng model thật chưa được tích hợp hoàn chỉnh. Khi viết báo cáo, nên trình bày theo hướng:
+
+> Hệ thống đã xây dựng sẵn pipeline realtime cho AI Pill Scan: nhận frame qua WebSocket, xử lý ảnh bằng OpenCV, trả kết quả JSON và upload ảnh bằng chứng lên Cloudinary. Phần model nhận diện thật có thể được thay thế vào vị trí mock logic trong `agent/main.py`.
+
+Cách viết này trung thực với code và vẫn thể hiện được kiến trúc.
+
+---
+
+## 7. Phân hệ API Gateway
+
+### 7.1. Tổng quan module
+
+API Gateway là cửa ngõ duy nhất giữa frontend và các service nội bộ. Thay vì frontend gọi trực tiếp Backend hoặc AI Agent, tất cả request đều đi qua Gateway.
+
+Theo README, Gateway mặc định chạy ở `http://localhost:9000`, chịu trách nhiệm xác thực JWT, phân quyền RBAC, rate limiting và định tuyến đến service tương ứng. ([GitHub][1])
+
+Các route chính:
+
+| Chức năng           | Path từ frontend         | Service xử lý     |
+| ------------------- | ------------------------ | ----------------- |
+| Đăng nhập/đăng ký   | `/api/auth/**`           | Backend           |
+| Quản lý thuốc       | `/api/medications/**`    | Backend           |
+| Xác nhận uống thuốc | `/api/elderly/events/**` | Backend           |
+| Caregiver           | `/api/caregiver/**`      | Backend           |
+| Admin               | `/api/admin/**`          | Backend           |
+| AI scan thuốc       | `/ws/agent`              | AI Agent          |
+| Chat/thông báo      | `/ws/**`                 | Backend WebSocket |
+
+---
+
+### 7.2. Luồng HTTP request qua Gateway
+
+1. Frontend gửi request đến Gateway.
+2. Gateway kiểm tra path request.
+3. Nếu route public, Gateway forward trực tiếp.
+4. Nếu route cần đăng nhập, Gateway kiểm tra JWT.
+5. Gateway kiểm tra role tương ứng.
+6. Gateway forward request đến Backend.
+7. Backend xử lý nghiệp vụ.
+8. Backend trả response về Gateway.
+9. Gateway trả response về frontend.
+
+**Ý nghĩa thiết kế:**
+
+Gateway giúp frontend không cần biết hệ thống có bao nhiêu service phía sau. Khi sau này tách thêm service notification, medication hoặc AI, frontend vẫn chỉ cần gọi một entry point duy nhất.
+
+---
+
+### 7.3. Luồng WebSocket qua Gateway
+
+1. Frontend mở kết nối WebSocket đến Gateway.
+2. Gateway phân biệt:
+
+   * `/ws/agent` → chuyển đến AI Agent;
+   * `/ws/**` → chuyển đến Backend realtime.
+3. Gateway giữ kết nối proxy.
+4. Service đích xử lý message realtime.
+5. Kết quả được trả ngược lại frontend qua cùng kết nối WebSocket.
+
+**Ý nghĩa thiết kế:**
+
+Luồng này giúp tách riêng AI realtime và chat realtime mà frontend vẫn chỉ kết nối qua một cổng chung.
+
+---
+
+## 8. Phân hệ Admin và quản trị hệ thống
+
+### 8.1. Tổng quan module
+
+Admin là vai trò có quyền cao nhất trong PharmAgent. Phân hệ này phục vụ quản lý dữ liệu nền và giám sát hệ thống.
+
+Các chức năng chính:
+
+* quản lý người dùng;
+* khóa/mở khóa tài khoản;
+* quản lý danh mục thuốc chuẩn;
+* quản lý hình ảnh thuốc;
+* xem thống kê;
+* kiểm soát dữ liệu bất thường.
+
+Security config phân quyền route `/api/admin/**` cho role `ADMIN`, `/api/caregiver/**` cho `CAREGIVER`, `/api/elderly/**` cho `ELDERLY`, còn `/api/auth/**`, `/actuator/**`, `/ws/**` được mở theo cấu hình public/permit. ([GitHub][6])
+
+---
+
+### 8.2. Luồng admin thêm thuốc vào danh mục chuẩn
+
+1. Admin đăng nhập và chọn profile `ADMIN`.
+2. Frontend gọi API tạo thuốc chuẩn.
+3. Backend kiểm tra role trong JWT.
+4. Nếu role không phải `ADMIN`, request bị từ chối.
+5. Nếu hợp lệ, backend lưu thông tin `Pill`.
+6. Nếu có ảnh thuốc, backend xử lý upload qua Cloudinary.
+7. Backend tạo `PillImage`.
+8. Frontend cập nhật danh sách thuốc chuẩn.
+
+**Ý nghĩa nghiệp vụ:**
+
+Danh mục thuốc chuẩn giúp AI Agent và người dùng cùng tham chiếu đến một nguồn dữ liệu thống nhất. Khi scan ra `pillId`, hệ thống có thể đối chiếu với danh mục thuốc đã được admin quản lý.
+
+---
+
+### 8.3. Luồng admin khóa tài khoản
+
+1. Admin mở danh sách user.
+2. Admin chọn tài khoản cần khóa.
+3. Frontend gọi API admin.
+4. Backend kiểm tra quyền `ADMIN`.
+5. Backend cập nhật trạng thái tài khoản.
+6. Nếu cần, backend thu hồi token đang hoạt động bằng Redis blacklist.
+7. Người dùng bị khóa không thể tiếp tục truy cập các API nghiệp vụ.
+
+**Ý nghĩa bảo mật:**
+
+Chức năng này giúp hệ thống phản ứng nhanh với tài khoản có hành vi bất thường, đặc biệt vì dữ liệu thuốc và sức khỏe là dữ liệu nhạy cảm.
+
+---
+
+## 9. Luồng triển khai hệ thống bằng Docker Compose
+
+### 9.1. Tổng quan hạ tầng
+
+PharmAgent được triển khai theo mô hình nhiều container. `docker-compose.yaml` định nghĩa các service chính gồm MongoDB, Redis, RabbitMQ, Agent, Backend và Gateway; Gateway expose port `9000`, còn các service nội bộ nằm trong cùng Docker network. ([GitHub][7])
+
+Các service chính:
+
+| Service    | Vai trò                                                |
+| ---------- | ------------------------------------------------------ |
+| `database` | MongoDB lưu dữ liệu chính                              |
+| `redis`    | Lưu dữ liệu ngắn hạn, blacklist token, OTP             |
+| `rabbitmq` | Message broker cho email OTP và WebSocket broker relay |
+| `agent`    | AI Agent FastAPI                                       |
+| `backend`  | Spring Boot core service                               |
+| `gateway`  | FastAPI API Gateway                                    |
+
+---
+
+### 9.2. Luồng khởi động hệ thống
+
+1. Docker Compose khởi động MongoDB.
+2. MongoDB chạy healthcheck.
+3. Redis khởi động và kiểm tra kết nối.
+4. RabbitMQ khởi động và kiểm tra trạng thái.
+5. Backend chỉ khởi động sau khi MongoDB, Redis, RabbitMQ healthy.
+6. Agent khởi động và expose health endpoint.
+7. Gateway khởi động sau khi Backend, Agent, Redis đã sẵn sàng.
+8. Người dùng truy cập hệ thống thông qua Gateway.
+
+**Ý nghĩa thiết kế:**
+
+Việc dùng `depends_on` kèm healthcheck giúp tránh lỗi backend khởi động khi database hoặc broker chưa sẵn sàng.
+
+---
+
+## 10. Sơ đồ luồng tổng thể
+
+```text
+User / Caregiver / Admin
+        |
+        | HTTP / WebSocket
+        v
+Frontend React + Vite
+        |
+        | /api/**, /ws/**
+        v
+API Gateway FastAPI
+        |
+        |-----------------------> AI Agent FastAPI
+        |                         - nhận frame camera
+        |                         - xử lý OpenCV / AI model
+        |                         - upload Cloudinary
+        |
+        v
+Backend Spring Boot
+        |
+        |---- MongoDB
+        |     - User
+        |     - UserProfile
+        |     - Relationship
+        |     - Medication
+        |     - EventDose
+        |     - Notification
+        |     - ChatMessage
+        |
+        |---- Redis
+        |     - JWT blacklist
+        |     - OTP
+        |     - rate limit / online state
+        |
+        |---- RabbitMQ
+        |     - OTP email queue
+        |     - STOMP broker relay
+        |
+        v
+External Services
+        |
+        |---- Cloudinary: lưu ảnh thuốc / ảnh bằng chứng
+        |---- Email SMTP: gửi OTP
 ```
 
 ---
 
-## 2. Phân hệ Quản lý Thuốc và Pipeline Hình ảnh (Cloudinary HLS-like Pipeline)
-### 2.1. Quy trình Upload ảnh bằng chứng (Presigned Pipeline)
-Tương tự như luồng upload video trong báo cáo mẫu, PharmAgent sử dụng cơ chế **Presigned URL** để tối ưu hóa hiệu năng server.
+## 11. Tổng kết phần III
 
-- **Giai đoạn 1 — Request Presign**: Frontend gọi `UploadController` để xin "chữ ký" upload.
-- **Giai đoạn 2 — Signature Generation**: `CloudinaryService` sinh HMAC signature dựa trên API Secret.
-- **Giai đoạn 3 — Client Direct Upload**: Frontend upload ảnh pill trực tiếp lên Cloudinary.
-- **Giai đoạn 4 — Metadata Update**: Sau khi có `secure_url`, Frontend gửi về Backend để lưu vào hồ sơ thuốc.
+Có thể chốt phần này trong báo cáo như sau:
 
-**Code tiêu biểu (UploadController.java):**
-```java
-@GetMapping("/presign")
-public ResponseEntity<PresignedUploadResponse> getPresignedUpload(@RequestParam String folder) {
-    // Backend không nhận file, chỉ cấp "giấy thông hành" có chữ ký số
-    return ResponseEntity.ok(cloudinaryService.generatePresignedUpload(folder));
-}
-```
+> PharmAgent được thiết kế theo hướng microservices nhẹ, trong đó Frontend React giao tiếp với hệ thống thông qua API Gateway FastAPI. Gateway chịu trách nhiệm xác thực tập trung, rate limiting và định tuyến request đến Backend Spring Boot hoặc AI Agent FastAPI. Backend Spring Boot xử lý nghiệp vụ lõi gồm xác thực, hồ sơ người dùng, quan hệ caregiver–elderly, quản lý thuốc, lịch uống, xác nhận liều uống, notification và chat realtime. MongoDB lưu dữ liệu chính, Redis lưu dữ liệu ngắn hạn như OTP và blacklist token, RabbitMQ xử lý tác vụ bất đồng bộ và hỗ trợ broker realtime, Cloudinary lưu hình ảnh nhận diện thuốc. AI Agent nhận frame ảnh qua WebSocket, xử lý bằng OpenCV/model AI và trả kết quả nhận diện thuốc theo thời gian thực.
 
-### 2.2. Giao dịch nghiệp vụ: Xác nhận uống thuốc (Dose Transaction)
-Hành động xác nhận uống thuốc được xử lý như một giao dịch nguyên tử (Atomic Transaction) để đảm bảo tính chính xác của báo cáo tuân thủ.
-- **Logic Service**: `DoseConfirmationFacade` so sánh `now()` với `scheduledAt`. Nếu trễ quá 30 phút, trạng thái được ghi nhận là `OVERDUE`.
-- **Side Effect**: Kích hoạt luồng gửi thông báo khẩn cấp cho người thân qua Notification Service.
+Phần này đang bám đúng “form nhóm 4”: chia theo phân hệ, mỗi phân hệ có tổng quan, mục tiêu, API/kiến trúc và luồng xử lý chi tiết giống cách nhóm 4 mô tả xác thực, streaming, realtime và AI chatbot. 
 
----
+[1]: https://github.com/NguyenTuKien/PharmAgent "GitHub - NguyenTuKien/PharmAgent · GitHub"
+[2]: https://raw.githubusercontent.com/NguyenTuKien/PharmAgent/main/backend/src/main/java/ct01/n07/backend/controller/AuthController.java "raw.githubusercontent.com"
+[3]: https://raw.githubusercontent.com/NguyenTuKien/PharmAgent/main/backend/src/main/java/ct01/n07/backend/config/RabbitMQConfig.java "raw.githubusercontent.com"
+[4]: https://raw.githubusercontent.com/NguyenTuKien/PharmAgent/main/backend/src/main/java/ct01/n07/backend/config/WebSocketConfig.java "raw.githubusercontent.com"
+[5]: https://raw.githubusercontent.com/NguyenTuKien/PharmAgent/main/agent/main.py "raw.githubusercontent.com"
+[6]: https://raw.githubusercontent.com/NguyenTuKien/PharmAgent/main/backend/src/main/java/ct01/n07/backend/config/SecurityConfiguration.java "raw.githubusercontent.com"
+[7]: https://raw.githubusercontent.com/NguyenTuKien/PharmAgent/main/docker-compose.yaml "raw.githubusercontent.com"
 
-## 3. Phân hệ Tương tác thời gian thực (Real-time Engine)
-### 3.1. Kiến trúc nhắn tin STOMP over RabbitMQ
-Hệ thống sử dụng **RabbitMQ** làm Message Broker để điều phối tin nhắn giữa các microservices và hàng ngàn kết nối WebSocket đồng thời.
-
-**Luồng xử lý dữ liệu:**
-1. **Reception**: `ChatWebSocketController` tiếp nhận Payload.
-2. **Persistence**: `ChatMessageService` lưu tin nhắn vào MongoDB để phục vụ tra cứu lịch sử (History Retrieval).
-3. **Broadcasting**: Tin nhắn được đẩy vào RabbitMQ exchange và định tuyến tới các topic theo định dạng `/topic/room.{roomId}`.
-
-**Code tiêu biểu (ChatWebSocketController.java):**
-```java
-@MessageMapping("/chat.send")
-public void sendMessage(@Payload ChatPayload chatPayload) {
-    ChatMessage savedMessage = chatMessageService.saveMessage(chatPayload);
-    // Phát tán tin nhắn tới tất cả người dùng trong phòng chat
-    messagingTemplate.convertAndSend("/topic/room." + chatPayload.getRoomId(), savedMessage);
-}
-```
-
----
-
-## 4. Phân hệ Trợ lý ảo AI (Real-time Pill Scanning Agent)
-### 4.1. Kiến trúc AI Agent (FastAPI + WebSocket)
-Dịch vụ Agent được thiết kế theo mô hình **Streaming Pipeline** tương tự như luồng xử lý HLS trong báo cáo mẫu, nhưng dành cho frame ảnh từ camera.
-
-### 4.2. Luồng xử lý dữ liệu Online (Real-time Scanning)
-1. **Frame Ingestion**: Frontend gửi luồng frame ảnh Base64 (10fps) qua WebSocket tới `/ws/agent`.
-2. **Preprocessing**: Agent sử dụng `OpenCV` để resize và chuẩn hóa ảnh cho Model AI.
-3. **Identification**: Model YOLO/TensorFlow thực hiện nhận diện loại thuốc, hàm lượng.
-4. **Confidence-based Callback**: 
-   - Nếu `confidence < 0.8`: Chỉ trả về kết quả text (dự đoán).
-   - Nếu `confidence >= 0.8`: Tự động kích hoạt luồng upload ảnh "bằng chứng" lên Cloudinary và trả về URL kèm kết quả JSON.
-
-**Code tiêu biểu (agent/main.py):**
-```python
-@router.websocket("/agent")
-async def websocket_pill_scan(websocket: WebSocket):
-    await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-        frame = decode_base64_to_cv2(data) # Tiền xử lý ảnh
-        result = ai_model.predict(frame)   # Nhận diện AI
-        
-        if result.confidence >= 0.8:
-            # Tự động lưu bằng chứng khi AI chắc chắn
-            result.imageUrl = await upload_to_cloudinary(frame)
-            
-        await websocket.send_text(result.json())
-```
-
-### 4.3. Định hướng RAG (Future Implementation)
-Tương tự kiến trúc RAG trong báo cáo mẫu, PharmAgent định hướng sử dụng Pill ID nhận diện được để truy vấn vào Vector Database (ChromaDB) chứa thông tin tương tác thuốc và tác dụng phụ, từ đó tư vấn thông minh cho người dùng qua Chatbot.
