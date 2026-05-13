@@ -8,7 +8,7 @@ React + Vite frontend scaffold for PharmAgent.
 - API client: `axios`
 - Auth store: `zustand`
 - Form validation: `react-hook-form`, `zod`, `@hookform/resolvers`
-- Toasts and modal: `sonner`, `@radix-ui/react-dialog`
+- Toasts, search tabs, and modal: `goey-toast`, `gooey-search-tabs`, `framer-motion`, `@radix-ui/react-dialog`
 - Date/time picker: `react-day-picker`, `date-fns`
 - Charts: `recharts`
 - Realtime: `@stomp/stompjs`, `sockjs-client`, `reconnecting-websocket`
@@ -25,6 +25,14 @@ VITE_GATEWAY_PROXY_TARGET=http://localhost:9000
 ```
 
 Vite dev server proxies `/api` and `/ws` to the gateway on port `9000`.
+
+## Reusable UI
+
+Use the installed gooey search tabs UI through:
+
+```jsx
+import { GooeySearchTabs } from './src/components/ui/GooeySearchTabs.jsx'
+```
 
 ## Scripts
 

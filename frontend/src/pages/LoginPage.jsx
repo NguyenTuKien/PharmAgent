@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { LockKeyhole, Mail } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { gooeyToast } from 'goey-toast'
 import { z } from 'zod'
 
 import { Button } from '../components/ui/Button.jsx'
@@ -32,13 +32,13 @@ export function LoginPage() {
   const onSubmit = async (values) => {
     try {
       const profiles = await login(values)
-      toast.success('Dang nhap thanh cong')
+      gooeyToast.success('Dang nhap thanh cong')
       navigate('/profiles', {
         replace: true,
         state: { profileCount: profiles.length },
       })
     } catch (error) {
-      toast.error(getApiErrorMessage(error))
+      gooeyToast.error(getApiErrorMessage(error))
     }
   }
 

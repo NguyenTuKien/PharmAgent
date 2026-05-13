@@ -2,6 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
+import 'goey-toast/styles.css'
+import 'gooey-search-tabs/styles.css'
 import App from './App.jsx'
 import { ToastProvider } from './components/ui/ToastProvider.jsx'
 

@@ -1,6 +1,6 @@
 import { Camera, PlugZap } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { gooeyToast } from 'goey-toast'
 
 import { Button } from '../components/ui/Button.jsx'
 import { createCameraScanClient } from '../lib/cameraClient.js'
@@ -27,10 +27,10 @@ export function ScanPage() {
       token,
       onOpen: () => {
         setConnected(true)
-        toast.success('Da ket noi camera WebSocket')
+        gooeyToast.success('Da ket noi camera WebSocket')
       },
       onClose: () => setConnected(false),
-      onError: () => toast.error('Khong ket noi duoc WebSocket camera'),
+      onError: () => gooeyToast.error('Khong ket noi duoc WebSocket camera'),
       onResult: setResult,
     })
   }
@@ -44,7 +44,7 @@ export function ScanPage() {
     const frame = await readFileAsDataUrl(file)
     const sent = clientRef.current?.sendFrame(frame)
     if (!sent) {
-      toast.error('Hay ket noi WebSocket truoc khi gui frame')
+      gooeyToast.error('Hay ket noi WebSocket truoc khi gui frame')
     }
   }
 
