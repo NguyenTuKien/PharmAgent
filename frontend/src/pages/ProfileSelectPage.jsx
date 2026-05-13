@@ -1,6 +1,6 @@
 import { ArrowRight, UserRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { gooeyToast } from 'goey-toast'
 
 import { Button } from '../components/ui/Button.jsx'
 import { getApiErrorMessage } from '../lib/apiClient.js'
@@ -20,10 +20,10 @@ export function ProfileSelectPage() {
   const handleSelect = async (profileId) => {
     try {
       await selectProfile(profileId)
-      toast.success('Da chon ho so')
+      gooeyToast.success('Da chon ho so')
       navigate('/dashboard', { replace: true })
     } catch (error) {
-      toast.error(getApiErrorMessage(error))
+      gooeyToast.error(getApiErrorMessage(error))
     }
   }
 

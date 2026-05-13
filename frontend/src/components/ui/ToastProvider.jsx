@@ -1,5 +1,5 @@
-import { Toaster } from 'sonner'
+import { GooeyToaster } from 'goey-toast'
 
 export function ToastProvider() {
-  return <Toaster closeButton richColors position="top-right" />
+  return <GooeyToaster position="top-right" />
 }
