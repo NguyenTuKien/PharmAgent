@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button.jsx'
 import { IonIcon } from '../../components/ui/IonIcon.jsx'
 import { getApiErrorMessage } from '../../lib/apiClient.js'
 import { useAuthStore } from '../../modules/auth/authStore.js'
-import { buildSignupPayload } from '../../modules/auth/registerPayload.js'
+import { buildRegisterPayload } from '../../modules/auth/registerPayload.js'
 import { AuthShell } from './AuthShell.jsx'
 
 const requiredText = (message) => z.string().trim().min(1, message)
@@ -82,7 +82,7 @@ export function RegisterPage() {
 
   const onSubmit = async (values) => {
     try {
-      const response = await registerAccount(buildSignupPayload(values))
+      const response = await registerAccount(buildRegisterPayload(values))
       gooeyToast.success(response.message || 'Vui lòng kiểm tra email để kích hoạt tài khoản')
       navigate(`/verify-email?email=${encodeURIComponent(response.email || values.email)}`, {
         replace: true,

@@ -15,7 +15,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SignupRequest {
+public class RegisterRequest {
     // User information
     @NotBlank(message = "Email không được để trống")
     @Email(regexp = "^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$", message = "Email không đúng định dạng")
@@ -30,16 +30,16 @@ public class SignupRequest {
 
     @NotNull(message = "Caregiver information is required")
     @Valid
-    private CaregiverSignupRequest caregiver;
+    private CaregiverRegisterRequest caregiver;
 
     @Valid
-    private ElderlySignupRequest elderly;
+    private ElderlyRegisterRequest elderly;
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class CaregiverSignupRequest {
+    public static class CaregiverRegisterRequest {
         @NotBlank(message = "Tên không được để trống")
         @Size(max = 50, message = "Tên không được vượt quá 50 ký tự")
         private String firstName;
@@ -70,7 +70,7 @@ public class SignupRequest {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class ElderlySignupRequest {
+    public static class ElderlyRegisterRequest {
         @NotBlank(message = "Tên không được để trống")
         @Size(max = 50, message = "Tên không được vượt quá 50 ký tự")
         private String firstName;

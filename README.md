@@ -249,11 +249,11 @@ Luồng đăng ký được sử dụng khi người dùng mới tạo tài kho�
 2. Frontend gửi request đến API:
 
 ```http
-POST /api/auth/signup
+POST /api/auth/register
 ```
 
 3. API Gateway nhận request và forward xuống Backend Spring Boot.
-4. `AuthController.signup()` tiếp nhận dữ liệu.
+4. `AuthController.register()` tiếp nhận dữ liệu.
 5. `RegistrationFacade` kiểm tra tính hợp lệ của email, mật khẩu và thông tin đăng ký.
 6. Hệ thống mã hóa mật khẩu bằng `BCryptPasswordEncoder`.
 7. Backend tạo bản ghi `User`.
@@ -270,7 +270,7 @@ Luồng này đảm bảo mỗi người dùng có một tài khoản định da
 
 PharmAgent sử dụng cơ chế đăng nhập hai bước để tách biệt giữa **xác thực tài khoản** và **lựa chọn ngữ cảnh hồ sơ**.
 
-Trong mã nguồn, `AuthController` có các endpoint như `/login`, `/profiles/{profileId}/select`, `/refresh`, `/signup`, `/logout`, `/forgot-password`, `/reset-password`, `/change-password`. ([GitHub][2])
+Trong mã nguồn, `AuthController` có các endpoint như `/login`, `/profiles/{profileId}/select`, `/refresh`, `/register`, `/logout`, `/forgot-password`, `/reset-password`, `/change-password`. ([GitHub][2])
 
 #### Giai đoạn 1 — Đăng nhập tài khoản
 

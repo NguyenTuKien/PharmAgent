@@ -14,7 +14,7 @@ Lưu ý:
  | Module / Nhóm | Method | API Endpoint | Chức năng | Input Example (JSON) | Output Example (JSON) | Phân quyền (Auth) |
  | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
  | **1. Xác thực & Phân quyền (Auth)** | POST | `/api/auth/login` | Đăng nhập hệ thống. | `{"email": "test@gmail.com", "password": "password123"}` | `{"authToken": "eyJ...", "refreshToken": "eyJ...", "profiles": [{"profileId": "65c...", "role": "CAREGIVER"}]}` | Public |
- |  | POST | `/api/auth/signup` | Đăng ký tài khoản (tạo User + 1 Profile mặc định). | `{"email": "test@gmail.com", "password": "password123", "confirmPassword": "password123", "caregiver": {...}}` | `{"authToken": "eyJ...", "refreshToken": "eyJ...", "profiles": [...]}` (201 Created) | Public |
+ |  | POST | `/api/auth/register` | Đăng ký tài khoản (tạo User + 1 Profile mặc định). | `{"email": "test@gmail.com", "password": "password123", "confirmPassword": "password123", "caregiver": {...}}` | `{"authToken": "eyJ...", "refreshToken": "eyJ...", "profiles": [...]}` (201 Created) | Public |
  |  | POST | `/api/auth/profiles/{profileId}/select` | Chọn profile để lấy profile-scoped token (`accessToken`). | **Header:** `Bearer <AuthToken>` | `{"accessToken": "eyJ..."}` | Auth |
  |  | POST | `/api/auth/refresh` | Refresh token/profile token. | `{"profileId": "65c...", "refreshToken": "eyJ..."}` | `{"authToken": "eyJ...", "accessToken": "eyJ...", "refreshToken": "eyJ..."}` | Public |
  |  | POST | `/api/auth/logout` | Logout (invalidate refresh token). | `{"refreshToken":"..."}` | `204 No Content` | Auth |

@@ -298,18 +298,18 @@
               ]
             },
             {
-              "name": "Signup",
+              "name": "Register",
               "request": {
                 "method": "POST",
                 "url": {
-                  "raw": "{{baseUrl}}/api/auth/signup",
+                  "raw": "{{baseUrl}}/api/auth/register",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "api",
                     "auth",
-                    "signup"
+                    "register"
                   ]
                 },
                 "body": {

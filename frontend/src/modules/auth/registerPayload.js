@@ -20,7 +20,7 @@ function profilePayload(values, prefix = '') {
   }
 }
 
-export function buildSignupPayload(values) {
+export function buildRegisterPayload(values) {
   const caregiver = profilePayload(values)
   const payload = {
     email: normalizeAuthEmail(values.email),
