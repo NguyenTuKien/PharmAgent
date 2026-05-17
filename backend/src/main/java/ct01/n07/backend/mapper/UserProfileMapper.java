@@ -1,7 +1,7 @@
 package ct01.n07.backend.mapper;
 
 import ct01.n07.backend.dto.user.UserProfileSummaryResponse;
-import ct01.n07.backend.dto.auth.SignupRequest;
+import ct01.n07.backend.dto.auth.RegisterRequest;
 import ct01.n07.backend.dto.auth.UserInfoResponse;
 import ct01.n07.backend.dto.user.CreateProfileRequest;
 import ct01.n07.backend.dto.user.UpdateProfileRequest;
@@ -30,7 +30,7 @@ public interface UserProfileMapper {
     @Mapping(target = "userContacts", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    UserProfile toCaregiverProfile(SignupRequest req, String userId);
+    UserProfile toCaregiverProfile(RegisterRequest req, String userId);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", source = "userId")
@@ -45,7 +45,7 @@ public interface UserProfileMapper {
     @Mapping(target = "userContacts", expression = "java(new java.util.ArrayList<>())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    UserProfile toElderlyProfile(SignupRequest req, String userId);
+    UserProfile toElderlyProfile(RegisterRequest req, String userId);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)

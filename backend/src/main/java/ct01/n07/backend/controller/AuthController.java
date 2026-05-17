@@ -42,9 +42,9 @@ public class AuthController {
         return ResponseEntity.ok(authFacade.refresh(request));
     }
 
-    @PostMapping("/signup")
-    public ResponseEntity<AuthMessageResponse> signup(@Valid @RequestBody SignupRequest signupRequest) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(registrationFacade.signup(signupRequest));
+    @PostMapping("/register")
+    public ResponseEntity<AuthMessageResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(registrationFacade.register(registerRequest));
     }
 
 

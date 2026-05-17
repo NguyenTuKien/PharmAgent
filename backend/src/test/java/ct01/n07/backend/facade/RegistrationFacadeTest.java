@@ -2,7 +2,7 @@ package ct01.n07.backend.facade;
 
 import ct01.n07.backend.dto.auth.AuthMessageResponse;
 import ct01.n07.backend.dto.auth.LoginRequest;
-import ct01.n07.backend.dto.auth.SignupRequest;
+import ct01.n07.backend.dto.auth.RegisterRequest;
 import ct01.n07.backend.dto.auth.VerifyEmailRequest;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.User;
@@ -71,8 +71,8 @@ class RegistrationFacadeTest {
     }
 
     @Test
-    void signupCreatesInactiveUserAndQueuesVerificationOtp() {
-        SignupRequest request = signupRequest();
+    void registerCreatesInactiveUserAndQueuesVerificationOtp() {
+        RegisterRequest request = registerRequest();
         User user = User.builder()
                 .id("user-1")
                 .email("caregiver@example.com")
@@ -89,7 +89,7 @@ class RegistrationFacadeTest {
         when(otpUtil.generateOtp()).thenReturn("123456");
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        AuthMessageResponse response = registrationFacade.signup(request);
+        AuthMessageResponse response = registrationFacade.register(request);
 
         assertThat(response.getEmail()).isEqualTo("caregiver@example.com");
         assertThat(response.getMessage()).contains("xác minh");
@@ -129,8 +129,8 @@ class RegistrationFacadeTest {
     }
 
     @Test
-    void signupNormalizesEmailBeforePersistingUserAndOtp() {
-        SignupRequest request = signupRequest();
+    void registerNormalizesEmailBeforePersistingUserAndOtp() {
+        RegisterRequest request = registerRequest();
         request.setEmail("  CareGiver@Example.COM  ");
         User user = User.builder()
                 .id("user-1")
@@ -149,7 +149,7 @@ class RegistrationFacadeTest {
         when(otpUtil.generateOtp()).thenReturn("123456");
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        registrationFacade.signup(request);
+        registrationFacade.register(request);
 
         assertThat(loginCaptor.getValue().getEmail()).isEqualTo("caregiver@example.com");
         verify(valueOperations).set(
@@ -158,8 +158,8 @@ class RegistrationFacadeTest {
                 eq(Duration.ofMinutes(15)));
     }
 
-    private SignupRequest signupRequest() {
-        SignupRequest.CaregiverSignupRequest caregiver = SignupRequest.CaregiverSignupRequest.builder()
+    private RegisterRequest registerRequest() {
+        RegisterRequest.CaregiverRegisterRequest caregiver = RegisterRequest.CaregiverRegisterRequest.builder()
                 .firstName("An")
                 .lastName("Nguyen")
                 .phone("0912345678")
@@ -168,7 +168,7 @@ class RegistrationFacadeTest {
                 .address("Ha Noi")
                 .build();
 
-        return SignupRequest.builder()
+        return RegisterRequest.builder()
                 .email("caregiver@example.com")
                 .password("Password123!")
                 .confirmPassword("Password123!")

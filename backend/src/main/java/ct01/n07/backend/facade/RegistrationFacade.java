@@ -2,7 +2,7 @@ package ct01.n07.backend.facade;
 
 import ct01.n07.backend.dto.auth.AuthMessageResponse;
 import ct01.n07.backend.dto.auth.LoginRequest;
-import ct01.n07.backend.dto.auth.SignupRequest;
+import ct01.n07.backend.dto.auth.RegisterRequest;
 import ct01.n07.backend.dto.auth.VerifyEmailRequest;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.User;
@@ -46,42 +46,42 @@ public class RegistrationFacade {
     private String frontendUrl;
 
     @Transactional
-    public AuthMessageResponse signup(SignupRequest signupRequest) {
-        signupRequest.setEmail(normalizeEmail(signupRequest.getEmail()));
+    public AuthMessageResponse register(RegisterRequest registerRequest) {
+        registerRequest.setEmail(normalizeEmail(registerRequest.getEmail()));
 
-        if (!signupRequest.getPassword().equals(signupRequest.getConfirmPassword())) {
+        if (!registerRequest.getPassword().equals(registerRequest.getConfirmPassword())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu và xác nhận mật khẩu không khớp");
         }
 
         LoginRequest loginRequest = LoginRequest.builder()
-                .email(signupRequest.getEmail())
-                .password(signupRequest.getPassword())
+                .email(registerRequest.getEmail())
+                .password(registerRequest.getPassword())
                 .build();
 
-        if (signupRequest.getCaregiver() != null && userProfileService.findByPhone(signupRequest.getCaregiver().getPhone())) {
+        if (registerRequest.getCaregiver() != null && userProfileService.findByPhone(registerRequest.getCaregiver().getPhone())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Caregiver phone number already exists");
         }
 
-        if (signupRequest.getElderly() != null && !signupRequest.getElderly().getPhone().isBlank()) {
-            if (userProfileService.findByPhone(signupRequest.getElderly().getPhone())) {
+        if (registerRequest.getElderly() != null && !registerRequest.getElderly().getPhone().isBlank()) {
+            if (userProfileService.findByPhone(registerRequest.getElderly().getPhone())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Elderly phone number already exists");
             }
         }
 
         User user = userService.createUser(loginRequest, UserStatus.INACTIVE);
 
-        UserProfile caregiverProfile = userProfileMapper.toCaregiverProfile(signupRequest, user.getId());
+        UserProfile caregiverProfile = userProfileMapper.toCaregiverProfile(registerRequest, user.getId());
         userProfileService.saveUserProfile(caregiverProfile);
 
-        if (signupRequest.getElderly() != null) {
-            UserProfile elderlyProfile = userProfileMapper.toElderlyProfile(signupRequest, user.getId());
+        if (registerRequest.getElderly() != null) {
+            UserProfile elderlyProfile = userProfileMapper.toElderlyProfile(registerRequest, user.getId());
             userProfileService.saveUserProfile(elderlyProfile);
             relationshipService.createRelationship(
                     caregiverProfile.getId(),
                     elderlyProfile.getId(),
-                    signupRequest.getElderly().getCaregiverTitle(),
-                    signupRequest.getElderly().getElderlyTitle(),
-                    signupRequest.getElderly().getPermissionLevel()
+                    registerRequest.getElderly().getCaregiverTitle(),
+                    registerRequest.getElderly().getElderlyTitle(),
+                    registerRequest.getElderly().getPermissionLevel()
             );
         }
 

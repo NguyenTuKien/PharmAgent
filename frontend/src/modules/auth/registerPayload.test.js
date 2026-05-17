@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { buildSignupPayload, normalizeAuthEmail } from './registerPayload.js'
+import { buildRegisterPayload, normalizeAuthEmail } from './registerPayload.js'
 
 test('normalizeAuthEmail trims and lowercases email addresses', () => {
   assert.equal(normalizeAuthEmail('  CareGiver@Example.COM  '), 'caregiver@example.com')
 })
 
-test('buildSignupPayload creates backend signup payload with caregiver profile only by default', () => {
-  const payload = buildSignupPayload({
+test('buildRegisterPayload creates backend signup payload with caregiver profile only by default', () => {
+  const payload = buildRegisterPayload({
     email: 'CareGiver@Example.COM',
     password: 'Password123!',
     firstName: 'An',
@@ -33,8 +33,8 @@ test('buildSignupPayload creates backend signup payload with caregiver profile o
   })
 })
 
-test('buildSignupPayload includes elderly profile when explicitly provided', () => {
-  const payload = buildSignupPayload({
+test('buildRegisterPayload includes elderly profile when explicitly provided', () => {
+  const payload = buildRegisterPayload({
     email: 'caregiver@example.com',
     password: 'Password123!',
     confirmPassword: 'Password123!',
