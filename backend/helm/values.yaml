@@ -1,56 +1,155 @@
-fullnameOverride: backend-service
+# Default values for backend.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
 
-backend:
-  name: backend 
-  replicaCount: 3
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 2
-      maxUnavailable: 1
-  image:
-    repository: ghcr.io/nguyentukien/pharmagent-backend
-    tag: "b906185"
-    pullPolicy: Always
-  service:
-    type: ClusterIP
-    port: 8080
-  environment:
-    COR_ALLOWED_ORIGINS: "*"
+replicaCount: 2
 
-database:
-  service:
-    host: "database-pharmagent-nodeport"
-    port: 27017
-  environment:
-    MONGO_DATABASE: PharmAgentDB
-    MONGO_USER: "<set-via-secret>"
-    MONGO_PASSWORD: "<set-via-secret>"
+image:
+  repository: ghcr.io/nguyentukien/pharmagent-backend
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
 
-redis:
-  service:
-    host: "redis-12088.c325.us-east-1-4.ec2.cloud.redislabs.com"
-    port: 12088
-  environment:
-    REDIS_USER: "<set-via-secret>"
-    REDIS_PASSWORD: "<set-via-secret>"
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
 
-rabbitmq:
-  service:
-    host: "gerbil.rmq.cloudamqp.com"
-    port: 5671
-  environment:
-    RABBITMQ_USER: "<set-via-secret>"
-    RABBITMQ_PASSWORD: "<set-via-secret>"
-    RABBITMQ_VHOST: "<set-via-secret>"
+serviceAccount:
+  # Specifies whether a service account should be created.
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account.
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  name: ""
 
-mail:
-  environment:
-    SPRING_MAIL_USERNAME: "<set-via-secret>"
-    SPRING_MAIL_PASSWORD: "<set-via-secret>"
-    SPRING_MAIL_HOST: "smtp.gmail.com"
-    SPRING_MAIL_PORT: "587"
+podAnnotations: {}
+podLabels: {}
 
-security:
-  environment:
-    JWT_SECRET: "<set-via-secret>"
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# The port our Spring Boot application runs on inside the container
+containerPort: 8080
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs:
+  - name: gateway
+    sectionName: http
+  hostnames:
+  - chart-example.local
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /headers
+
+# Default environment variables for local/testing.
+# Can be overridden or extended in production using values files or GitOps repo.
+env:
+  - name: SPRING_MONGODB_DATABASE
+    value: "PharmAgentDB"
+  - name: SPRING_MONGODB_URI
+    value: "mongodb://appUser:appPassword123@database:27017/PharmAgentDB?authSource=PharmAgentDB"
+  - name: SPRING_DATA_REDIS_URL
+    value: "redis://:hM3tdC4ETyAOXeoAtHjwKbHyTYJd6Wfq@redis:6379"
+  - name: SPRING_RABBITMQ_ADDRESSES
+    value: "amqp://guest:M9Em_GaseLCVB2pfFGVhoUD@rabbitmq:5672/"
+  - name: SPRING_MAIL_HOST
+    value: "smtp.gmail.com"
+  - name: SPRING_MAIL_PORT
+    value: "587"
+  - name: JWT_SECRET
+    value: "VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE="
+  - name: BACKEND_URL
+    value: "http://backend:8080"
+  - name: AGENT_URL
+    value: "http://agent:8000"
+  - name: CORS_ORIGINS
+    value: "*"
+  - name: APP_FRONTEND_URL
+    value: "http://localhost:5173"
+  - name: CLOUDINARY_CLOUD_NAME
+    value: "dlvhrlfyt"
+  - name: CLOUDINARY_API_KEY
+    value: "427346841434611"
+  # Sensitive/Secret variables like passwords can be configured here or via secrets:
+  # - name: SPRING_MONGODB_PASSWORD
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: backend-secret
+  #       key: mongodb-password
+
+# Optional: List of ConfigMaps or Secrets to inject directly as environment variables
+envFrom: []
+# - secretRef:
+#     name: backend-secrets
+# - configMapRef:
+#     name: backend-config
+
+resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 512Mi
+  # requests:
+  #   cpu: 250m
+  #   memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health
+    port: http
+  initialDelaySeconds: 20
+  periodSeconds: 15
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -3,8 +3,6 @@ import base64
 import cv2
 import numpy as np
 import json
-import os
-import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, APIRouter, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -14,9 +12,6 @@ from typing import List, Optional
 # --- CONFIGURATION & LOGGING ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# URL của Backend (để lấy presign và add image)
-BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8080")
 
 app = FastAPI(title="PharmAgent AI Service - Real-time")
 
@@ -38,60 +33,6 @@ class PillScanResponse(BaseModel):
     imageUrl: Optional[str] = None  # URL ảnh đã upload lên Cloudinary
 
 
-# --- CLOUDINARY UPLOAD HELPER ---
-async def upload_frame_to_cloudinary(frame_bytes: bytes, pill_id: Optional[str]) -> Optional[str]:
-    """
-    Lấy presigned URL từ backend rồi upload frame ảnh lên Cloudinary.
-    Trả về secure_url nếu thành công, None nếu thất bại.
-    """
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # 1. Lấy presigned info từ backend
-            presign_resp = await client.get(
-                f"{BACKEND_URL}/api/upload/presign",
-                params={"folder": "pill"}
-            )
-            if presign_resp.status_code != 200:
-                logger.warning(f"Presign request failed: {presign_resp.status_code}")
-                return None
-
-            presign = presign_resp.json()
-
-            # 2. Upload ảnh lên Cloudinary
-            upload_resp = await client.post(
-                presign["uploadUrl"],
-                data={
-                    "api_key":   presign["apiKey"],
-                    "timestamp": str(presign["timestamp"]),
-                    "signature": presign["signature"],
-                    "folder":    presign["folder"],
-                },
-                files={"file": ("scan.jpg", frame_bytes, "image/jpeg")}
-            )
-
-            if upload_resp.status_code != 200:
-                logger.warning(f"Cloudinary upload failed: {upload_resp.status_code} {upload_resp.text}")
-                return None
-
-            secure_url = upload_resp.json().get("secure_url")
-            logger.info(f"Uploaded scan image to Cloudinary: {secure_url}")
-
-            # 3. Không gọi endpoint admin từ agent vì request này không kèm Authorization/JWT
-            #    và sẽ luôn bị từ chối bởi backend. Ảnh vẫn được upload thành công lên Cloudinary
-            #    và secure_url sẽ được trả về cho caller xử lý ở luồng phù hợp.
-            if pill_id and secure_url:
-                logger.info(
-                    "Skipping backend pill image association for pillId=%s because "
-                    "the available endpoint is admin-protected and this agent request "
-                    "does not include Authorization/JWT.",
-                    pill_id,
-                )
-
-            return secure_url
-
-    except Exception as e:
-        logger.error(f"Error during Cloudinary upload: {e}")
-        return None
 
 
 # --- ROUTER CONFIG ---
@@ -147,15 +88,6 @@ async def websocket_pill_scan(websocket: WebSocket):
                     confidenceScore=confidence
                 )
 
-                # 4. Nếu confidence đủ cao → upload ảnh lên Cloudinary
-                if confidence >= 0.8:
-                    # Encode frame hiện tại thành JPEG bytes để upload
-                    _, jpeg_buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-                    image_url = await upload_frame_to_cloudinary(
-                        jpeg_buf.tobytes(),
-                        pill_id=detected_pill_id
-                    )
-                    scan_result.imageUrl = image_url
 
                 # 5. Trả về kết quả cho Frontend qua WebSocket
                 await websocket.send_text(scan_result.model_dump_json())
