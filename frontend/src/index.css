@@ -3,7 +3,7 @@
 
 :root {
   --bg: #f6f8fb;
-  --surface: #ffffff;
+  --surface: #f2f8f5;
   --surface-strong: #eef4f1;
   --text: #16211f;
   --muted: #65736f;
@@ -112,7 +112,7 @@ a {
 }
 
 .btn--primary {
-  color: #ffffff;
+  color: #edf8f5;
   background: var(--accent);
 }
 
@@ -133,7 +133,7 @@ a {
 }
 
 .btn--danger {
-  color: #ffffff;
+  color: #edf8f5;
   background: var(--danger);
 }
 
@@ -300,7 +300,7 @@ a {
   gap: 34px;
   border-right: 1px solid var(--border);
   padding: 26px 18px;
-  background: #ffffff;
+  background: #f2f8f5;
 }
 
 .side-nav {
@@ -589,7 +589,7 @@ a {
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 8px;
-    background: rgb(255 255 255 / 95%);
+    background: rgb(242 248 245 / 95%);
     box-shadow: var(--shadow);
   }
 

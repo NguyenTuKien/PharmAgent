@@ -122,7 +122,7 @@ const ResetPasswordPage = () => {
                     display: "inline-block",
                     width: 24,
                     height: 24,
-                    border: "2px solid rgba(255,255,255,0.2)",
+                    border: "2px solid rgba(237,248,245,0.2)",
                     borderTopColor: "var(--auth-primary)",
                     borderRadius: "50%",
                     animation: "authSpin 0.8s linear infinite",

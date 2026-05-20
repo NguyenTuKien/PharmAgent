@@ -34,6 +34,15 @@ jwt:
 app:
   frontend-url: http://localhost:5173
 
+google:
+  client-id: ${GOOGLE_CLIENT_ID:}
+  client-secret: ${GOOGLE_CLIENT_SECRET:}
+
+oauth:
+  google:
+    # Optional. Defaults to ${app.frontend-url}/api/auth/oauth/google/callback.
+    redirect-uri: ""
+
 server:
   port: 8080
 

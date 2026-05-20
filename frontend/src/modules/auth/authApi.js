@@ -100,3 +100,15 @@ export async function logoutRequest({ authToken, accessToken, refreshToken }) {
     },
   )
 }
+
+export async function completeGoogleOAuthRequest(code) {
+  const response = await apiClient.post(
+    '/auth/oauth/google/session',
+    { code },
+    {
+      skipAuthHeader: true,
+      skipAuthRefresh: true,
+    },
+  )
+  return response.data
+}

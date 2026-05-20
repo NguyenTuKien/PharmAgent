@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-const palette = ["rgba(35, 184, 166, 0.36)", "rgba(31, 127, 214, 0.34)", "rgba(216, 245, 239, 0.22)"];
+const palette = ["rgba(53, 200, 183, 0.4)", "rgba(56, 142, 220, 0.38)", "rgba(220, 244, 238, 0.24)"];
 
 const InteractiveBackground = () => {
   const canvasRef = useRef(null);
@@ -38,7 +38,7 @@ const InteractiveBackground = () => {
 
       for (let i = 0; i < 10; i += 1) {
         const x = ((i + 1) / 11) * width + Math.sin(time * 0.006 + i) * 18;
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.strokeStyle = "rgba(220, 244, 238, 0.1)";
         ctx.beginPath();
         ctx.moveTo(x, height * 0.12);
         ctx.lineTo(x + Math.cos(time * 0.006 + i) * 32, height * 0.88);

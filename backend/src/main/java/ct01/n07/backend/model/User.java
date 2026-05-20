@@ -25,6 +25,9 @@ public class User {
     @Indexed(unique = true, sparse = true)
     private String email;
 
+    @Indexed(unique = true, sparse = true)
+    private String googleSubject;
+
     private String password;
     private UserStatus userStatus;
 

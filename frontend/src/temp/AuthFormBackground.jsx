@@ -23,29 +23,26 @@ const AuthFormBackground = () => {
     
     const blobs = [
       {
-        
-        color: { r: 35, g: 184, b: 166 }, 
-        baseX: 0.8, baseY: 0.15, 
-        radiusX: 0.25, radiusY: 0.15,
-        size: 0.75, 
+        color: { r: 76, g: 221, b: 205 },
+        baseX: 0.72, baseY: 0.16,
+        radiusX: 0.22, radiusY: 0.14,
+        size: 0.7,
         speed: 0.0001,
         phase: 0,
       },
       {
-        
-        color: { r: 31, g: 127, b: 214 }, 
-        baseX: 0.7, baseY: 0.5,
+        color: { r: 72, g: 161, b: 226 },
+        baseX: 0.62, baseY: 0.5,
         radiusX: 0.15, radiusY: 0.2,
-        size: 0.65,
+        size: 0.6,
         speed: 0.00012,
         phase: Math.PI,
       },
       {
-        
-        color: { r: 122, g: 213, b: 205 }, 
-        baseX: 0.9, baseY: 0.35,
+        color: { r: 174, g: 241, b: 232 },
+        baseX: 0.84, baseY: 0.35,
         radiusX: 0.15, radiusY: 0.25,
-        size: 0.6,
+        size: 0.56,
         speed: 0.00008,
         phase: Math.PI * 0.5,
       },
@@ -63,8 +60,8 @@ const AuthFormBackground = () => {
 
       
       const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-      gradient.addColorStop(0, `rgba(${blob.color.r}, ${blob.color.g}, ${blob.color.b}, 0.25)`);
-      gradient.addColorStop(0.5, `rgba(${blob.color.r}, ${blob.color.g}, ${blob.color.b}, 0.08)`);
+      gradient.addColorStop(0, `rgba(${blob.color.r}, ${blob.color.g}, ${blob.color.b}, 0.28)`);
+      gradient.addColorStop(0.5, `rgba(${blob.color.r}, ${blob.color.g}, ${blob.color.b}, 0.12)`);
       gradient.addColorStop(1, `rgba(${blob.color.r}, ${blob.color.g}, ${blob.color.b}, 0)`);
 
       ctx.fillStyle = gradient;
@@ -78,7 +75,7 @@ const AuthFormBackground = () => {
       ctx.clearRect(0, 0, w, h);
 
       
-      ctx.fillStyle = "#061d2a";
+      ctx.fillStyle = "#0c2d3b";
       ctx.fillRect(0, 0, w, h);
 
       ctx.globalCompositeOperation = "screen";
@@ -87,10 +84,10 @@ const AuthFormBackground = () => {
 
       
       const fadeGradient = ctx.createLinearGradient(0, 0, w * 0.5, 0);
-      fadeGradient.addColorStop(0, "rgba(6, 29, 42, 1)");       
-      fadeGradient.addColorStop(0.3, "rgba(6, 29, 42, 0.85)");
-      fadeGradient.addColorStop(0.6, "rgba(6, 29, 42, 0.4)");
-      fadeGradient.addColorStop(1, "rgba(6, 29, 42, 0)");        
+      fadeGradient.addColorStop(0, "rgba(12, 45, 59, 0.92)");
+      fadeGradient.addColorStop(0.32, "rgba(12, 45, 59, 0.68)");
+      fadeGradient.addColorStop(0.64, "rgba(12, 45, 59, 0.24)");
+      fadeGradient.addColorStop(1, "rgba(12, 45, 59, 0)");
       ctx.fillStyle = fadeGradient;
       ctx.fillRect(0, 0, w * 0.5, h);
 

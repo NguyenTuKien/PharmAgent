@@ -97,7 +97,7 @@ const ForgotPasswordPage = () => {
                 <h2 className="auth-success-title">Kiểm tra email của bạn</h2>
                 <p className="auth-success-text">
                   Chúng tôi đã gửi liên kết đặt lại mật khẩu đến{" "}
-                  <strong style={{ color: "#fff" }}>{email}</strong>.
+                  <strong style={{ color: "var(--auth-text-main)" }}>{email}</strong>.
                   <br />
                   Vui lòng kiểm tra hộp thư và nhấp vào liên kết để đặt lại mật
                   khẩu.

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../modules/auth/authFacade.js";
+import { readGoogleOAuthCallback } from "../modules/auth/oauth.js";
 import { resendOTP } from "../api/authApi.js";
 import logo from "../assets/logo.svg";
 import title from "../assets/title.svg";
@@ -16,15 +17,60 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login, googleLogin } = useAuth();
+  const { login, googleLogin, completeGoogleLogin } = useAuth();
   const navigate = useNavigate();
+  const handledOAuthRef = useRef(false);
+
+  useEffect(() => {
+    if (handledOAuthRef.current) {
+      return;
+    }
+
+    const callback = readGoogleOAuthCallback(window.location.search);
+    if (!callback) {
+      return;
+    }
+
+    handledOAuthRef.current = true;
+
+    if (callback.error) {
+      setError("Không thể đăng nhập bằng Google. Vui lòng thử lại.");
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    if (!callback.code) {
+      setError("Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn.");
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+    completeGoogleLogin(callback.code)
+      .then(() => {
+        navigate("/profiles", { replace: true });
+      })
+      .catch((err) => {
+        setError(
+          err.response?.data?.message ||
+            "Không thể hoàn tất đăng nhập Google. Vui lòng thử lại."
+        );
+        navigate("/login", { replace: true });
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [completeGoogleLogin, navigate]);
 
   const handleGoogleLogin = async () => {
     setError("");
+    setIsLoading(true);
     try {
       await googleLogin();
     } catch (err) {
       setError(err.message || "Đăng nhập Google chưa được cấu hình.");
+      setIsLoading(false);
     }
   };
 

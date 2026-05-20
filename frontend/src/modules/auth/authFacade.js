@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import { useAuthStore } from './authStore.js'
+import { redirectToGoogleOAuth } from './oauth.js'
 import { buildRegisterPayload } from './registerPayload.js'
 
 export const AUTH_ONBOARDING_STORAGE_KEY = 'pharmagent.onboarding.v1'
@@ -36,6 +37,7 @@ export function clearOnboardingState(storage = globalThis.sessionStorage) {
 export function useAuth() {
   const status = useAuthStore((state) => state.status)
   const loginWithStore = useAuthStore((state) => state.login)
+  const loginWithGoogleHandoffCode = useAuthStore((state) => state.loginWithGoogleHandoffCode)
   const registerAccount = useAuthStore((state) => state.registerAccount)
   const verifyEmail = useAuthStore((state) => state.verifyEmail)
   const registerElderlyProfile = useAuthStore((state) => state.registerElderlyProfile)
@@ -80,10 +82,19 @@ export function useAuth() {
         return response
       },
       googleLogin: async () => {
-        throw new Error('Đăng nhập Google chưa được cấu hình cho PharmAgent.')
+        redirectToGoogleOAuth()
       },
+      completeGoogleLogin: (code) => loginWithGoogleHandoffCode(code),
       logout,
     }),
-    [loginWithStore, logout, registerAccount, registerElderlyProfile, status, verifyEmail],
+    [
+      loginWithGoogleHandoffCode,
+      loginWithStore,
+      logout,
+      registerAccount,
+      registerElderlyProfile,
+      status,
+      verifyEmail,
+    ],
   )
 }

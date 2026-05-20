@@ -45,6 +45,7 @@ async def proxy_http_request(
     strip_prefix: Optional[str] = None,
     extra_headers: Optional[dict] = None,
     strip_headers: Optional[set] = None,
+    follow_redirects: bool = True,
 ) -> StreamingResponse:
     """
     Forward một HTTP request tới upstream_url.
@@ -94,7 +95,7 @@ async def proxy_http_request(
             headers=forward_headers,
             content=body,
         )
-        upstream_response = await client.send(upstream_request, stream=True)
+        upstream_response = await client.send(upstream_request, stream=True, follow_redirects=follow_redirects)
     except httpx.ConnectError as exc:
         logger.error("Upstream connection failed [%s]: %s", target_url, exc)
         raise HTTPException(
