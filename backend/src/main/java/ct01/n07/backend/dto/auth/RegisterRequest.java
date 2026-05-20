@@ -44,7 +44,6 @@ public class RegisterRequest {
         @Size(max = 50, message = "Tên không được vượt quá 50 ký tự")
         private String firstName;
 
-        @NotBlank(message = "Họ không được để trống")
         @Size(max = 50, message = "Họ không được vượt quá 50 ký tự")
         private String lastName;
 

@@ -14,7 +14,7 @@ function splitDisplayName(value) {
   if (parts.length <= 1) {
     return {
       firstName: parts[0] || 'Nguoi dung',
-      lastName: 'PharmAgent',
+      lastName: undefined,
     }
   }
 

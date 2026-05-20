@@ -29,6 +29,7 @@ import java.time.Duration;
 public class PasswordFacade {
 
     private static final String PASSWORD_RESET_PREFIX = "PASSWORD_RESET:";
+    private static final String LEGACY_APP_NAME_PLACEHOLDER = "PharmAgent";
     private static final Duration PASSWORD_RESET_TTL = Duration.ofHours(12);
 
     private final UserService userService;
@@ -135,10 +136,15 @@ public class PasswordFacade {
         if (profile == null) {
             return fallback;
         }
-        String fullName = ((profile.getFirstName() == null ? "" : profile.getFirstName().trim())
+        String fullName = (cleanProfileNamePart(profile.getFirstName())
                 + " "
-                + (profile.getLastName() == null ? "" : profile.getLastName().trim())).trim();
+                + cleanProfileNamePart(profile.getLastName())).trim();
         return hasText(fullName) ? fullName : fallback;
+    }
+
+    private String cleanProfileNamePart(String value) {
+        String normalized = value == null ? "" : value.trim();
+        return LEGACY_APP_NAME_PLACEHOLDER.equalsIgnoreCase(normalized) ? "" : normalized;
     }
 
     private String normalizeEmail(String email) {

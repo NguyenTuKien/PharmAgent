@@ -39,6 +39,7 @@ public class RegistrationFacade {
 
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String VERIFY_EMAIL_PREFIX = "VERIFY_EMAIL:";
+    private static final String LEGACY_APP_NAME_PLACEHOLDER = "PharmAgent";
     private static final Duration VERIFY_EMAIL_TTL = Duration.ofMinutes(15);
 
     private final UserService userService;
@@ -275,9 +276,14 @@ public class RegistrationFacade {
         if (profile == null) {
             return fallback;
         }
-        String fullName = ((profile.getFirstName() == null ? "" : profile.getFirstName().trim())
+        String fullName = (cleanProfileNamePart(profile.getFirstName())
                 + " "
-                + (profile.getLastName() == null ? "" : profile.getLastName().trim())).trim();
+                + cleanProfileNamePart(profile.getLastName())).trim();
         return hasText(fullName) ? fullName : fallback;
+    }
+
+    private String cleanProfileNamePart(String value) {
+        String normalized = value == null ? "" : value.trim();
+        return LEGACY_APP_NAME_PLACEHOLDER.equalsIgnoreCase(normalized) ? "" : normalized;
     }
 }
