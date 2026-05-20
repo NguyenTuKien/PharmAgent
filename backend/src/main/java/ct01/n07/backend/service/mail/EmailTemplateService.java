@@ -32,8 +32,8 @@ public class EmailTemplateService {
         String content = ""
                 + heading("Kích hoạt tài khoản")
                 + greeting(message)
-                + paragraph("Cảm ơn bạn đã đăng ký sử dụng PharmAgent. Nhấn vào mã OTP hoặc nút bên dưới để xác minh rằng email này thuộc về bạn.")
-                + otpBlock(escapedOtp, escapedActionUrl, "Nhấn để kích hoạt tài khoản")
+                + paragraph("Cảm ơn bạn đã đăng ký sử dụng PharmAgent. Nhấn vào mã OTP bên dưới để xác minh rằng email này thuộc về bạn.")
+                + otpBlock(escapedOtp, escapedActionUrl, "Mã xác minh của bạn")
                 + notice("Mã OTP có hiệu lực trong " + VERIFY_TOKEN_TTL_MINUTES + " phút. Nếu bạn không tạo tài khoản trên PharmAgent, hãy bỏ qua email này.")
                 + supportLine();
 
@@ -62,7 +62,7 @@ public class EmailTemplateService {
                 + "<head>"
                 + "<meta charset='UTF-8'>"
                 + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                + "<title>PharmAgent</title>"
+                + "<title></title>"
                 + "</head>"
                 + "<body style='margin:0;padding:0;background:#ecf6f5;font-family:Segoe UI,Roboto,Arial,sans-serif;color:#12302f;'>"
                 + "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:#ecf6f5;padding:36px 14px;'>"
@@ -93,7 +93,8 @@ public class EmailTemplateService {
     private String footer() {
         String escapedFrontendUrl = escapeHtml(frontendUrl);
         return "<tr><td align='center' style='padding:20px 36px 28px;background:#f7fbfa;border-top:1px solid #e2eeec;text-align:center;'>"
-                + "<p style='margin:0 0 6px;font-size:13px;line-height:1.6;color:#526765;'>Email này được gửi tự động bởi <a href='" + escapedFrontendUrl + "' target='_blank' style='color:#129a8e;text-decoration:none;'><strong>PharmAgent</strong></a> để bảo vệ tài khoản và dữ liệu chăm sóc thuốc của bạn.</p>"
+                + "<p style='margin:0 0 6px;font-size:13px;line-height:1.6;color:#526765;'>Email này được gửi tự động bởi <a href='" + escapedFrontendUrl + "' target='_blank' style='color:#129a8e;text-decoration:none;'><strong>PharmAgent</strong></a>.</p>"
+                + "<p style='margin:0 0 6px;font-size:13px;line-height:1.6;color:#526765;'>Nền tảng hỗ trợ quản lý thuốc, lịch uống và chăm sóc sức khỏe cho gia đình.</p>"
                 + "<p style='margin:0;font-size:12px;color:#7b918f;'>© " + Year.now().getValue() + " <a href='" + escapedFrontendUrl + "' target='_blank' style='color:#7b918f;text-decoration:none;'><strong>PharmAgent</strong></a>. All rights reserved.</p>"
                 + "</td></tr>";
     }
