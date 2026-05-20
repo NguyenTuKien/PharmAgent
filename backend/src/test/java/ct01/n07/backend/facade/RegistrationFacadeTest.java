@@ -85,6 +85,8 @@ class RegistrationFacadeTest {
         UserProfile caregiverProfile = UserProfile.builder()
                 .id("profile-1")
                 .userId("user-1")
+                .firstName("An")
+                .lastName("Nguyen")
                 .role(Role.CAREGIVER)
                 .build();
 
@@ -108,7 +110,8 @@ class RegistrationFacadeTest {
                 eq("caregiver@example.com"),
                 eq("123456"),
                 eq("EMAIL_VERIFICATION"),
-                eq("http://localhost:5173/verify-email?email=caregiver%40example.com&otp=123456"));
+                eq("http://localhost:5173/verify-email?email=caregiver%40example.com&otp=123456"),
+                eq("An Nguyen"));
     }
 
     @Test

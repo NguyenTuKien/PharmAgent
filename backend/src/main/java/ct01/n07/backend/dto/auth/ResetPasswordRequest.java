@@ -10,8 +10,8 @@ public class ResetPasswordRequest {
     @Email(message = "Email không đúng định dạng")
     private String email;
 
-    @NotBlank(message = "OTP không được để trống")
-    private String otp;
+    @NotBlank(message = "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn")
+    private String token;
 
     @NotBlank(message = "Mật khẩu mới không được để trống")
     private String newPassword;

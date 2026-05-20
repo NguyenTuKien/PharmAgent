@@ -5,6 +5,7 @@ import logo from '../assets/logo.svg'
 import title from '../assets/title.svg'
 import { useAuthStore } from '../modules/auth/authStore.js'
 import { clearOnboardingState } from '../modules/auth/authFacade.js'
+import { getToastErrorMessage, notify } from '../lib/toast.js'
 
 function profileName(profile) {
   const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim()
@@ -25,7 +26,6 @@ export function ProfileSelectPage() {
   const selectProfile = useAuthStore((state) => state.selectProfile)
   const logout = useAuthStore((state) => state.logout)
   const [selectedId, setSelectedId] = useState('')
-  const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   const sortedProfiles = useMemo(
@@ -36,13 +36,15 @@ export function ProfileSelectPage() {
   const handleSelect = async (profileId) => {
     setSelectedId(profileId)
     setIsLoading(true)
-    setError('')
     try {
       await selectProfile(profileId)
       clearOnboardingState()
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the chon ho so. Vui long thu lai.')
+      const message = getToastErrorMessage(err, 'Không thể chọn hồ sơ. Vui lòng thử lại.')
+      notify.error(message, {
+        description: 'Phiên đăng nhập có thể đã hết hạn. Vui lòng thử lại.',
+      })
     } finally {
       setIsLoading(false)
     }
@@ -50,6 +52,9 @@ export function ProfileSelectPage() {
 
   const handleLogout = async () => {
     await logout()
+    notify.success('Đã đăng xuất', {
+      description: 'Phiên đăng nhập đã được xóa khỏi trình duyệt này.',
+    })
     navigate('/login')
   }
 
@@ -66,8 +71,6 @@ export function ProfileSelectPage() {
           Moi ho so co quyen truy cap rieng de bao ve thong tin thuoc va lich cham soc.
         </p>
       </header>
-
-      {error && <div className="empty-state compact" style={{ color: 'var(--danger)' }}>{error}</div>}
 
       <section className="profile-grid">
         {sortedProfiles.map((profile) => (

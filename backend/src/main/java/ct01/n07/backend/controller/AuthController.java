@@ -114,7 +114,7 @@ public class AuthController {
         passwordFacade.processForgotPassword(targetEmail);
         return ResponseEntity.ok(AuthMessageResponse.builder()
                 .email(targetEmail.trim().toLowerCase())
-                .message("Nếu email tồn tại, mã OTP đặt lại mật khẩu đã được gửi.")
+                .message("Liên kết đặt lại mật khẩu đã được gửi.")
                 .build());
     }
 

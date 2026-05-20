@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { resetPassword } from "../api/authApi.js";
+import { getToastErrorMessage, notify } from "../lib/toast.js";
 import logo from "../assets/logo.svg";
 import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
@@ -12,57 +13,57 @@ const ResetPasswordPage = () => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState(searchParams.get("email") || "");
-  const [otp, setOtp] = useState(searchParams.get("otp") || "");
+  const [resetToken] = useState(searchParams.get("token") || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [shakeError, setShakeError] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
-    if (!email || !otp || !password || !confirmPassword) {
-      setError("Vui lòng điền đầy đủ thông tin");
-      triggerShake();
+    if (!email || !resetToken || !password || !confirmPassword) {
+      const message = "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn";
+      notify.warning(message, {
+        description: "Mở lại liên kết đặt lại mật khẩu mới nhất trong email.",
+      });
       return;
     }
 
     if (password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự");
-      triggerShake();
+      const message = "Mật khẩu phải có ít nhất 6 ký tự";
+      notify.warning(message, {
+        description: "Chọn mật khẩu dài hơn trước khi đặt lại.",
+      });
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp");
-      triggerShake();
+      const message = "Mật khẩu xác nhận không khớp";
+      notify.warning(message, {
+        description: "Nhập lại phần xác nhận mật khẩu cho trùng khớp.",
+      });
       return;
     }
 
     setIsLoading(true);
     try {
-      await resetPassword(email, otp, password, confirmPassword);
+      await resetPassword(email, resetToken, password, confirmPassword);
       setIsSuccess(true);
+      notify.success("Đặt lại mật khẩu thành công", {
+        description: "Bạn có thể đăng nhập bằng mật khẩu mới.",
+      });
       setTimeout(() => navigate("/login"), 3000);
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Đã xảy ra lỗi. Vui lòng thử lại."
-      );
-      triggerShake();
+      const message = getToastErrorMessage(err, "Không thể đặt lại mật khẩu. Vui lòng thử lại.");
+      notify.error(message, {
+        description: "Liên kết có thể đã hết hạn hoặc đã được sử dụng.",
+      });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const triggerShake = () => {
-    setShakeError(true);
-    setTimeout(() => setShakeError(false), 600);
   };
 
   
@@ -137,22 +138,10 @@ const ResetPasswordPage = () => {
               <>
                 <h2>Đặt mật khẩu mới</h2>
                 <p className="auth-subtitle">
-                  Mật khẩu mới phải có ít nhất 6 ký tự và khác với mật khẩu cũ
-                  của bạn.
+                  Liên kết đặt lại mật khẩu đã được xác thực. Mật khẩu mới phải
+                  có ít nhất 6 ký tự.
                 </p>
 
-
-                {error && (
-                  <div
-                    className={`auth-info-box auth-info-box--error ${shakeError ? "auth-shake" : ""}`}
-                  >
-                    <ion-icon
-                      name="alert-circle"
-                      style={{ fontSize: 18, flexShrink: 0, marginTop: 2 }}
-                    ></ion-icon>
-                    {error}
-                  </div>
-                )}
 
                 <form onSubmit={handleSubmit}>
                   <div className="auth-input-box">
@@ -169,23 +158,6 @@ const ResetPasswordPage = () => {
                     <label htmlFor="reset-email">Email</label>
                     <span className="icon">
                       <ion-icon name="mail"></ion-icon>
-                    </span>
-                  </div>
-
-                  <div className="auth-input-box">
-                    <input
-                      id="reset-otp"
-                      type="text"
-                      inputMode="numeric"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      required
-                      placeholder=" "
-                      autoComplete="one-time-code"
-                    />
-                    <label htmlFor="reset-otp">Mã OTP</label>
-                    <span className="icon">
-                      <ion-icon name="keypad"></ion-icon>
                     </span>
                   </div>
 

@@ -1,85 +1,69 @@
 import nodemailer from "nodemailer";
-import path from "path";
-import { fileURLToPath } from "url";
 
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const logoPath = path.resolve(__dirname, "../assets/WorkHub_logo_blue_background.png");
-
+const APP_NAME = "PharmAgent";
+const SLOGAN = "Thuốc đúng, sống khỏe";
+const SUPPORT_EMAIL = process.env.EMAIL_SUPPORT || process.env.SPRING_MAIL_USERNAME || process.env.EMAIL_USER;
+const FROM_EMAIL = process.env.SPRING_MAIL_USERNAME || process.env.EMAIL_USER;
 
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: Number(process.env.EMAIL_PORT),
-  secure: false, 
+  host: process.env.SPRING_MAIL_HOST || process.env.EMAIL_HOST,
+  port: Number(process.env.SPRING_MAIL_PORT || process.env.EMAIL_PORT || 587),
+  secure: String(process.env.SPRING_MAIL_SECURE || "false") === "true",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: FROM_EMAIL,
+    pass: process.env.SPRING_MAIL_PASSWORD || process.env.EMAIL_PASS,
   },
 });
 
+const escapeHtml = (value = "") =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const baseTemplate = (content) => `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WorkHub</title>
+  <title>${APP_NAME}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0b0213;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0b0213;padding:40px 20px;">
+<body style="margin:0;padding:0;background:#ecf6f5;font-family:Segoe UI,Roboto,Arial,sans-serif;color:#12302f;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ecf6f5;padding:36px 14px;">
     <tr>
       <td align="center">
-        <!-- Main Card -->
-        <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="background-color:rgba(255, 255, 255, 0.02);border-radius:24px;overflow:hidden;box-shadow:0 8px 32px rgba(192, 38, 211, 0.15);border:1px solid rgba(255,255,255,0.08);">
-          
-          <!-- Header (Dark Theme) -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border:1px solid #cfe4e1;border-radius:22px;overflow:hidden;box-shadow:0 20px 54px rgba(17,68,65,0.16);">
           <tr>
-            <td style="padding:40px 40px 20px;text-align:center;">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+            <td style="padding:30px 36px;background:#073b3a;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td align="center">
-                    <img src="cid:workhublogo" alt="WorkHub Logo" width="56" height="56" style="display:block;border-radius:14px;box-shadow:0 4px 15px rgba(0, 0, 0, 0.5);" />
+                  <td width="58" valign="middle">
+                    <div style="width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,#45e6d6,#146bd5);color:#ffffff;text-align:center;line-height:54px;font-size:25px;font-weight:900;box-shadow:0 12px 26px rgba(20,107,213,0.28);">+</div>
                   </td>
-                </tr>
-                <tr>
-                  <td align="center" style="padding-top:16px;">
-                    <span style="color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.02em;">WorkHub</span>
+                  <td valign="middle" style="padding-left:14px;">
+                    <div style="font-size:27px;font-weight:900;letter-spacing:0;color:#ffffff;">Pharm<span style="color:#45e6d6;">Agent</span></div>
+                    <div style="font-size:13px;font-weight:700;letter-spacing:0;color:#c7fff6;margin-top:4px;">${SLOGAN}</div>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
-
-          <!-- Body content -->
           <tr>
-            <td style="padding:20px 40px 32px;">
+            <td style="padding:30px 36px 34px;">
               ${content}
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
-            <td style="padding:0 40px 32px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="border-top:1px solid rgba(255,255,255,0.1);padding-top:24px;text-align:center;">
-                    <p style="margin:0 0 6px;font-size:13px;color:#a1a1aa;">
-                      This email was sent by <strong style="color:#e2e8f0;">WorkHub</strong>
-                    </p>
-                    <p style="margin:0 0 6px;font-size:12px;color:#a1a1aa;">
-                      The unified platform for collaboration & productivity
-                    </p>
-                    <p style="margin:0;font-size:12px;color:#71717a;">
-                      © ${new Date().getFullYear()} WorkHub Technologies Inc. All rights reserved.
-                    </p>
-                  </td>
-                </tr>
-              </table>
+            <td style="padding:20px 36px 28px;background:#f7fbfa;border-top:1px solid #e2eeec;">
+              <p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:#526765;">
+                Email này được gửi tự động bởi ${APP_NAME} để bảo vệ tài khoản và dữ liệu chăm sóc thuốc của bạn.
+              </p>
+              <p style="margin:0;font-size:12px;color:#7b918f;">© ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</p>
             </td>
           </tr>
-
         </table>
       </td>
     </tr>
@@ -88,133 +72,78 @@ const baseTemplate = (content) => `
 </html>
 `;
 
+const otpBlock = (otp, actionUrl, label) => `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="background:#edfdf9;border:2px dashed #59cfc3;border-radius:18px;padding:22px 34px;">
+          <tr>
+            <td align="center">
+              <p style="margin:0 0 10px;font-size:12px;font-weight:900;color:#148579;text-transform:uppercase;letter-spacing:2px;">${escapeHtml(label)}</p>
+              <a href="${escapeHtml(actionUrl)}" target="_blank" style="display:block;color:#083b3a;text-decoration:none;font-size:38px;font-weight:900;letter-spacing:10px;font-family:Consolas,Courier New,monospace;">
+                ${escapeHtml(otp)}
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+`;
 
-export const sendVerificationEmail = async (email, fullName, otp) => {
+const button = (actionUrl, label) => `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+    <tr>
+      <td align="center">
+        <a href="${escapeHtml(actionUrl)}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#129a8e,#146bd5);color:#ffffff;text-decoration:none;font-size:16px;font-weight:900;padding:14px 28px;border-radius:12px;box-shadow:0 10px 24px rgba(20,107,213,0.24);">
+          ${escapeHtml(label)}
+        </a>
+      </td>
+    </tr>
+  </table>
+`;
+
+export const sendVerificationEmail = async (email, fullName, otp, verificationLink) => {
   const content = `
-    <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#ffffff;text-align:center;">
-      Verify your email
-    </h1>
-    <p style="margin:0 0 28px;font-size:15px;color:#e2e8f0;line-height:1.6;text-align:center;">
-      Hi <strong style="color:#ffffff;">${fullName}</strong>, welcome to WorkHub! 🎉<br/>
-      Use the verification code below to activate your account.
+    <h1 style="margin:0 0 14px;font-size:26px;line-height:1.25;color:#082f2f;font-weight:900;letter-spacing:0;">Kích hoạt tài khoản</h1>
+    <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#35504e;">
+      Xin chào <strong>${escapeHtml(fullName || email)}</strong>, cảm ơn bạn đã đăng ký ${APP_NAME}. Nhấn vào mã OTP hoặc nút bên dưới để xác minh email chính chủ.
     </p>
-
-    <!-- OTP Box -->
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.03);border:2px dashed rgba(168,85,247,0.4);border-radius:16px;padding:24px 48px;">
-            <tr>
-              <td align="center">
-                <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#a855f7;text-transform:uppercase;letter-spacing:2px;">
-                  Verification Code
-                </p>
-                <p style="margin:0;font-size:40px;font-weight:800;color:#ffffff;letter-spacing:12px;font-family:'Courier New',monospace;">
-                  ${otp}
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <!-- Info -->
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(217,70,239,0.1);border-left:4px solid #d946ef;border-radius:8px;padding:14px 16px;margin-bottom:24px;">
-      <tr>
-        <td>
-          <p style="margin:0;font-size:13px;color:#fdf4ff;line-height:1.5;">
-            ⏱️ This code will expire in <strong>10 minutes</strong>.<br/>
-            If you didn't create an account on WorkHub, please ignore this email.
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin:0;font-size:14px;color:#a1a1aa;text-align:center;">
-      Having trouble? Contact us at <a href="mailto:support@workhub.com" style="color:#a855f7;text-decoration:none;">support@workhub.com</a>
-    </p>
+    ${otpBlock(otp, verificationLink, "Nhấn để kích hoạt tài khoản")}
+    ${button(verificationLink, "Kích hoạt tài khoản")}
+    <div style="background:#e9f9f5;border-left:4px solid #19b8a8;border-radius:12px;padding:14px 16px;">
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#35504e;">Mã OTP có hiệu lực trong <strong>15 phút</strong>. Nếu bạn không tạo tài khoản ${APP_NAME}, hãy bỏ qua email này.</p>
+    </div>
   `;
 
   await transporter.sendMail({
-    from: `"WorkHub" <${process.env.EMAIL_USER}>`,
+    from: `"${APP_NAME}" <${FROM_EMAIL}>`,
     to: email,
-    subject: `${otp} is your WorkHub verification code`,
+    subject: `${otp} là mã kích hoạt tài khoản ${APP_NAME}`,
     html: baseTemplate(content),
-    attachments: [
-      {
-        filename: "WorkHub_logo_blue_background.png",
-        path: logoPath,
-        cid: "workhublogo",
-      },
-    ],
   });
 };
 
-
 export const sendResetPasswordEmail = async (email, fullName, resetLink) => {
   const content = `
-    <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#ffffff;text-align:center;">
-      Reset your password
-    </h1>
-    <p style="margin:0 0 28px;font-size:15px;color:#e2e8f0;line-height:1.6;text-align:center;">
-      Hi <strong style="color:#ffffff;">${fullName}</strong>,<br/>
-      We received a request to reset the password for your WorkHub account. Click the button below to create a new password.
+    <h1 style="margin:0 0 14px;font-size:26px;line-height:1.25;color:#082f2f;font-weight:900;letter-spacing:0;">Đặt lại mật khẩu</h1>
+    <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#35504e;">
+      Xin chào <strong>${escapeHtml(fullName || email)}</strong>, chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản ${APP_NAME}. Nhấn nút bên dưới để mở trang đặt lại mật khẩu an toàn.
     </p>
-
-    <!-- CTA Button -->
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-      <tr>
-        <td align="center">
-          <a href="${resetLink}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#6d28d9 0%,#c026d3 100%);color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 48px;border-radius:12px;box-shadow:0 4px 14px rgba(192,38,211,0.4);">
-            Reset Password
-          </a>
-        </td>
-      </tr>
-    </table>
-
-    <!-- Alternative link -->
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.03);border-radius:8px;padding:14px 16px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.05);">
-      <tr>
-        <td>
-          <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:1px;">
-            Or copy this link:
-          </p>
-          <p style="margin:0;font-size:12px;color:#a855f7;word-break:break-all;line-height:1.5;">
-            <a href="${resetLink}" style="color:#a855f7;text-decoration:none;">${resetLink}</a>
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <!-- Warning -->
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(239,68,68,0.1);border-left:4px solid #ef4444;border-radius:8px;padding:14px 16px;margin-bottom:24px;">
-      <tr>
-        <td>
-          <p style="margin:0;font-size:13px;color:#fca5a5;line-height:1.5;">
-            ⚠️ This link will expire in <strong>15 minutes</strong>.<br/>
-            If you didn't request a password reset, please ignore this email or contact support.
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin:0;font-size:14px;color:#a1a1aa;text-align:center;">
-      Need help? Contact us at <a href="mailto:support@workhub.com" style="color:#a855f7;text-decoration:none;">support@workhub.com</a>
-    </p>
+    ${button(resetLink, "Mở trang đặt lại mật khẩu")}
+    <div style="background:#f5faf9;border:1px solid #dcecea;border-radius:12px;padding:14px 16px;margin:0 0 22px;">
+      <p style="margin:0 0 8px;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#5d7370;">Hoặc sao chép liên kết</p>
+      <a href="${escapeHtml(resetLink)}" target="_blank" style="font-size:12px;line-height:1.6;color:#146bd5;text-decoration:none;word-break:break-all;">${escapeHtml(resetLink)}</a>
+    </div>
+    <div style="background:#fff8e8;border-left:4px solid #f59e0b;border-radius:12px;padding:14px 16px;">
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#62440b;">Liên kết hết hạn sau <strong>12 giờ</strong>. Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này hoặc liên hệ ${escapeHtml(SUPPORT_EMAIL || "bộ phận hỗ trợ")}.</p>
+    </div>
   `;
 
   await transporter.sendMail({
-    from: `"WorkHub" <${process.env.EMAIL_USER}>`,
+    from: `"${APP_NAME}" <${FROM_EMAIL}>`,
     to: email,
-    subject: "Reset your WorkHub password",
+    subject: `Đặt lại mật khẩu ${APP_NAME}`,
     html: baseTemplate(content),
-    attachments: [
-      {
-        filename: "WorkHub_logo_blue_background.png",
-        path: logoPath,
-        cid: "workhublogo",
-      },
-    ],
   });
 };

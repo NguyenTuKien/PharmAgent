@@ -558,6 +558,79 @@ a {
   margin-top: 18px;
 }
 
+.pharm-toast {
+  width: min(420px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  color: var(--text);
+  border-radius: 8px !important;
+  box-shadow: 0 18px 42px rgb(22 33 31 / 14%) !important;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.pharm-toast__content {
+  gap: 8px;
+  padding: 2px 4px;
+}
+
+.pharm-toast__header {
+  align-items: center;
+  gap: 10px;
+}
+
+.pharm-toast__title {
+  color: var(--text);
+  font-size: clamp(0.88rem, 0.82rem + 0.24vw, 0.96rem);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.pharm-toast__icon {
+  color: var(--accent-strong);
+}
+
+.pharm-toast__description {
+  color: var(--muted);
+  font-size: clamp(0.8rem, 0.76rem + 0.18vw, 0.88rem);
+  line-height: 1.38;
+}
+
+.pharm-toast__action-wrapper {
+  margin-top: 10px;
+}
+
+.pharm-toast__action-button {
+  min-height: 32px;
+  border-radius: 8px !important;
+  padding: 0 12px;
+  color: #edf8f5 !important;
+  background: var(--accent) !important;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .pharm-toast {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+  }
+
+  .pharm-toast__content {
+    gap: 6px;
+    padding: 0 2px;
+  }
+
+  .pharm-toast__header {
+    gap: 8px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .pharm-toast {
+    width: min(440px, calc(100vw - 48px));
+    max-width: calc(100vw - 48px);
+  }
+}
+
 .mobile-nav {
   display: none;
 }

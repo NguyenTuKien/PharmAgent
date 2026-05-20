@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../modules/auth/authFacade.js";
 import { resendOTP } from "../api/authApi.js";
+import { getToastErrorMessage, notify } from "../lib/toast.js";
 import logo from "../assets/logo.svg";
 import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
@@ -16,17 +17,47 @@ const VerifyEmailPage = () => {
   const { verifyAndLogin } = useAuth();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [shakeError, setShakeError] = useState(false);
 
   
   const [resendCooldown, setResendCooldown] = useState(60);
   const [isResending, setIsResending] = useState(false);
-  const [resendMessage, setResendMessage] = useState("");
 
   const inputRefs = useRef([]);
+  const autoSubmittedRef = useRef(false);
+
+  const handleVerify = useCallback(async (code) => {
+    if (!emailFromParams) {
+      const message = "Không tìm thấy email. Vui lòng đăng ký lại.";
+      notify.error(message, {
+        description: "Quay lại trang đăng ký để tạo phiên xác minh mới.",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await verifyAndLogin(emailFromParams, code);
+      setIsSuccess(true);
+      notify.success("Xác minh email thành công", {
+        description: "Tài khoản của bạn đã được kích hoạt.",
+      });
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
+    } catch (err) {
+      const message = getToastErrorMessage(err, "Xác minh thất bại. Vui lòng thử lại.");
+      notify.error(message, {
+        description: "Kiểm tra mã 6 chữ số mới nhất trong hộp thư.",
+      });
+
+      setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [emailFromParams, navigate, verifyAndLogin]);
 
   
   useEffect(() => {
@@ -45,8 +76,12 @@ const VerifyEmailPage = () => {
   useEffect(() => {
     if (/^\d{6}$/.test(otpFromParams)) {
       setOtp(otpFromParams.split(""));
+      if (emailFromParams && !autoSubmittedRef.current) {
+        autoSubmittedRef.current = true;
+        handleVerify(otpFromParams);
+      }
     }
-  }, [otpFromParams]);
+  }, [emailFromParams, handleVerify, otpFromParams]);
 
   const handleChange = (index, value) => {
     
@@ -55,8 +90,6 @@ const VerifyEmailPage = () => {
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    setError("");
-    setResendMessage("");
 
     
     if (value && index < 5) {
@@ -90,59 +123,24 @@ const VerifyEmailPage = () => {
     }
   };
 
-  const handleVerify = async (code) => {
-    if (!emailFromParams) {
-      setError("Không tìm thấy email. Vui lòng đăng ký lại.");
-      triggerShake();
-      return;
-    }
-
-    setIsLoading(true);
-    setError("");
-    try {
-      await verifyAndLogin(emailFromParams, code);
-      setIsSuccess(true);
-      setTimeout(() => {
-        navigate("/login");
-      }, 2000);
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Xác minh thất bại. Vui lòng thử lại."
-      );
-      triggerShake();
-      
-      setOtp(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleResendOTP = async () => {
     if (resendCooldown > 0 || isResending) return;
 
     setIsResending(true);
-    setError("");
-    setResendMessage("");
     try {
       const data = await resendOTP(emailFromParams);
-      setResendMessage(data.message || "Đã gửi lại mã xác minh!");
+      notify.success("Đã gửi lại mã xác minh", {
+        description: data.message || "Vui lòng kiểm tra hộp thư của bạn.",
+      });
       setResendCooldown(60);
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Không thể gửi lại mã. Vui lòng thử lại."
-      );
-      triggerShake();
+      const message = getToastErrorMessage(err, "Không thể gửi lại mã. Vui lòng thử lại.");
+      notify.error(message, {
+        description: "Đợi hết thời gian chờ hoặc kiểm tra lại email đăng ký.",
+      });
     } finally {
       setIsResending(false);
     }
-  };
-
-  const triggerShake = () => {
-    setShakeError(true);
-    setTimeout(() => setShakeError(false), 600);
   };
 
   
@@ -261,30 +259,6 @@ const VerifyEmailPage = () => {
               <ion-icon name="mail" style={{ fontSize: 18 }}></ion-icon>
               <span>{maskEmail(emailFromParams)}</span>
             </div>
-
-            {}
-            {error && (
-              <div
-                className={`auth-info-box auth-info-box--error ${shakeError ? "auth-shake" : ""}`}
-              >
-                <ion-icon
-                  name="alert-circle"
-                  style={{ fontSize: 18, flexShrink: 0, marginTop: 2 }}
-                ></ion-icon>
-                {error}
-              </div>
-            )}
-
-            {}
-            {resendMessage && (
-              <div className="auth-info-box auth-info-box--success">
-                <ion-icon
-                  name="checkmark-circle"
-                  style={{ fontSize: 18, flexShrink: 0, marginTop: 2 }}
-                ></ion-icon>
-                {resendMessage}
-              </div>
-            )}
 
             {}
             <div

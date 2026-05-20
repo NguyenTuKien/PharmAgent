@@ -2,6 +2,7 @@ package ct01.n07.backend.facade;
 
 import ct01.n07.backend.dto.auth.AuthMessageResponse;
 import ct01.n07.backend.dto.auth.LoginRequest;
+import ct01.n07.backend.dto.auth.OtpMailMessage;
 import ct01.n07.backend.dto.auth.RegisterElderlyRequest;
 import ct01.n07.backend.dto.auth.RegisterRequest;
 import ct01.n07.backend.dto.auth.VerifyEmailRequest;
@@ -49,7 +50,7 @@ public class RegistrationFacade {
     private final RedisTemplate<String, String> redisTemplate;
     private final MailProducerService mailProducerService;
 
-    @Value("${app.frontend-url:${FRONTEND_URL:http://localhost:5173}}")
+    @Value("${app.frontend-url:${APP_FRONTEND_URL:${FRONTEND_URL:http://localhost:5173}}}")
     private String frontendUrl;
 
     @Transactional
@@ -80,7 +81,8 @@ public class RegistrationFacade {
         User user = userService.createUser(loginRequest, UserStatus.INACTIVE);
 
         UserProfile caregiverProfile = userProfileMapper.toCaregiverProfile(registerRequest, user.getId());
-        caregiverProfile = userProfileService.saveUserProfile(caregiverProfile);
+        UserProfile savedCaregiverProfile = userProfileService.saveUserProfile(caregiverProfile);
+        caregiverProfile = savedCaregiverProfile == null ? caregiverProfile : savedCaregiverProfile;
 
         if (registerRequest.getElderly() != null) {
             UserProfile elderlyProfile = userProfileMapper.toElderlyProfile(registerRequest, user.getId());
@@ -94,7 +96,7 @@ public class RegistrationFacade {
             );
         }
 
-        sendVerificationEmail(user.getEmail());
+        sendVerificationEmail(user.getEmail(), displayName(caregiverProfile, user.getEmail()));
 
         return AuthMessageResponse.builder()
                 .email(user.getEmail())
@@ -197,22 +199,23 @@ public class RegistrationFacade {
                     .build();
         }
 
-        sendVerificationEmail(email);
+        sendVerificationEmail(email, resolveRecipientName(user));
         return AuthMessageResponse.builder()
                 .email(email)
                 .message("Mã xác minh mới đã được gửi tới email của bạn.")
                 .build();
     }
 
-    private void sendVerificationEmail(String email) {
+    private void sendVerificationEmail(String email, String recipientName) {
         String otpCode = otpUtil.generateOtp();
         String redisKey = VERIFY_EMAIL_PREFIX + email;
         redisTemplate.opsForValue().set(redisKey, otpCode, VERIFY_EMAIL_TTL);
         mailProducerService.sendOtpToQueue(
                 email,
                 otpCode,
-                "EMAIL_VERIFICATION",
-                buildFrontendUrl("/verify-email", email, otpCode));
+                OtpMailMessage.EMAIL_VERIFICATION,
+                buildFrontendUrl("/verify-email", email, otpCode),
+                recipientName);
     }
 
     private String buildFrontendUrl(String path, String email, String otp) {
@@ -248,5 +251,33 @@ public class RegistrationFacade {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private String resolveRecipientName(User user) {
+        if (user == null || !hasText(user.getId())) {
+            return user == null ? null : user.getEmail();
+        }
+
+        try {
+            return userProfileService.findAllByUserId(user.getId(), PageRequest.of(0, 1))
+                    .getContent()
+                    .stream()
+                    .findFirst()
+                    .map(profile -> displayName(profile, user.getEmail()))
+                    .orElse(user.getEmail());
+        } catch (RuntimeException ex) {
+            log.warn("Không lấy được tên người nhận email xác minh cho user [{}]", user.getId());
+            return user.getEmail();
+        }
+    }
+
+    private String displayName(UserProfile profile, String fallback) {
+        if (profile == null) {
+            return fallback;
+        }
+        String fullName = ((profile.getFirstName() == null ? "" : profile.getFirstName().trim())
+                + " "
+                + (profile.getLastName() == null ? "" : profile.getLastName().trim())).trim();
+        return hasText(fullName) ? fullName : fallback;
     }
 }

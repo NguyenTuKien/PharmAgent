@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { forgotPassword } from "../api/authApi.js";
+import { getToastErrorMessage, notify } from "../lib/toast.js";
 import logo from "../assets/logo.svg";
 import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
@@ -9,18 +10,17 @@ import "../styles/auth/auth.css";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [shakeError, setShakeError] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (!email) {
-      setError("Vui lòng nhập địa chỉ email");
-      triggerShake();
+      const message = "Vui lòng nhập địa chỉ email";
+      notify.warning(message, {
+        description: "Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.",
+      });
       return;
     }
 
@@ -28,20 +28,17 @@ const ForgotPasswordPage = () => {
     try {
       await forgotPassword(email);
       setIsSuccess(true);
+      notify.success("Liên kết đặt lại mật khẩu đã được gửi", {
+        description: `Vui lòng kiểm tra hộp thư ${email}.`,
+      });
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Đã xảy ra lỗi. Vui lòng thử lại."
-      );
-      triggerShake();
+      const message = getToastErrorMessage(err, "Không thể gửi liên kết đặt lại mật khẩu.");
+      notify.error(message, {
+        description: "Chỉ email đã tồn tại trong hệ thống mới có thể nhận liên kết.",
+      });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const triggerShake = () => {
-    setShakeError(true);
-    setTimeout(() => setShakeError(false), 600);
   };
 
   return (
@@ -135,19 +132,6 @@ const ForgotPasswordPage = () => {
                   Nhập email liên kết với tài khoản của bạn để nhận liên kết đặt
                   lại mật khẩu.
                 </p>
-
-                {}
-                {error && (
-                  <div
-                    className={`auth-info-box auth-info-box--error ${shakeError ? "auth-shake" : ""}`}
-                  >
-                    <ion-icon
-                      name="alert-circle"
-                      style={{ fontSize: 18, flexShrink: 0, marginTop: 2 }}
-                    ></ion-icon>
-                    {error}
-                  </div>
-                )}
 
                 <form onSubmit={handleSubmit}>
                   {}

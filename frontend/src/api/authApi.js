@@ -12,10 +12,10 @@ export async function forgotPassword(email) {
   return forgotPasswordRequest(email)
 }
 
-export async function resetPassword(email, otp, newPassword, confirmPassword = newPassword) {
+export async function resetPassword(email, token, newPassword, confirmPassword = newPassword) {
   return resetPasswordRequest({
     email,
-    otp,
+    token,
     newPassword,
     confirmPassword,
   })

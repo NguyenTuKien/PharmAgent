@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { readOnboardingState, useAuth } from "../../modules/auth/authFacade.js";
+import { getToastErrorMessage, notify } from "../../lib/toast.js";
 import logo from "../../assets/logo.svg";
 import title from "../../assets/title.svg";
 import AuthFormBackground from "../../temp/AuthFormBackground.jsx";
@@ -26,7 +27,6 @@ export function ElderlySetupPage() {
     elderlyTitle: "Người thân",
     permissionLevel: "MANAGE_ALL",
   });
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const updateField = (field) => (event) => {
@@ -42,28 +42,38 @@ export function ElderlySetupPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError("");
 
     if (!onboarding.onboardingToken) {
-      setError("Không tìm thấy phiên đăng ký. Vui lòng đăng ký lại.");
+      const message = "Không tìm thấy phiên đăng ký. Vui lòng đăng ký lại.";
+      notify.warning(message, {
+        description: "Quay lại bước đăng ký để tạo phiên thiết lập mới.",
+      });
       return;
     }
 
     if (!values.firstName || !values.lastName || !values.phone || !values.dateOfBirth || !values.gender) {
-      setError("Vui lòng điền đầy đủ thông tin bắt buộc");
+      const message = "Vui lòng điền đầy đủ thông tin bắt buộc";
+      notify.warning(message, {
+        description: "Điền tên, họ, số điện thoại, ngày sinh và giới tính.",
+      });
       return;
     }
 
     setIsLoading(true);
     try {
       await registerElderly(values);
+      notify.success("Đã tạo hồ sơ người thân", {
+        description: "Tiếp tục xác minh email để kích hoạt tài khoản.",
+      });
       goToVerifyEmail();
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Không thể tạo hồ sơ người thân. Vui lòng thử lại.",
+      const message = getToastErrorMessage(
+        err,
+        err.message || "Không thể tạo hồ sơ người thân. Vui lòng thử lại.",
       );
+      notify.error(message, {
+        description: "Kiểm tra lại thông tin hồ sơ hoặc thử lại sau.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -111,8 +121,6 @@ export function ElderlySetupPage() {
             <p className="auth-subtitle">
               Bạn có thể thêm ngay bây giờ hoặc bỏ qua để xác minh email trước.
             </p>
-
-            {error && <div className="auth-error-message">{error}</div>}
 
             <form onSubmit={handleSubmit}>
               <div className="auth-name-row">

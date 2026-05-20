@@ -1,14 +1,18 @@
 package ct01.n07.backend.facade;
 
 import ct01.n07.backend.dto.auth.ChangePasswordRequest;
+import ct01.n07.backend.dto.auth.OtpMailMessage;
 import ct01.n07.backend.dto.auth.ResetPasswordRequest;
 import ct01.n07.backend.model.User;
+import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.producer.MailProducerService;
+import ct01.n07.backend.service.UserProfileService;
 import ct01.n07.backend.service.UserService;
-import ct01.n07.backend.util.OtpUtil;
+import ct01.n07.backend.util.ResetTokenUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,45 +29,41 @@ import java.time.Duration;
 public class PasswordFacade {
 
     private static final String PASSWORD_RESET_PREFIX = "PASSWORD_RESET:";
-    private static final Duration PASSWORD_RESET_TTL = Duration.ofMinutes(5);
+    private static final Duration PASSWORD_RESET_TTL = Duration.ofHours(12);
 
     private final UserService userService;
-    private final OtpUtil otpUtil;
+    private final UserProfileService userProfileService;
+    private final ResetTokenUtil resetTokenUtil;
     private final RedisTemplate<String, String> redisTemplate;
     private final MailProducerService mailProducerService;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.frontend-url:${FRONTEND_URL:http://localhost:5173}}")
+    @Value("${app.frontend-url:${APP_FRONTEND_URL:${FRONTEND_URL:http://localhost:5173}}}")
     private String frontendUrl;
 
     public void processForgotPassword(String email) {
         String normalizedEmail = normalizeEmail(email);
+        User user = userService.findByEmail(normalizedEmail);
 
-        try {
-            userService.findByEmail(normalizedEmail);
-        } catch (ResponseStatusException e) {
-            log.info("Bỏ qua yêu cầu quên mật khẩu cho email không tồn tại");
-            return;
-        }
-
-        String otpCode = otpUtil.generateOtp();
+        String resetToken = resetTokenUtil.generateUrlToken();
 
         String redisKey = PASSWORD_RESET_PREFIX + normalizedEmail;
-        redisTemplate.opsForValue().set(redisKey, otpCode, PASSWORD_RESET_TTL);
+        redisTemplate.opsForValue().set(redisKey, resetToken, PASSWORD_RESET_TTL);
 
         mailProducerService.sendOtpToQueue(
                 normalizedEmail,
-                otpCode,
-                "PASSWORD_RESET",
-                buildResetUrl(normalizedEmail));
+                resetToken,
+                OtpMailMessage.PASSWORD_RESET,
+                buildResetUrl(normalizedEmail, resetToken),
+                resolveRecipientName(user));
     }
 
-    public boolean verifyOtp(String email, String userProvidedOtp) {
+    public boolean verifyResetToken(String email, String userProvidedToken) {
         String redisKey = PASSWORD_RESET_PREFIX + normalizeEmail(email);
 
-        String savedOtp = redisTemplate.opsForValue().get(redisKey);
+        String savedToken = redisTemplate.opsForValue().get(redisKey);
 
-        if (savedOtp != null && savedOtp.equals(userProvidedOtp)) {
+        if (savedToken != null && savedToken.equals(userProvidedToken)) {
             redisTemplate.delete(redisKey);
             return true;
         }
@@ -72,14 +72,14 @@ public class PasswordFacade {
 
     public void resetPassword(ResetPasswordRequest request) {
         String email = normalizeEmail(request.getEmail());
+        String resetToken = normalizeResetToken(request);
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới và xác nhận mật khẩu không khớp");
         }
 
-        boolean isOtpValid = verifyOtp(email, request.getOtp());
-        if (!isOtpValid) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP không hợp lệ hoặc đã hết hạn");
+        if (!verifyResetToken(email, resetToken)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn");
         }
 
         userService.updatePassword(email, request.getNewPassword());
@@ -98,13 +98,54 @@ public class PasswordFacade {
         userService.updatePassword(user.getEmail(), request.getNewPassword());
     }
 
-    private String buildResetUrl(String email) {
+    private String buildResetUrl(String email, String resetToken) {
         String normalizedBase = frontendUrl.replaceAll("/+$", "");
         String encodedEmail = URLEncoder.encode(email, StandardCharsets.UTF_8);
-        return normalizedBase + "/reset-password?email=" + encodedEmail;
+        String encodedToken = URLEncoder.encode(resetToken, StandardCharsets.UTF_8);
+        return normalizedBase + "/reset-password?email=" + encodedEmail + "&token=" + encodedToken;
+    }
+
+    private String normalizeResetToken(ResetPasswordRequest request) {
+        String token = request.getToken();
+        if (!hasText(token)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn");
+        }
+        return token.trim();
+    }
+
+    private String resolveRecipientName(User user) {
+        if (user == null || !hasText(user.getId())) {
+            return user == null ? null : user.getEmail();
+        }
+
+        try {
+            return userProfileService.findAllByUserId(user.getId(), PageRequest.of(0, 1))
+                    .getContent()
+                    .stream()
+                    .findFirst()
+                    .map(profile -> displayName(profile, user.getEmail()))
+                    .orElse(user.getEmail());
+        } catch (RuntimeException ex) {
+            log.warn("Không lấy được tên người nhận email reset cho user [{}]", user.getId());
+            return user.getEmail();
+        }
+    }
+
+    private String displayName(UserProfile profile, String fallback) {
+        if (profile == null) {
+            return fallback;
+        }
+        String fullName = ((profile.getFirstName() == null ? "" : profile.getFirstName().trim())
+                + " "
+                + (profile.getLastName() == null ? "" : profile.getLastName().trim())).trim();
+        return hasText(fullName) ? fullName : fallback;
     }
 
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

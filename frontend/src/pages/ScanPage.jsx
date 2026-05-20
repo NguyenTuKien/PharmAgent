@@ -1,9 +1,9 @@
 import { Camera, PlugZap } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { gooeyToast } from 'goey-toast'
 
 import { Button } from '../components/ui/Button.jsx'
 import { createCameraScanClient } from '../lib/cameraClient.js'
+import { notify } from '../lib/toast.js'
 import { useAuthStore } from '../modules/auth/authStore.js'
 
 function readFileAsDataUrl(file) {
@@ -27,10 +27,15 @@ export function ScanPage() {
       token,
       onOpen: () => {
         setConnected(true)
-        gooeyToast.success('Da ket noi camera WebSocket')
+        notify.success('Đã kết nối camera WebSocket', {
+          description: 'Bạn có thể gửi frame để agent nhận diện thuốc.',
+        })
       },
       onClose: () => setConnected(false),
-      onError: () => gooeyToast.error('Khong ket noi duoc WebSocket camera'),
+      onError: () =>
+        notify.error('Không kết nối được WebSocket camera', {
+          description: 'Kiểm tra gateway hoặc token đăng nhập rồi thử lại.',
+        }),
       onResult: setResult,
     })
   }
@@ -44,7 +49,9 @@ export function ScanPage() {
     const frame = await readFileAsDataUrl(file)
     const sent = clientRef.current?.sendFrame(frame)
     if (!sent) {
-      gooeyToast.error('Hay ket noi WebSocket truoc khi gui frame')
+      notify.warning('Hãy kết nối WebSocket trước khi gửi frame', {
+        description: 'Bấm kết nối rồi chọn lại ảnh cần gửi.',
+      })
     }
   }
 

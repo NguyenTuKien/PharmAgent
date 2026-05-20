@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../modules/auth/authFacade.js";
 import { readGoogleOAuthCallback } from "../modules/auth/oauth.js";
 import { resendOTP } from "../api/authApi.js";
+import { getToastErrorMessage, notify } from "../lib/toast.js";
 import logo from "../assets/logo.svg";
 import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
@@ -14,7 +15,6 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const { login, googleLogin, completeGoogleLogin } = useAuth();
@@ -34,28 +34,36 @@ const LoginPage = () => {
     handledOAuthRef.current = true;
 
     if (callback.error) {
-      setError("Không thể đăng nhập bằng Google. Vui lòng thử lại.");
+      const message = "Không thể đăng nhập bằng Google. Vui lòng thử lại.";
+      notify.error(message, {
+        description: "Mở lại luồng đăng nhập Google hoặc đăng nhập bằng email.",
+      });
       navigate("/login", { replace: true });
       return;
     }
 
     if (!callback.code) {
-      setError("Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn.");
+      const message = "Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn.";
+      notify.error(message, {
+        description: "Vui lòng bắt đầu lại từ nút đăng nhập Google.",
+      });
       navigate("/login", { replace: true });
       return;
     }
 
     setIsLoading(true);
-    setError("");
     completeGoogleLogin(callback.code)
       .then(() => {
         navigate("/profiles", { replace: true });
       })
       .catch((err) => {
-        setError(
-          err.response?.data?.message ||
-            "Không thể hoàn tất đăng nhập Google. Vui lòng thử lại."
+        const message = getToastErrorMessage(
+          err,
+          "Không thể hoàn tất đăng nhập Google. Vui lòng thử lại."
         );
+        notify.error(message, {
+          description: "Phiên Google chưa hoàn tất. Vui lòng thử lại.",
+        });
         navigate("/login", { replace: true });
       })
       .finally(() => {
@@ -64,28 +72,35 @@ const LoginPage = () => {
   }, [completeGoogleLogin, navigate]);
 
   const handleGoogleLogin = async () => {
-    setError("");
     setIsLoading(true);
     try {
       await googleLogin();
     } catch (err) {
-      setError(err.message || "Đăng nhập Google chưa được cấu hình.");
+      const message = err.message || "Đăng nhập Google chưa được cấu hình.";
+      notify.error(message, {
+        description: "Kiểm tra cấu hình OAuth hoặc thử lại sau.",
+      });
       setIsLoading(false);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (!email || !password) {
-      setError("Vui lòng điền đầy đủ thông tin");
+      const message = "Vui lòng điền đầy đủ thông tin";
+      notify.warning(message, {
+        description: "Nhập cả email và mật khẩu để tiếp tục.",
+      });
       return;
     }
 
     setIsLoading(true);
     try {
       await login(email, password);
+      notify.success("Đăng nhập thành công", {
+        description: "Đang chuyển bạn vào PharmAgent.",
+      });
       navigate("/");
     } catch (err) {
       const message = err.response?.data?.message || "";
@@ -95,14 +110,21 @@ const LoginPage = () => {
         } catch {
           // The login redirect still works if resending the OTP fails.
         }
+        notify.info("Tài khoản cần xác minh email", {
+          description: "Mã xác minh đã được gửi lại nếu email còn hiệu lực.",
+        });
         navigate(
           `/verify-email?email=${encodeURIComponent(email)}`
         );
         return;
       }
-      setError(
-        err.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại."
+      const errorMessage = getToastErrorMessage(
+        err,
+        "Đăng nhập thất bại. Vui lòng thử lại."
       );
+      notify.error(errorMessage, {
+        description: "Kiểm tra email, mật khẩu hoặc đăng ký tài khoản mới.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -193,9 +215,6 @@ const LoginPage = () => {
                   ></ion-icon>
                 </span>
               </div>
-
-              {}
-              {error && <div className="auth-error-message">{error}</div>}
 
               {}
               <div className="auth-remember">

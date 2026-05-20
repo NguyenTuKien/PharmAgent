@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../modules/auth/authFacade.js";
+import { getToastErrorMessage, notify } from "../lib/toast.js";
 import logo from "../assets/logo.svg";
 import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
@@ -14,7 +15,6 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const { register } = useAuth();
@@ -22,31 +22,43 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (!username || !email || !password || !confirmPassword) {
-      setError("Vui lòng điền đầy đủ thông tin");
+      const message = "Vui lòng điền đầy đủ thông tin";
+      notify.warning(message, {
+        description: "Hoàn tất tên người dùng, email và mật khẩu để đăng ký.",
+      });
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp");
+      const message = "Mật khẩu xác nhận không khớp";
+      notify.warning(message, {
+        description: "Nhập lại mật khẩu xác nhận trùng với mật khẩu mới.",
+      });
       return;
     }
 
     if (password.length < 8) {
-      setError("Mật khẩu phải có ít nhất 8 ký tự");
+      const message = "Mật khẩu phải có ít nhất 8 ký tự";
+      notify.warning(message, {
+        description: "Dùng mật khẩu dài hơn để bảo vệ tài khoản tốt hơn.",
+      });
       return;
     }
 
     setIsLoading(true);
     try {
       await register(username, email, password);
+      notify.success("Đăng ký tài khoản thành công", {
+        description: "Tiếp tục thêm hồ sơ người thân để hoàn tất thiết lập.",
+      });
       navigate(`/register/elderly?email=${encodeURIComponent(email)}`);
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại."
-      );
+      const message = getToastErrorMessage(err, "Đăng ký thất bại. Vui lòng thử lại.");
+      notify.error(message, {
+        description: "Kiểm tra lại email hoặc thử lại sau ít phút.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -173,9 +185,6 @@ const RegisterPage = () => {
                   ></ion-icon>
                 </span>
               </div>
-
-              {}
-              {error && <div className="auth-error-message">{error}</div>}
 
               {}
               <button
