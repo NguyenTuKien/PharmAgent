@@ -154,15 +154,36 @@ a {
   gap: 12px;
 }
 
-.brand-mark {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 10px;
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--accent), var(--blue));
-  font-weight: 900;
+.brand--lockup {
+  gap: 14px;
+}
+
+.brand-logo {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgb(31 138 112 / 14%));
+}
+
+.brand-title {
+  width: min(260px, 58vw);
+  max-height: 74px;
+  object-fit: contain;
+}
+
+.sidebar .brand {
+  gap: 12px;
+}
+
+.sidebar .brand-logo {
+  width: 48px;
+  height: 48px;
+}
+
+.sidebar .brand-title {
+  width: 176px;
+  max-height: 50px;
 }
 
 .brand strong,

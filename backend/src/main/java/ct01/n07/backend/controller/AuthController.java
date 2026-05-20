@@ -47,6 +47,13 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(registrationFacade.register(registerRequest));
     }
 
+    @PostMapping("/register/elderly")
+    public ResponseEntity<AuthMessageResponse> registerElderlyProfile(
+            @RequestHeader("Authorization") String authorization,
+            @Valid @RequestBody RegisterElderlyRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(registrationFacade.registerElderlyProfile(authorization, request));
+    }
 
     @PostMapping("/verify-email")
     public ResponseEntity<AuthMessageResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {

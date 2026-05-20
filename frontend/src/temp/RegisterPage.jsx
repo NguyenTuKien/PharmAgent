@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import workHubLogo from "../../assets/WorkHub_logo_blue_background.png";
+import { useAuth } from "../modules/auth/authFacade.js";
+import logo from "../assets/logo.svg";
+import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
 import AuthFormBackground from "./AuthFormBackground";
-import "../../styles/auth/index.css";
+import "../styles/auth/auth.css";
 
 const RegisterPage = () => {
   const [username, setUsername] = useState("");
@@ -33,10 +34,15 @@ const RegisterPage = () => {
       return;
     }
 
+    if (password.length < 8) {
+      setError("Mật khẩu phải có ít nhất 8 ký tự");
+      return;
+    }
+
     setIsLoading(true);
     try {
       await register(username, email, password);
-      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+      navigate(`/register/elderly?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(
         err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại."
@@ -57,19 +63,19 @@ const RegisterPage = () => {
         />
         <div className="auth-hero-content">
           <div className="auth-hero-logo">
-            <img src={workHubLogo} alt="WorkHub" />
-            <span>WorkHub</span>
+            <img src={logo} alt="PharmAgent" />
+            <img src={title} alt="PharmAgent" className="auth-hero-title" />
           </div>
 
           <h1>
-            Cùng nhau xây dựng
+            Bắt đầu chăm sóc
             <br />
-            <span className="highlight">tương lai số.</span>
+            <span className="highlight">thân chủ của bạn.</span>
           </h1>
 
           <p>
-            Tham gia cùng hàng nghìn đội ngũ đã thay đổi cách làm việc và tăng
-            năng suất lên 40%.
+            Tạo tài khoản người chăm sóc, sau đó thêm hồ sơ người thân cần theo
+            dõi thuốc.
           </p>
         </div>
 

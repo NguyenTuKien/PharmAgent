@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { forgotPassword } from "../../api/authApi";
-import workHubLogo from "../../assets/WorkHub_logo_blue_background.png";
+import { forgotPassword } from "../api/authApi.js";
+import logo from "../assets/logo.svg";
+import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
 import AuthFormBackground from "./AuthFormBackground";
-import "../../styles/auth/index.css";
+import "../styles/auth/auth.css";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
@@ -54,8 +55,8 @@ const ForgotPasswordPage = () => {
         />
         <div className="auth-hero-content">
           <div className="auth-hero-logo">
-            <img src={workHubLogo} alt="WorkHub" />
-            <span>WorkHub</span>
+            <img src={logo} alt="PharmAgent" />
+            <img src={title} alt="PharmAgent" className="auth-hero-title" />
           </div>
 
           <h1>

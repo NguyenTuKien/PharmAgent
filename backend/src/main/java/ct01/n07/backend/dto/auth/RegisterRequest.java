@@ -48,15 +48,12 @@ public class RegisterRequest {
         @Size(max = 50, message = "Họ không được vượt quá 50 ký tự")
         private String lastName;
 
-        @NotBlank(message = "Số điện thoại không được để trống")
         @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$", message = "Số điện thoại không đúng định dạng (Ví dụ: 0912345678)")
         private String phone;
 
-        @NotNull(message = "Ngày sinh không được để trống")
         @Past(message = "Ngày sinh phải là một ngày trong quá khứ")
         private LocalDate dateOfBirth;
 
-        @NotNull(message = "Giới tính không được để trống")
         private Gender gender;
 
         @Size(max = 255, message = "Địa chỉ không được vượt quá 255 ký tự")

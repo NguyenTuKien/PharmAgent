@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { resendOTP } from "../../api/authApi";
-import { useGoogleLogin } from "@react-oauth/google";
-import axios from "axios";
-import workHubLogo from "../../assets/WorkHub_logo_blue_background.png";
+import { useAuth } from "../modules/auth/authFacade.js";
+import { resendOTP } from "../api/authApi.js";
+import logo from "../assets/logo.svg";
+import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
 import AuthFormBackground from "./AuthFormBackground";
-import "../../styles/auth/index.css";
+import "../styles/auth/auth.css";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -20,30 +19,14 @@ const LoginPage = () => {
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
 
-  const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setIsLoading(true);
-      setError("");
-      try {
-        const userInfo = await axios.get(
-          "https://www.googleapis.com/oauth2/v3/userinfo",
-          { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } }
-        );
-
-        await googleLogin(userInfo.data);
-        navigate("/");
-      } catch (err) {
-        setError(
-          err.response?.data?.message || "Đăng nhập Google thất bại. Vui lòng thử lại."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    onError: () => {
-      setError("Đăng nhập Google thất bại. Vui lòng thử lại.");
-    },
-  });
+  const handleGoogleLogin = async () => {
+    setError("");
+    try {
+      await googleLogin();
+    } catch (err) {
+      setError(err.message || "Đăng nhập Google chưa được cấu hình.");
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,14 +42,15 @@ const LoginPage = () => {
       await login(email, password);
       navigate("/");
     } catch (err) {
-      if (err.response?.data?.needsVerification) {
+      const message = err.response?.data?.message || "";
+      if (message.toLowerCase().includes("xác minh")) {
         try {
-          await resendOTP(err.response.data.email);
+          await resendOTP(email);
         } catch {
-          
+          // The login redirect still works if resending the OTP fails.
         }
         navigate(
-          `/verify-email?email=${encodeURIComponent(err.response.data.email)}`
+          `/verify-email?email=${encodeURIComponent(email)}`
         );
         return;
       }
@@ -93,19 +77,19 @@ const LoginPage = () => {
         />
         <div className="auth-hero-content">
           <div className="auth-hero-logo">
-            <img src={workHubLogo} alt="WorkHub" />
-            <span>WorkHub</span>
+            <img src={logo} alt="PharmAgent" />
+            <img src={title} alt="PharmAgent" className="auth-hero-title" />
           </div>
 
           <h1>
-            Nâng tầm hiệu suất
+            Chăm sóc đúng giờ,
             <br />
-            <span className="highlight">làm việc nhóm.</span>
+            <span className="highlight">sống khỏe hơn.</span>
           </h1>
 
           <p>
-            Nền tảng hợp nhất cho quản lý dự án, cộng tác và phát triển doanh
-            nghiệp.
+            Theo dõi thuốc, lịch uống và kết nối người chăm sóc trong một trải
+            nghiệm an toàn.
           </p>
         </div>
 
@@ -202,7 +186,7 @@ const LoginPage = () => {
             <div className="auth-oauth-divider">HOẶC</div>
 
             {}
-            <button type="button" className="auth-google-btn" onClick={() => handleGoogleLogin()} disabled={isLoading}>
+            <button type="button" className="auth-google-btn" onClick={handleGoogleLogin} disabled={isLoading}>
               <svg
                 className="google-icon"
                 viewBox="0 0 24 24"

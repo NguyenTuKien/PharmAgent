@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { resetPassword } from "../../api/authApi";
-import workHubLogo from "../../assets/WorkHub_logo_blue_background.png";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { resetPassword } from "../api/authApi.js";
+import logo from "../assets/logo.svg";
+import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
 import AuthFormBackground from "./AuthFormBackground";
-import "../../styles/auth/index.css";
+import "../styles/auth/auth.css";
 
 const ResetPasswordPage = () => {
-  const { token } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  const [email, setEmail] = useState(searchParams.get("email") || "");
+  const [otp, setOtp] = useState(searchParams.get("otp") || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +26,7 @@ const ResetPasswordPage = () => {
     e.preventDefault();
     setError("");
 
-    if (!password || !confirmPassword) {
+    if (!email || !otp || !password || !confirmPassword) {
       setError("Vui lòng điền đầy đủ thông tin");
       triggerShake();
       return;
@@ -43,7 +46,7 @@ const ResetPasswordPage = () => {
 
     setIsLoading(true);
     try {
-      await resetPassword(token, password);
+      await resetPassword(email, otp, password, confirmPassword);
       setIsSuccess(true);
       setTimeout(() => navigate("/login"), 3000);
     } catch (err) {
@@ -75,8 +78,8 @@ const ResetPasswordPage = () => {
         />
         <div className="auth-hero-content">
           <div className="auth-hero-logo">
-            <img src={workHubLogo} alt="WorkHub" />
-            <span>WorkHub</span>
+            <img src={logo} alt="PharmAgent" />
+            <img src={title} alt="PharmAgent" className="auth-hero-title" />
           </div>
 
           <h1>
@@ -152,6 +155,39 @@ const ResetPasswordPage = () => {
                 )}
 
                 <form onSubmit={handleSubmit}>
+                  <div className="auth-input-box">
+                    <input
+                      id="reset-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      placeholder=" "
+                      autoComplete="email"
+                      autoFocus
+                    />
+                    <label htmlFor="reset-email">Email</label>
+                    <span className="icon">
+                      <ion-icon name="mail"></ion-icon>
+                    </span>
+                  </div>
+
+                  <div className="auth-input-box">
+                    <input
+                      id="reset-otp"
+                      type="text"
+                      inputMode="numeric"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      required
+                      placeholder=" "
+                      autoComplete="one-time-code"
+                    />
+                    <label htmlFor="reset-otp">Mã OTP</label>
+                    <span className="icon">
+                      <ion-icon name="keypad"></ion-icon>
+                    </span>
+                  </div>
 
                   <div className="auth-input-box">
                     <input
@@ -162,7 +198,6 @@ const ResetPasswordPage = () => {
                       required
                       placeholder=" "
                       autoComplete="new-password"
-                      autoFocus
                     />
                     <label htmlFor="reset-password">Mật khẩu mới</label>
                     <span

@@ -13,7 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
 public interface UserProfileService {
-    void saveUserProfile(UserProfile userProfile);
+    UserProfile saveUserProfile(UserProfile userProfile);
 
     UserProfile findById(String profileId);
     

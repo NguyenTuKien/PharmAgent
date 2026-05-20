@@ -16,6 +16,17 @@ export async function registerRequest(payload) {
   return response.data
 }
 
+export async function registerElderlyRequest(onboardingToken, payload) {
+  const response = await apiClient.post('/auth/register/elderly', payload, {
+    headers: {
+      Authorization: `Bearer ${onboardingToken}`,
+    },
+    skipAuthHeader: true,
+    skipAuthRefresh: true,
+  })
+  return response.data
+}
+
 export async function verifyEmailRequest(payload) {
   const response = await apiClient.post('/auth/verify-email', payload, {
     skipAuthHeader: true,

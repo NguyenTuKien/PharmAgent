@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { resendOTP } from "../../api/authApi";
-import workHubLogo from "../../assets/WorkHub_logo_blue_background.png";
+import { useAuth } from "../modules/auth/authFacade.js";
+import { resendOTP } from "../api/authApi.js";
+import logo from "../assets/logo.svg";
+import title from "../assets/title.svg";
 import InteractiveBackground from "./InteractiveBackground";
 import AuthFormBackground from "./AuthFormBackground";
-import "../../styles/auth/index.css";
+import "../styles/auth/auth.css";
 
 const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
   const emailFromParams = searchParams.get("email") || "";
+  const otpFromParams = searchParams.get("otp") || "";
   const navigate = useNavigate();
   const { verifyAndLogin } = useAuth();
 
@@ -39,6 +41,12 @@ const VerifyEmailPage = () => {
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
+
+  useEffect(() => {
+    if (/^\d{6}$/.test(otpFromParams)) {
+      setOtp(otpFromParams.split(""));
+    }
+  }, [otpFromParams]);
 
   const handleChange = (index, value) => {
     
@@ -95,7 +103,7 @@ const VerifyEmailPage = () => {
       await verifyAndLogin(emailFromParams, code);
       setIsSuccess(true);
       setTimeout(() => {
-        navigate("/");
+        navigate("/login");
       }, 2000);
     } catch (err) {
       setError(
@@ -157,8 +165,8 @@ const VerifyEmailPage = () => {
           />
           <div className="auth-hero-content">
             <div className="auth-hero-logo">
-              <img src={workHubLogo} alt="WorkHub" />
-              <span>WorkHub</span>
+              <img src={logo} alt="PharmAgent" />
+              <img src={title} alt="PharmAgent" className="auth-hero-title" />
             </div>
             <h1>
               Xác minh
@@ -167,7 +175,7 @@ const VerifyEmailPage = () => {
             </h1>
             <p>
               Tài khoản của bạn đã được kích hoạt. Chào mừng bạn đến với
-              WorkHub!
+              PharmAgent!
             </p>
           </div>
           <InteractiveBackground />
@@ -187,7 +195,7 @@ const VerifyEmailPage = () => {
               <p className="auth-success-text">
                 Tài khoản của bạn đã được kích hoạt thành công.
                 <br />
-                Đang chuyển hướng đến trang chính...
+                Đang chuyển hướng đến trang đăng nhập...
               </p>
               <div>
                 <span className="spinner" style={{
@@ -219,8 +227,8 @@ const VerifyEmailPage = () => {
         />
         <div className="auth-hero-content">
           <div className="auth-hero-logo">
-            <img src={workHubLogo} alt="WorkHub" />
-            <span>WorkHub</span>
+            <img src={logo} alt="PharmAgent" />
+            <img src={title} alt="PharmAgent" className="auth-hero-title" />
           </div>
 
           <h1>

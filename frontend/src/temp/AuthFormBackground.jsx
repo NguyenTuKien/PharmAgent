@@ -24,7 +24,7 @@ const AuthFormBackground = () => {
     const blobs = [
       {
         
-        color: { r: 168, g: 85, b: 247 }, 
+        color: { r: 35, g: 184, b: 166 }, 
         baseX: 0.8, baseY: 0.15, 
         radiusX: 0.25, radiusY: 0.15,
         size: 0.75, 
@@ -33,7 +33,7 @@ const AuthFormBackground = () => {
       },
       {
         
-        color: { r: 249, g: 115, b: 22 }, 
+        color: { r: 31, g: 127, b: 214 }, 
         baseX: 0.7, baseY: 0.5,
         radiusX: 0.15, radiusY: 0.2,
         size: 0.65,
@@ -42,7 +42,7 @@ const AuthFormBackground = () => {
       },
       {
         
-        color: { r: 236, g: 72, b: 153 }, 
+        color: { r: 122, g: 213, b: 205 }, 
         baseX: 0.9, baseY: 0.35,
         radiusX: 0.15, radiusY: 0.25,
         size: 0.6,
@@ -78,7 +78,7 @@ const AuthFormBackground = () => {
       ctx.clearRect(0, 0, w, h);
 
       
-      ctx.fillStyle = "#0b0213";
+      ctx.fillStyle = "#061d2a";
       ctx.fillRect(0, 0, w, h);
 
       ctx.globalCompositeOperation = "screen";
@@ -87,10 +87,10 @@ const AuthFormBackground = () => {
 
       
       const fadeGradient = ctx.createLinearGradient(0, 0, w * 0.5, 0);
-      fadeGradient.addColorStop(0, "rgba(11, 2, 19, 1)");       
-      fadeGradient.addColorStop(0.3, "rgba(11, 2, 19, 0.85)");
-      fadeGradient.addColorStop(0.6, "rgba(11, 2, 19, 0.4)");
-      fadeGradient.addColorStop(1, "rgba(11, 2, 19, 0)");        
+      fadeGradient.addColorStop(0, "rgba(6, 29, 42, 1)");       
+      fadeGradient.addColorStop(0.3, "rgba(6, 29, 42, 0.85)");
+      fadeGradient.addColorStop(0.6, "rgba(6, 29, 42, 0.4)");
+      fadeGradient.addColorStop(1, "rgba(6, 29, 42, 0)");        
       ctx.fillStyle = fadeGradient;
       ctx.fillRect(0, 0, w * 0.5, h);
 

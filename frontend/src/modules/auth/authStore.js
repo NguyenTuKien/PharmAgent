@@ -5,6 +5,7 @@ import {
   forgotPasswordRequest,
   loginRequest,
   logoutRequest,
+  registerElderlyRequest,
   registerRequest,
   resendVerificationRequest,
   resetPasswordRequest,
@@ -74,6 +75,12 @@ export const useAuthStore = create((set, get) => ({
       set({ status: 'anonymous', error })
       throw error
     }
+  },
+
+  registerElderlyProfile: async (onboardingToken, payload) => {
+    const response = await registerElderlyRequest(onboardingToken, payload)
+    set({ status: 'verification_required', error: null })
+    return response
   },
 
   verifyEmail: async (payload) => {
