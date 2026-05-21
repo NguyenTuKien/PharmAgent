@@ -13,6 +13,7 @@ import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.UserProfileRepository;
 import ct01.n07.backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -101,6 +102,18 @@ public class UserProfileServiceImpl implements UserProfileService {
         String currentProfileId = getCurrentProfileId(); // null nếu dùng authToken
 
         if (currentProfileId != null && !currentProfileId.isBlank()) {
+            UserProfile currentProfile = findById(currentProfileId);
+            if (!userId.equals(currentProfile.getUserId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, ProfileConstant.PROFILE_NOT_BELONG_TO_USER);
+            }
+
+            if (currentProfile.getRole() == Role.ELDERLY) {
+                return new PageImpl<>(
+                        List.of(userProfileMapper.toProfileSummary(currentProfile)),
+                        pageable,
+                        1);
+            }
+
             return userProfileRepository.findAllByUserIdAndIdNot(userId, currentProfileId, pageable)
                     .map(userProfileMapper::toProfileSummary);
         }
@@ -121,6 +134,49 @@ public class UserProfileServiceImpl implements UserProfileService {
         userProfile.setUserId(userId);
 
         return userProfileMapper.toResponse(userProfileRepository.save(userProfile));
+    }
+
+    @Override
+    public UserProfileResponse createManagedElderlyProfile(CreateProfileRequest request) {
+        UserProfile currentProfile = getCurrentUserProfile();
+        requireCaregiver(currentProfile);
+
+        if (userProfileRepository.existsByPhone(request.getPhone())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ProfileConstant.PHONE_ALREADY_EXISTS);
+        }
+
+        request.setRole(Role.ELDERLY);
+        UserProfile userProfile = userProfileMapper.toUserProfile(request);
+        userProfile.setUserId(currentProfile.getUserId());
+        userProfile.setRole(Role.ELDERLY);
+
+        return userProfileMapper.toResponse(userProfileRepository.save(userProfile));
+    }
+
+    @Override
+    public UserProfileResponse getManagedElderlyProfile(String profileId) {
+        return userProfileMapper.toResponse(requireManagedElderlyProfile(profileId));
+    }
+
+    @Override
+    public UserProfileResponse updateManagedElderlyProfile(String profileId, UpdateProfileRequest request) {
+        UserProfile targetProfile = requireManagedElderlyProfile(profileId);
+
+        if (request.getPhone() != null
+                && !request.getPhone().equals(targetProfile.getPhone())
+                && userProfileRepository.existsByPhoneAndIdNot(request.getPhone(), targetProfile.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ProfileConstant.PHONE_ALREADY_EXISTS);
+        }
+
+        userProfileMapper.updateUserProfile(request, targetProfile);
+        targetProfile.setRole(Role.ELDERLY);
+        return userProfileMapper.toResponse(userProfileRepository.save(targetProfile));
+    }
+
+    @Override
+    public void deleteManagedElderlyProfile(String profileId) {
+        UserProfile targetProfile = requireManagedElderlyProfile(profileId);
+        userProfileRepository.delete(targetProfile);
     }
 
     @Override
@@ -146,6 +202,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     public UserProfileResponse updateMyProfile(UpdateProfileRequest request) {
         UserProfile currentProfile = getCurrentUserProfile();
+        requireEditableCurrentProfile(currentProfile);
 
         if (request.getPhone() != null
                 && !request.getPhone().equals(currentProfile.getPhone())
@@ -160,6 +217,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     public UserProfileResponse updateAvatar(UpdateAvatarRequest request) {
         UserProfile currentProfile = getCurrentUserProfile();
+        requireEditableCurrentProfile(currentProfile);
         currentProfile.setAvatarUrl(request.getAvatarUrl());
         return userProfileMapper.toResponse(userProfileRepository.save(currentProfile));
     }
@@ -186,6 +244,32 @@ public class UserProfileServiceImpl implements UserProfileService {
         }
 
         return profilePage.map(userProfileMapper::toProfileSummary);
+    }
+
+    private UserProfile requireManagedElderlyProfile(String profileId) {
+        UserProfile currentProfile = getCurrentUserProfile();
+        requireCaregiver(currentProfile);
+
+        UserProfile targetProfile = userProfileRepository.findByIdAndUserId(profileId, currentProfile.getUserId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ProfileConstant.PROFILE_NOT_FOUND));
+
+        if (targetProfile.getRole() != Role.ELDERLY) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ProfileConstant.MANAGED_ELDERLY_REQUIRED);
+        }
+
+        return targetProfile;
+    }
+
+    private void requireCaregiver(UserProfile profile) {
+        if (profile.getRole() != Role.CAREGIVER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ProfileConstant.CAREGIVER_REQUIRED);
+        }
+    }
+
+    private void requireEditableCurrentProfile(UserProfile profile) {
+        if (profile.getRole() == Role.ELDERLY) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ProfileConstant.ELDERLY_PROFILE_READ_ONLY);
+        }
     }
 }
 

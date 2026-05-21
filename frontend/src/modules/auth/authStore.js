@@ -242,6 +242,60 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  mergeActiveProfile: (profile) => {
+    if (!profile?.id) {
+      return null
+    }
+
+    const { authToken, refreshToken, accessToken, activeProfile, profiles } = get()
+    const nextActiveProfile =
+      activeProfile?.id === profile.id
+        ? {
+            ...activeProfile,
+            ...profile,
+          }
+        : activeProfile
+    const hasProfile = profiles.some((item) => item.id === profile.id)
+    const nextProfiles = hasProfile
+      ? profiles.map((item) => (item.id === profile.id ? { ...item, ...profile } : item))
+      : [...profiles, profile]
+
+    const snapshot = buildSessionSnapshot({
+      authToken,
+      refreshToken,
+      accessToken,
+      activeProfile: nextActiveProfile,
+      profiles: nextProfiles,
+    })
+
+    saveSession(snapshot)
+    set({
+      activeProfile: snapshot.activeProfile ?? nextActiveProfile,
+      profiles: snapshot.profiles ?? nextProfiles,
+    })
+
+    return snapshot.activeProfile
+  },
+
+  replaceProfiles: (profiles) => {
+    const { authToken, refreshToken, accessToken, activeProfile } = get()
+    const snapshot = buildSessionSnapshot({
+      authToken,
+      refreshToken,
+      accessToken,
+      activeProfile,
+      profiles,
+    })
+
+    saveSession(snapshot)
+    set({
+      activeProfile: snapshot.activeProfile ?? activeProfile,
+      profiles: snapshot.profiles ?? [],
+    })
+
+    return snapshot.profiles ?? []
+  },
+
   clearLocalSession: () => {
     clearSession()
     set({

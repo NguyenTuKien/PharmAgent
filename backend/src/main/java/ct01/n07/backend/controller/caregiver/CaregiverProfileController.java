@@ -2,6 +2,7 @@ package ct01.n07.backend.controller.caregiver;
 
 import ct01.n07.backend.dto.user.UserProfileSummaryResponse;
 import ct01.n07.backend.dto.user.CreateProfileRequest;
+import ct01.n07.backend.dto.user.UpdateProfileRequest;
 import ct01.n07.backend.dto.user.UserProfileResponse;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.service.UserProfileService;
@@ -32,13 +33,25 @@ public class CaregiverProfileController {
     public ResponseEntity<UserProfileResponse> createProfile(
             @Valid @RequestBody CreateProfileRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(userProfileService.createProfile(request));
+                .body(userProfileService.createManagedElderlyProfile(request));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserProfileResponse> getProfile(@PathVariable String id) {
+        return ResponseEntity.ok(userProfileService.getManagedElderlyProfile(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserProfileResponse> updateProfile(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(userProfileService.updateManagedElderlyProfile(id, request));
     }
 
     // ── Chỉ CAREGIVER mới được xóa profile trong tài khoản ──
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProfile(@PathVariable String id) {
-        userProfileService.deleteProfile(id);
+        userProfileService.deleteManagedElderlyProfile(id);
         return ResponseEntity.noContent().build();
     }
 

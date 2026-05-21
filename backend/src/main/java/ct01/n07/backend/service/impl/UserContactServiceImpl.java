@@ -2,9 +2,11 @@ package ct01.n07.backend.service.impl;
 
 import ct01.n07.backend.dto.user.UserContactRequest;
 import ct01.n07.backend.dto.user.UserProfileResponse;
+import ct01.n07.backend.constant.ProfileConstant;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.UserContact;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.UserProfileRepository;
 import ct01.n07.backend.security.ProfileAccessContext;
 import ct01.n07.backend.service.UserContactService;
@@ -27,6 +29,7 @@ public class UserContactServiceImpl implements UserContactService {
     @Override
     public UserProfileResponse addUserContact(UserContactRequest request) {
         UserProfile profile = profileAccessContext.getCurrentUserProfile();
+        requireEditableCurrentProfile(profile);
         if (profile.getUserContacts() == null) {
             profile.setUserContacts(new ArrayList<>());
         }
@@ -51,6 +54,7 @@ public class UserContactServiceImpl implements UserContactService {
     @Override
     public UserProfileResponse updateUserContact(String contactId, UserContactRequest request) {
         UserProfile profile = profileAccessContext.getCurrentUserProfile();
+        requireEditableCurrentProfile(profile);
         List<UserContact> contacts = profile.getUserContacts();
         if (contacts == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contact list is empty");
@@ -69,6 +73,7 @@ public class UserContactServiceImpl implements UserContactService {
     @Override
     public UserProfileResponse deleteContact(String contactId) {
         UserProfile profile = profileAccessContext.getCurrentUserProfile();
+        requireEditableCurrentProfile(profile);
         List<UserContact> contacts = profile.getUserContacts();
         if (contacts == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contact list is empty");
@@ -85,5 +90,10 @@ public class UserContactServiceImpl implements UserContactService {
         UserProfile profile = profileAccessContext.getCurrentUserProfile();
         return profile.getUserContacts() != null ? profile.getUserContacts() : new ArrayList<>();
     }
-}
 
+    private void requireEditableCurrentProfile(UserProfile profile) {
+        if (profile.getRole() == Role.ELDERLY) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ProfileConstant.ELDERLY_PROFILE_READ_ONLY);
+        }
+    }
+}

@@ -17,7 +17,9 @@ import { RegisterPage } from './pages/auth/RegisterPage.jsx'
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage.jsx'
 import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.jsx'
 import { NotFoundPage } from './pages/NotFoundPage.jsx'
+import { ProfileSettingsPage } from './pages/ProfileSettingsPage.jsx'
 import { ProfileSelectPage } from './pages/ProfileSelectPage.jsx'
+import { RelationshipsPage } from './pages/RelationshipsPage.jsx'
 import { ScanPage } from './pages/ScanPage.jsx'
 import { UnauthorizedPage } from './pages/UnauthorizedPage.jsx'
 import { WorkspacePage } from './pages/WorkspacePage.jsx'
@@ -117,30 +119,9 @@ function App() {
               path="/dose-history"
             />
             <Route element={<ScanPage />} path="/scan" />
-            <Route
-              element={
-                <RoleWorkspacePage
-                  copies={{
-                    ELDERLY: {
-                      title: 'Người chăm sóc',
-                      description:
-                        'Danh sách người chăm sóc, quyền truy cập và lời mời đang chờ xử lý.',
-                    },
-                    CAREGIVER: {
-                      title: 'Người thân',
-                      description:
-                        'Quản lý elderly, tìm và mời người thân, xem chi tiết hồ sơ và quyền chăm sóc.',
-                    },
-                  }}
-                  fallback={{
-                    title: 'Người thân',
-                    description:
-                      'Khu vực quản lý mối quan hệ caregiver/elderly và quyền truy cập theo profile.',
-                  }}
-                />
-              }
-              path="/relationships"
-            />
+            <Route element={<RoleRoute roles={['ELDERLY', 'CAREGIVER']} />}>
+              <Route element={<RelationshipsPage />} path="/relationships" />
+            </Route>
 
             <Route element={<RoleRoute roles={['CAREGIVER', 'ADMIN']} />}>
               <Route
@@ -163,6 +144,8 @@ function App() {
               }
               path="/chat"
             />
+
+            <Route element={<ProfileSettingsPage />} path="/settings" />
 
             <Route element={<RoleRoute roles={['ADMIN']} />}>
               <Route element={<AdminLayout />} path="/admin">
