@@ -29,16 +29,7 @@ public class Medication {
     @Field(targetType = FieldType.OBJECT_ID)
     private String patientId;
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     @Field(targetType = FieldType.STRING)
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     private String pillId;
 
     private String nickname;
