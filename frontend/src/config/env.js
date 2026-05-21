@@ -7,7 +7,6 @@ const viteEnv = import.meta.env ?? {}
 export const env = {
   apiBaseUrl: viteEnv.VITE_API_BASE_URL || '/api',
   wsBaseUrl: viteEnv.VITE_WS_BASE_URL || '/ws',
-  cameraWsPath: viteEnv.VITE_CAMERA_WS_PATH || '/ws/agent',
   frontendUrl: viteEnv.VITE_FRONTEND_URL || globalThis.location?.origin || 'http://localhost:5173',
 }
 

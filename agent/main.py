@@ -2,19 +2,24 @@ import asyncio
 import base64
 import logging
 
-from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from medicalocr.analyze import AnalyzeResponse, AnalyzeTextRequest, analyze_ocr_result, analyze_text
 from medicalocr.database import DEFAULT_DB_PATH, load_catalog_products_from_db
 from medicalocr.ocr import extract_ocr_result
+from medicalocr.pills import router as pills_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="PharmAgent AI Service - MedicalOCR")
 app.state.catalog = load_catalog_products_from_db(DEFAULT_DB_PATH)
+
+def reload_catalog():
+    app.state.catalog = load_catalog_products_from_db(DEFAULT_DB_PATH)
+    logger.info("Catalog reloaded, size: %d", len(app.state.catalog))
 
 
 @app.exception_handler(RequestValidationError)
@@ -25,22 +30,15 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 api_router = APIRouter()
-ws_router = APIRouter(prefix="/ws")
 
 
-@ws_router.get("/health")
+@api_router.get("/health")
 async def health():
     return {
         "status": "UP",
         "mode": "medicalocr",
         "catalog_size": len(app.state.catalog),
     }
-
-
-def _decode_image_payload(data: str) -> bytes:
-    if "," in data:
-        data = data.split(",", 1)[1]
-    return base64.b64decode(data)
 
 
 def _analyze_image(image_bytes: bytes, top_k: int = 4):
@@ -75,31 +73,5 @@ async def search_text(payload: AnalyzeTextRequest):
     )
 
 
-@ws_router.websocket("/agent")
-async def websocket_pill_scan(websocket: WebSocket):
-    await websocket.accept()
-    logger.info("Client connected for MedicalOCR scanning")
-
-    try:
-        while True:
-            data = await websocket.receive_text()
-
-            try:
-                image_bytes = _decode_image_payload(data)
-                result = await asyncio.to_thread(_analyze_image, image_bytes)
-                await websocket.send_text(result.model_dump_json())
-            except Exception as exc:
-                logger.exception("Error processing MedicalOCR frame")
-                await websocket.send_json(
-                    {
-                        "error": "Frame processing failed",
-                        "detail": str(exc),
-                    }
-                )
-
-    except WebSocketDisconnect:
-        logger.info("Client disconnected from MedicalOCR scanning")
-
-
 app.include_router(api_router)
-app.include_router(ws_router)
+app.include_router(pills_router)

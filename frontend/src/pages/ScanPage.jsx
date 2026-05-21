@@ -1,4 +1,5 @@
-import { ExternalLink, ImagePlus, Loader2, Search, UploadCloud } from 'lucide-react'
+import { CameraCapture } from '../components/ui/CameraCapture.jsx'
+import { Camera, ExternalLink, ImagePlus, Loader2, Search, UploadCloud } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '../components/ui/Button.jsx'
@@ -40,6 +41,7 @@ function decisionLabel(decision) {
 
 export function ScanPage() {
   const fileInputRef = useRef(null)
+  const [cameraOpen, setCameraOpen] = useState(false)
   const [loadingMode, setLoadingMode] = useState('')
   const [result, setResult] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
@@ -55,6 +57,18 @@ export function ScanPage() {
       }
     }
   }, [previewUrl])
+
+  const handleCameraCapture = (file) => {
+    setSelectedFile(file)
+    setResult(null)
+    setSelectedCandidateId('')
+    setPreviewUrl((currentUrl) => {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl)
+      }
+      return URL.createObjectURL(file)
+    })
+  }
 
   const applyResult = (payload) => {
     setSelectedCandidateId('')
@@ -175,6 +189,10 @@ export function ScanPage() {
         />
 
         <div className="inline-actions scan-actions">
+          <Button variant="ghost" onClick={() => setCameraOpen(true)}>
+            <Camera size={18} />
+            Chụp ảnh
+          </Button>
           <Button variant="ghost" onClick={() => fileInputRef.current?.click()}>
             <ImagePlus size={18} />
             Chọn ảnh
@@ -308,6 +326,12 @@ export function ScanPage() {
           </div>
         )}
       </section>
+
+      <CameraCapture
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={handleCameraCapture}
+      />
     </div>
   )
 }
