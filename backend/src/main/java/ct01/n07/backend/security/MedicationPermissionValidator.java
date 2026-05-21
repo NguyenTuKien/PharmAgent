@@ -1,10 +1,12 @@
 package ct01.n07.backend.security;
 
 import ct01.n07.backend.model.Relationship;
+import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.PermissionLevel;
 import ct01.n07.backend.model.enums.RelationStatus;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.RelationshipRepository;
+import ct01.n07.backend.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -15,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class MedicationPermissionValidator {
 
     private final RelationshipRepository relationshipRepository;
+    private final UserProfileRepository userProfileRepository;
 
     public void verifySchedulePermission(Role profileRole, String profileId, String patientId) {
         if (profileRole == Role.CAREGIVER) {
@@ -44,6 +47,10 @@ public class MedicationPermissionValidator {
 
     public void verifyCaregiverPermission(String caregiverId, String elderlyId,
             PermissionLevel... requiredLevels) {
+        if (isManagedProfileOwnedByCaregiverAccount(caregiverId, elderlyId)) {
+            return;
+        }
+
         Relationship relationship = relationshipRepository
                 .findAllByCaregiverIdAndElderlyIdAndStatus(
                         caregiverId,
@@ -66,6 +73,18 @@ public class MedicationPermissionValidator {
                         "Caregiver does not have the required permission level to perform this action");
             }
         }
+    }
+
+    private boolean isManagedProfileOwnedByCaregiverAccount(String caregiverId, String elderlyId) {
+        UserProfile caregiverProfile = userProfileRepository.findById(caregiverId).orElse(null);
+        UserProfile elderlyProfile = userProfileRepository.findById(elderlyId).orElse(null);
+
+        return caregiverProfile != null
+                && elderlyProfile != null
+                && caregiverProfile.getRole() == Role.CAREGIVER
+                && elderlyProfile.getRole() == Role.ELDERLY
+                && caregiverProfile.getUserId() != null
+                && caregiverProfile.getUserId().equals(elderlyProfile.getUserId());
     }
 
     public void requireRole(Role profileRole, Role... allowedRoles) {

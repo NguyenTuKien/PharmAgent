@@ -4,6 +4,7 @@ import ct01.n07.backend.dto.relationship.ElderlyProfileResponse;
 import ct01.n07.backend.dto.relationship.RelationshipInviteRequest;
 import ct01.n07.backend.dto.relationship.RelationshipRelationRequest;
 import ct01.n07.backend.facade.RelationshipProfileFacade;
+import ct01.n07.backend.model.enums.PermissionLevel;
 import ct01.n07.backend.service.RelationshipService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,7 @@ public class CaregiverRelationshipController {
     @PatchMapping("/{targetElderlyId}")
     public ResponseEntity<Void> updateRelationship(
             @PathVariable("targetElderlyId") String targetElderlyId,
+            @RequestParam(value = "permissionLevel", required = false) PermissionLevel legacyPermissionLevel,
             @Valid @RequestBody RelationshipRelationRequest request) {
         relationshipService.updateRelationship(targetElderlyId, request.getRelation(), request.getCustomRelation());
         return ResponseEntity.ok().build();

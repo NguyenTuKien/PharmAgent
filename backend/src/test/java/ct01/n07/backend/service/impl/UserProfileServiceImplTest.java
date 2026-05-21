@@ -1,9 +1,13 @@
 package ct01.n07.backend.service.impl;
 
+import ct01.n07.backend.dto.user.CreateProfileRequest;
 import ct01.n07.backend.dto.user.UpdateAvatarRequest;
+import ct01.n07.backend.dto.user.UpdateProfileRequest;
 import ct01.n07.backend.dto.user.UserProfileResponse;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.FamilyRelation;
+import ct01.n07.backend.model.enums.Gender;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.UserProfileRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -87,6 +91,73 @@ class UserProfileServiceImplTest {
         ArgumentCaptor<UserProfile> profileCaptor = ArgumentCaptor.forClass(UserProfile.class);
         org.mockito.Mockito.verify(userProfileRepository).save(profileCaptor.capture());
         assertThat(profileCaptor.getValue().getAvatarUrl()).isNull();
+    }
+
+    @Test
+    void createManagedElderlyProfilePersistsFamilyRelationMetadata() {
+        UserProfile caregiver = UserProfile.builder()
+                .id("caregiver-1")
+                .userId("user-1")
+                .role(Role.CAREGIVER)
+                .build();
+        CreateProfileRequest request = new CreateProfileRequest();
+        request.setPhone("0912345678");
+        request.setRelation(FamilyRelation.OTHER);
+        request.setCustomRelation("  Dì ruột  ");
+        UserProfile mappedProfile = UserProfile.builder()
+                .phone("0912345678")
+                .gender(Gender.FEMALE)
+                .build();
+
+        arrangeCurrentProfile(caregiver);
+        when(userProfileRepository.findById("caregiver-1")).thenReturn(Optional.of(caregiver));
+        when(userProfileRepository.existsByPhone("0912345678")).thenReturn(false);
+        when(userProfileMapper.toUserProfile(request)).thenReturn(mappedProfile);
+        when(userProfileRepository.save(any(UserProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userProfileMapper.toResponse(any(UserProfile.class))).thenReturn(new UserProfileResponse());
+
+        userProfileService.createManagedElderlyProfile(request);
+
+        ArgumentCaptor<UserProfile> profileCaptor = ArgumentCaptor.forClass(UserProfile.class);
+        org.mockito.Mockito.verify(userProfileRepository).save(profileCaptor.capture());
+        UserProfile savedProfile = profileCaptor.getValue();
+        assertThat(savedProfile.getUserId()).isEqualTo("user-1");
+        assertThat(savedProfile.getRole()).isEqualTo(Role.ELDERLY);
+        assertThat(savedProfile.getRelation()).isEqualTo(FamilyRelation.OTHER);
+        assertThat(savedProfile.getCustomRelation()).isEqualTo("Dì ruột");
+    }
+
+    @Test
+    void updateManagedElderlyProfileClearsCustomRelationForPresetRelation() {
+        UserProfile caregiver = UserProfile.builder()
+                .id("caregiver-1")
+                .userId("user-1")
+                .role(Role.CAREGIVER)
+                .build();
+        UserProfile targetProfile = UserProfile.builder()
+                .id("elderly-1")
+                .userId("user-1")
+                .role(Role.ELDERLY)
+                .relation(FamilyRelation.OTHER)
+                .customRelation("Dì ruột")
+                .build();
+        UpdateProfileRequest request = new UpdateProfileRequest();
+        request.setRelation(FamilyRelation.MOTHER);
+        request.setCustomRelation("Không dùng");
+
+        arrangeCurrentProfile(caregiver);
+        when(userProfileRepository.findById("caregiver-1")).thenReturn(Optional.of(caregiver));
+        when(userProfileRepository.findByIdAndUserId("elderly-1", "user-1")).thenReturn(Optional.of(targetProfile));
+        when(userProfileRepository.save(any(UserProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userProfileMapper.toResponse(any(UserProfile.class))).thenReturn(new UserProfileResponse());
+
+        userProfileService.updateManagedElderlyProfile("elderly-1", request);
+
+        ArgumentCaptor<UserProfile> profileCaptor = ArgumentCaptor.forClass(UserProfile.class);
+        org.mockito.Mockito.verify(userProfileRepository).save(profileCaptor.capture());
+        UserProfile savedProfile = profileCaptor.getValue();
+        assertThat(savedProfile.getRelation()).isEqualTo(FamilyRelation.MOTHER);
+        assertThat(savedProfile.getCustomRelation()).isNull();
     }
 
     private void arrangeCurrentProfile(UserProfile profile) {

@@ -61,12 +61,14 @@ public interface EventDoseRepository extends MongoRepository<EventDose, String> 
 
     void deleteByMedDoseId(String medDoseId);
 
+    void deleteByMedDoseIdAndStatus(String medDoseId, DoseStatus status);
+
     void deleteByScheduleIdAndStatus(String scheduleId, DoseStatus status);
 
     void deleteByScheduleId(String scheduleId);
 
     void deleteByMedicationId(String medicationId);
 
-    java.util.Optional<EventDose> findByMedDoseId(String medDoseId);
+    boolean existsByMedDoseId(String medDoseId);
 }
 

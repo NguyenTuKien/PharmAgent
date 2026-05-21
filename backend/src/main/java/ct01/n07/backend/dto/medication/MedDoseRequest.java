@@ -1,5 +1,6 @@
 package ct01.n07.backend.dto.medication;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -17,11 +18,13 @@ import java.time.LocalTime;
 @AllArgsConstructor
 public class MedDoseRequest {
     @NotNull(message = "Thời gian uống (takenTime) không được để trống")
+    @JsonAlias("timeOfDay")
     private LocalTime takenTime;
 
     @NotNull(message = "Số lượng không được để trống")
     @DecimalMin(value = "0.01", message = "Số lượng thuốc mỗi lần uống phải lớn hơn 0")
     @DecimalMax(value = "100.00", message = "Số lượng thuốc mỗi lần uống vượt quá giới hạn (tối đa 100)")
+    @JsonAlias("doseAmount")
     private BigDecimal quantity;
 }
 

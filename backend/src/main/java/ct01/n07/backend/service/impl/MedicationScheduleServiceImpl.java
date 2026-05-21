@@ -12,6 +12,7 @@ import ct01.n07.backend.repository.MedicationRepository;
 import ct01.n07.backend.security.MedicationPermissionValidator;
 import ct01.n07.backend.security.ProfileAccessContext;
 import ct01.n07.backend.service.EventDoseSyncService;
+import ct01.n07.backend.service.MedicationRequestValidator;
 import ct01.n07.backend.service.MedicationScheduleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
     private final MedicationMapper medicationMapper;
     private final MedicationPermissionValidator permissionValidator;
     private final EventDoseSyncService eventDoseSyncService;
+    private final MedicationRequestValidator medicationRequestValidator;
 
     @Override
     public MedicationResponse addMedicationSchedule(MedScheduleRequest scheduleRequest, String medicationId) {
@@ -38,6 +40,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
+        medicationRequestValidator.validateSchedule(pm, scheduleRequest);
 
         if (pm.getMedicationSchedules() == null) {
             pm.setMedicationSchedules(new ArrayList<>());
@@ -64,6 +67,7 @@ public class MedicationScheduleServiceImpl implements MedicationScheduleService 
 
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), pm.getPatientId());
+        medicationRequestValidator.validateSchedule(pm, request);
 
         List<MedSchedule> schedules = pm.getMedicationSchedules();
         if (schedules == null) {

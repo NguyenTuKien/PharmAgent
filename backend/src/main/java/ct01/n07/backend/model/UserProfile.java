@@ -1,5 +1,6 @@
 package ct01.n07.backend.model;
 
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.Gender;
 import ct01.n07.backend.model.enums.Role;
 import lombok.AllArgsConstructor;
@@ -42,6 +43,8 @@ public class UserProfile {
     private List<UserContact> userContacts;
 
     private Role role;
+    private FamilyRelation relation;
+    private String customRelation;
 
     @CreatedDate
     private Instant createdAt;

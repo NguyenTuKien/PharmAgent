@@ -1,6 +1,7 @@
 package ct01.n07.backend.dto.user;
 
 import ct01.n07.backend.model.enums.Gender;
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.Role;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -41,4 +42,9 @@ public class CreateProfileRequest {
 
     @NotNull(message = "Role is required")
     private Role role;
+
+    private FamilyRelation relation;
+
+    @Size(max = 100, message = "Custom relation must be <= 100 characters")
+    private String customRelation;
 }

@@ -123,6 +123,11 @@ def get_pill_catalog(search: Optional[str] = "", page: int = 0, size: int = 10):
         "totalElements": total_elements
     }
 
+@router.get("/pills/search", response_model=List[PillCatalogResponse])
+def search_pills(keyword: Optional[str] = "", limit: int = 10):
+    page = get_pill_catalog(search=keyword or "", page=0, size=max(1, min(limit, 25)))
+    return page["content"]
+
 @router.get("/pills/{pill_id}")
 def get_pill_by_id(pill_id: str):
     init_pills_db()
