@@ -163,6 +163,7 @@ export function SystemHealthWidget() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     checkHealth()
   }, [checkHealth])
 
@@ -180,7 +181,7 @@ export function SystemHealthWidget() {
   return (
     <div className="admin-section" style={{ marginTop: '20px' }}>
       <div className="admin-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>Tình trạng hệ thống</h3>
+        <h3>Tình trạng hệ thống {lastCheck && <span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: 'var(--muted)', marginLeft: 8 }}>(Cập nhật: {lastCheck.toLocaleTimeString('vi-VN')})</span>}</h3>
         <Button variant="secondary" size="sm" onClick={checkHealth} disabled={checking}>
           <RefreshCw size={14} className={checking ? 'spin-icon' : ''} />
           {checking ? 'Đang kiểm tra…' : 'Làm mới'}

@@ -220,7 +220,7 @@ function PillImagePanel({ pill, open, onClose, onUpdated }) {
       const updated = await getPillById(pill.id)
       setLocalPill(updated)
       onUpdated()
-    } catch (err) {
+    } catch {
       notify.error('Không thể cập nhật thông tin ảnh')
     }
   }
@@ -470,7 +470,7 @@ export function AdminPillsPage() {
   const searchTimeout = useRef(null)
 
   const fetchPills = useCallback(
-    async (p = page, q = search) => {
+    async (p, q) => {
       setLoading(true)
       try {
         const result = await getPillCatalog({ search: q, page: p, size: 10 })
@@ -481,11 +481,12 @@ export function AdminPillsPage() {
         setLoading(false)
       }
     },
-    [page, search]
+    []
   )
 
   useEffect(() => {
     fetchPills(page, search)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, fetchPills])
 
   function handleSearchChange(e) {
