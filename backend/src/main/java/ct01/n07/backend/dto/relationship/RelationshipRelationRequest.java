@@ -1,19 +1,12 @@
 package ct01.n07.backend.dto.relationship;
 
 import ct01.n07.backend.model.enums.FamilyRelation;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class RelationshipInviteRequest {
-    @NotBlank(message = "Target elderly ID is required")
-    private String targetElderlyId;
-
-    private String caregiverTitle;
-    private String elderlyTitle;
-
+public class RelationshipRelationRequest {
     @NotNull(message = "Quan hệ không được để trống")
     private FamilyRelation relation;
 

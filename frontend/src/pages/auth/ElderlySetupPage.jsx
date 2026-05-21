@@ -9,6 +9,16 @@ import AuthFormBackground from "./AuthFormBackground.jsx";
 import InteractiveBackground from "./InteractiveBackground.jsx";
 import "../../styles/auth/auth.css";
 
+const FAMILY_RELATION_OPTIONS = [
+  { value: "FATHER", label: "Bố" },
+  { value: "MOTHER", label: "Mẹ" },
+  { value: "PATERNAL_GRANDFATHER", label: "Ông Nội" },
+  { value: "PATERNAL_GRANDMOTHER", label: "Bà Nội" },
+  { value: "MATERNAL_GRANDFATHER", label: "Ông Ngoại" },
+  { value: "MATERNAL_GRANDMOTHER", label: "Bà Ngoại" },
+  { value: "OTHER", label: "Khác" },
+];
+
 export function ElderlySetupPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -24,8 +34,8 @@ export function ElderlySetupPage() {
     gender: "FEMALE",
     address: "",
     caregiverTitle: "Người chăm sóc",
-    elderlyTitle: "Người thân",
-    permissionLevel: "MANAGE_ALL",
+    relation: "FATHER",
+    customRelation: "",
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -101,7 +111,7 @@ export function ElderlySetupPage() {
 
           <p>
             Hồ sơ elderly giúp PharmAgent cá nhân hóa lịch thuốc, nhắc uống và
-            quyền quản lý cho người chăm sóc.
+            kết nối chăm sóc trong gia đình.
           </p>
         </div>
 
@@ -238,19 +248,40 @@ export function ElderlySetupPage() {
                 </div>
 
                 <div className="auth-input-box">
-                  <input
-                    id="elderly-title"
-                    type="text"
-                    value={values.elderlyTitle}
-                    onChange={updateField("elderlyTitle")}
-                    placeholder=" "
-                  />
-                  <label htmlFor="elderly-title">Cách gọi người thân</label>
+                  <select
+                    id="elderly-relation"
+                    value={values.relation}
+                    onChange={updateField("relation")}
+                    required
+                  >
+                    {FAMILY_RELATION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <label htmlFor="elderly-relation">Quan hệ</label>
                   <span className="icon">
                     <ion-icon name="medkit"></ion-icon>
                   </span>
                 </div>
               </div>
+
+              {values.relation === "OTHER" ? (
+                <div className="auth-input-box">
+                  <input
+                    id="elderly-custom-relation"
+                    type="text"
+                    value={values.customRelation}
+                    onChange={updateField("customRelation")}
+                    placeholder=" "
+                  />
+                  <label htmlFor="elderly-custom-relation">Quan hệ khác</label>
+                  <span className="icon">
+                    <ion-icon name="people"></ion-icon>
+                  </span>
+                </div>
+              ) : null}
 
               <button
                 id="elderly-submit"

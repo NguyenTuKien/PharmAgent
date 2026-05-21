@@ -35,6 +35,25 @@ export async function deleteMyContact(contactId) {
   return response.data
 }
 
+export async function getMyDevices() {
+  const response = await apiClient.get('/devices/me')
+  return response.data
+}
+
+export async function addMyDevice(data) {
+  const response = await apiClient.post('/devices/me', data)
+  return response.data
+}
+
+export async function updateMyDevice(deviceId, data) {
+  const response = await apiClient.put(`/devices/me/${deviceId}`, data)
+  return response.data
+}
+
+export async function deleteMyDevice(deviceId) {
+  await apiClient.delete(`/devices/me/${deviceId}`)
+}
+
 export async function getProfiles({ page = 0, size = 20 } = {}) {
   const response = await apiClient.get('/profiles', { params: { page, size } })
   return response.data
@@ -89,10 +108,8 @@ export async function inviteElderlyProfile(data) {
   return response.data
 }
 
-export async function updateCaregiverRelationship(targetElderlyId, permissionLevel) {
-  const response = await apiClient.patch(`/caregiver/relationship/${targetElderlyId}`, undefined, {
-    params: { permissionLevel },
-  })
+export async function updateCaregiverRelationship(targetElderlyId, data) {
+  const response = await apiClient.patch(`/caregiver/relationship/${targetElderlyId}`, data)
   return response.data
 }
 

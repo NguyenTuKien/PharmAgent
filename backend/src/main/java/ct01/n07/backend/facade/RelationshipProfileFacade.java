@@ -4,6 +4,7 @@ import ct01.n07.backend.dto.relationship.CaregiverProfileResponse;
 import ct01.n07.backend.dto.relationship.ElderlyProfileResponse;
 import ct01.n07.backend.model.Relationship;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.service.RelationshipService;
 import ct01.n07.backend.service.UserProfileService;
@@ -43,8 +44,10 @@ public class RelationshipProfileFacade {
                             .address(profile.getAddress())
                             .elderlyTitle(rel.getElderlyTitle())
                             .avatarUrl(profile.getAvatarUrl())
+                            .relation(resolveRelation(rel))
+                            .customRelation(rel.getCustomRelation())
+                            .relationLabel(resolveRelationLabel(rel))
                             .status(rel.getStatus())
-                            .permissionLevel(rel.getPermissionLevel())
                             .build();
                 })
                 .toList();
@@ -72,8 +75,10 @@ public class RelationshipProfileFacade {
                             .address(profile.getAddress())
                             .caregiverTitle(rel.getCaregiverTitle())
                             .avatarUrl(profile.getAvatarUrl())
+                            .relation(resolveRelation(rel))
+                            .customRelation(rel.getCustomRelation())
+                            .relationLabel(resolveRelationLabel(rel))
                             .status(rel.getStatus())
-                            .permissionLevel(rel.getPermissionLevel())
                             .build();
                 })
                 .toList();
@@ -101,8 +106,10 @@ public class RelationshipProfileFacade {
                             .address(profile.getAddress())
                             .avatarUrl(profile.getAvatarUrl())
                             .elderlyTitle(rel.getElderlyTitle())
+                            .relation(resolveRelation(rel))
+                            .customRelation(rel.getCustomRelation())
+                            .relationLabel(resolveRelationLabel(rel))
                             .status(rel.getStatus())
-                            .permissionLevel(rel.getPermissionLevel())
                             .build();
                 })
                 .toList();
@@ -130,10 +137,29 @@ public class RelationshipProfileFacade {
                             .address(profile.getAddress())
                             .caregiverTitle(rel.getCaregiverTitle())
                             .avatarUrl(profile.getAvatarUrl())
+                            .relation(resolveRelation(rel))
+                            .customRelation(rel.getCustomRelation())
+                            .relationLabel(resolveRelationLabel(rel))
                             .status(rel.getStatus())
-                            .permissionLevel(rel.getPermissionLevel())
                             .build();
                 })
                 .toList();
+    }
+
+    private FamilyRelation resolveRelation(Relationship relationship) {
+        return relationship.getRelation() == null ? FamilyRelation.OTHER : relationship.getRelation();
+    }
+
+    private String resolveRelationLabel(Relationship relationship) {
+        FamilyRelation relation = resolveRelation(relationship);
+        String customRelation = relationship.getCustomRelation();
+        if (relation == FamilyRelation.OTHER && customRelation != null && !customRelation.isBlank()) {
+            return customRelation.trim();
+        }
+        if (relation != FamilyRelation.OTHER) {
+            return relation.getLabel();
+        }
+        String legacyTitle = relationship.getElderlyTitle();
+        return legacyTitle != null && !legacyTitle.isBlank() ? legacyTitle.trim() : relation.getLabel();
     }
 }

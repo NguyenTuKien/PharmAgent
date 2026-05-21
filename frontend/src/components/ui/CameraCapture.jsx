@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, X, RefreshCcw } from 'lucide-react'
+import { Camera, RefreshCcw, X } from 'lucide-react'
 import { Button } from './Button.jsx'
 
 export function CameraCapture({ open, onClose, onCapture }) {
@@ -72,50 +72,46 @@ export function CameraCapture({ open, onClose, onCapture }) {
 
   return (
     <>
-      <div className="admin-drawer-overlay" style={{ zIndex: 9998 }} onClick={onClose} />
-      <div 
-        className="camera-modal" 
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          backgroundColor: '#fff',
-          padding: '16px',
-          borderRadius: '12px',
-          zIndex: 9999,
-          width: '90%',
-          maxWidth: '500px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px'
-        }}
+      <div className="fixed inset-0 z-[9980] bg-slate-950/45 backdrop-blur-sm" onClick={onClose} />
+      <div
+        aria-modal="true"
+        className="fixed left-1/2 top-1/2 z-[9990] grid w-[min(500px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-950/25"
+        role="dialog"
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Chụp ảnh</h3>
-          <button className="icon-button" onClick={onClose}><X size={20} /></button>
+        <div className="flex items-center justify-between gap-4">
+          <h3 className="m-0 text-xl font-black text-slate-950">Chụp ảnh</h3>
+          <button
+            aria-label="Đóng camera"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+            type="button"
+            onClick={onClose}
+          >
+            <X size={20} />
+          </button>
         </div>
         
-        <div style={{ backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden', aspectRatio: '4/3', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="grid aspect-[4/3] place-items-center overflow-hidden rounded-lg bg-slate-950">
           {error ? (
-            <p style={{ color: '#fff', padding: '20px', textAlign: 'center' }}>{error}</p>
+            <p className="px-5 text-center text-sm font-bold text-white">{error}</p>
           ) : (
             <video 
               ref={videoRef} 
               autoPlay 
               playsInline 
               muted 
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              className="h-full w-full object-cover"
             />
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+        <div className="flex flex-wrap justify-between gap-2">
           <Button variant="ghost" onClick={toggleCamera}>
-            <RefreshCcw size={16} style={{ marginRight: 8 }} /> Đổi camera
+            <RefreshCcw size={16} />
+            Đổi camera
           </Button>
           <Button variant="primary" onClick={handleCapture} disabled={Boolean(error)}>
-            <Camera size={16} style={{ marginRight: 8 }} /> Chụp
+            <Camera size={16} />
+            Chụp
           </Button>
         </div>
       </div>

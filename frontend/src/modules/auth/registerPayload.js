@@ -52,7 +52,8 @@ export function buildRegisterPayload(values) {
       ...profilePayload(values, 'elderly'),
       caregiverTitle: optionalText(values.caregiverTitle),
       elderlyTitle: optionalText(values.elderlyTitle),
-      permissionLevel: values.permissionLevel || 'MANAGE_ALL',
+      relation: optionalText(values.relation) || 'OTHER',
+      customRelation: optionalText(values.customRelation),
     }
   }
 

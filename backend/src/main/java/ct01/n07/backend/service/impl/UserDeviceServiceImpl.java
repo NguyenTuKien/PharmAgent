@@ -65,9 +65,8 @@ public class UserDeviceServiceImpl implements UserDeviceService {
 
         userDeviceRepository.findByDeviceToken(deviceToken)
                 .filter(existing -> !existing.getId().equals(deviceId))
-                .filter(existing -> !existing.getUserId().equals(userId))
                 .ifPresent(existing -> {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token is already registered to another user");
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token is already registered");
                 });
 
         device.setDeviceName(request.getDeviceName());
