@@ -9,6 +9,7 @@ import ct01.n07.backend.dto.user.UpdateProfileRequest;
 import ct01.n07.backend.exception.CannotDeleteActiveProfileException;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.UserProfileRepository;
 import ct01.n07.backend.service.UserProfileService;
@@ -149,6 +150,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         UserProfile userProfile = userProfileMapper.toUserProfile(request);
         userProfile.setUserId(currentProfile.getUserId());
         userProfile.setRole(Role.ELDERLY);
+        applyRelation(userProfile, request.getRelation(), request.getCustomRelation());
 
         return userProfileMapper.toResponse(userProfileRepository.save(userProfile));
     }
@@ -169,6 +171,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         }
 
         userProfileMapper.updateUserProfile(request, targetProfile);
+        applyRelationUpdate(request, targetProfile);
         targetProfile.setRole(Role.ELDERLY);
         return userProfileMapper.toResponse(userProfileRepository.save(targetProfile));
     }
@@ -270,6 +273,32 @@ public class UserProfileServiceImpl implements UserProfileService {
         if (profile.getRole() == Role.ELDERLY) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ProfileConstant.ELDERLY_PROFILE_READ_ONLY);
         }
+    }
+
+    private void applyRelationUpdate(UpdateProfileRequest request, UserProfile targetProfile) {
+        if (request.getRelation() == null && request.getCustomRelation() == null) {
+            return;
+        }
+
+        FamilyRelation nextRelation = request.getRelation() == null ? targetProfile.getRelation() : request.getRelation();
+        applyRelation(targetProfile, nextRelation, request.getCustomRelation());
+    }
+
+    private void applyRelation(UserProfile profile, FamilyRelation relation, String customRelation) {
+        FamilyRelation normalizedRelation = normalizeRelation(relation);
+        profile.setRelation(normalizedRelation);
+        profile.setCustomRelation(normalizeCustomRelation(normalizedRelation, customRelation));
+    }
+
+    private FamilyRelation normalizeRelation(FamilyRelation relation) {
+        return relation == null ? FamilyRelation.OTHER : relation;
+    }
+
+    private String normalizeCustomRelation(FamilyRelation relation, String customRelation) {
+        if (normalizeRelation(relation) != FamilyRelation.OTHER) {
+            return null;
+        }
+        return normalizeOptional(customRelation);
     }
 
     private String normalizeOptional(String value) {

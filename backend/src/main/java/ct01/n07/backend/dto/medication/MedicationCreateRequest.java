@@ -46,6 +46,7 @@ public class MedicationCreateRequest {
 
 
     @NotNull(message = "schedules is required")
+    @Size(min = 1, message = "Cần thiết lập ít nhất một lịch uống")
     @Valid
     private List<MedScheduleRequest> schedules;
 

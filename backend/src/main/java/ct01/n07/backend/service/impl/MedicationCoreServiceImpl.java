@@ -13,6 +13,7 @@ import ct01.n07.backend.security.MedicationPermissionValidator;
 import ct01.n07.backend.security.ProfileAccessContext;
 import ct01.n07.backend.service.EventDoseSyncService;
 import ct01.n07.backend.service.MedicationCoreService;
+import ct01.n07.backend.service.MedicationRequestValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,7 @@ public class MedicationCoreServiceImpl implements MedicationCoreService {
     private final MedicationMapper medicationMapper;
     private final MedicationPermissionValidator permissionValidator;
     private final EventDoseSyncService eventDoseSyncService;
+    private final MedicationRequestValidator medicationRequestValidator;
 
     @Override
     public MedicationResponse createMedication(MedicationCreateRequest request) {
@@ -46,6 +48,7 @@ public class MedicationCoreServiceImpl implements MedicationCoreService {
         }
 
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), request.getPatientId());
+        medicationRequestValidator.validateCreate(request);
 
         Medication medication = Medication.builder()
                 .patientId(request.getPatientId())
@@ -91,6 +94,7 @@ public class MedicationCoreServiceImpl implements MedicationCoreService {
         Medication medication = requireMedication(id);
 
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), medication.getPatientId());
+        medicationRequestValidator.validateUpdate(medication, request);
 
         if (request.getPillId() != null) {
             medication.setPillId(request.getPillId());

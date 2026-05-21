@@ -10,6 +10,7 @@ import { AdminLayout } from './pages/admin/AdminLayout.jsx'
 import { AdminPillsPage } from './pages/admin/AdminPillsPage.jsx'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage.jsx'
 import { DashboardPage } from './pages/DashboardPage.jsx'
+import { MedicationsPage } from './pages/MedicationsPage.jsx'
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.jsx'
 import { ElderlySetupPage } from './pages/auth/ElderlySetupPage.jsx'
 import { LoginPage } from './pages/auth/LoginPage.jsx'
@@ -57,13 +58,6 @@ function SessionBootstrap() {
   return null
 }
 
-function RoleWorkspacePage({ copies, fallback }) {
-  const activeRole = useAuthStore((state) => state.activeProfile?.role)
-  const copy = copies[activeRole] ?? fallback
-
-  return <WorkspacePage description={copy.description} title={copy.title} />
-}
-
 function App() {
   return (
     <>
@@ -86,29 +80,7 @@ function App() {
           <Route element={<AppShell />}>
             <Route element={<Navigate replace to="/dashboard" />} index />
             <Route element={<DashboardPage />} path="/dashboard" />
-            <Route
-              element={
-                <RoleWorkspacePage
-                  copies={{
-                    ELDERLY: {
-                      title: 'Thuốc của tôi',
-                      description:
-                        'Danh sách thuốc cá nhân, thông tin liều dùng và hình ảnh nhận diện thuốc.',
-                    },
-                    CAREGIVER: {
-                      title: 'Quản lý thuốc',
-                      description:
-                        'Khu vực quản lý thuốc cho người thân, gồm CRUD, upload ảnh và lịch liều uống.',
-                    },
-                  }}
-                  fallback={{
-                    title: 'Quản lý thuốc',
-                    description: 'Khung module quản lý thuốc đã sẵn sàng để gắn API.',
-                  }}
-                />
-              }
-              path="/medications"
-            />
+            <Route element={<MedicationsPage />} path="/medications" />
             <Route
               element={
                 <WorkspacePage

@@ -1,5 +1,6 @@
 package ct01.n07.backend.dto.user;
 
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.Role;
 import lombok.Data;
 
@@ -11,4 +12,6 @@ public class UserProfileSummaryResponse {
     private String phone;
     private String avatarUrl;
     private Role role;
+    private FamilyRelation relation;
+    private String customRelation;
 }

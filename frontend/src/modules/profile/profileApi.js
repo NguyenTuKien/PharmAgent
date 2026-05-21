@@ -112,7 +112,6 @@ export async function updateCaregiverRelationship(targetElderlyId, data) {
   const response = await apiClient.patch(`/caregiver/relationship/${targetElderlyId}`, data, {
     params: {
       permissionLevel: 'MANAGE_ALL',
-      permissionlevel: 'MANAGE_ALL',
     },
   })
   return response.data

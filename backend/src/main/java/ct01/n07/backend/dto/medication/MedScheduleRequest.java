@@ -1,5 +1,6 @@
 package ct01.n07.backend.dto.medication;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import ct01.n07.backend.model.enums.ScheduleType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -20,10 +21,12 @@ import java.util.List;
 @AllArgsConstructor
 public class MedScheduleRequest {
     @NotNull(message = "Schedule type is required")
+    @JsonAlias("frequencyType")
     private ScheduleType scheduleType;
 
     @Min(value = 1, message = "frequencyInterval must be at least 1")
     @Max(value = 365, message = "frequencyInterval cannot exceed 365")
+    @JsonAlias("interval")
     private Integer frequencyInterval;
 
     @Size(max = 7, message = "daysOfWeek cannot exceed 7 days")
@@ -44,6 +47,8 @@ public class MedScheduleRequest {
     private Boolean isActive;
 
     @Valid
+    @Size(min = 1, message = "Mỗi lịch cần ít nhất một khung giờ uống")
+    @JsonAlias("times")
     private List<MedDoseRequest> medDoseRequests;
 }
 

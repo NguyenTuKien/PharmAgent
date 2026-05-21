@@ -17,6 +17,8 @@ public interface EventDoseSyncService {
 
     void deleteByMedDoseId(String medDoseId);
 
+    void deletePendingByMedDoseId(String medDoseId);
+
     void deletePendingByScheduleId(String scheduleId);
 
     boolean hasDoseEventForMedDose(String medDoseId);

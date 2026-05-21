@@ -21,6 +21,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,22 +68,66 @@ class RelationshipServiceImplTest {
     }
 
     @Test
-    void updateRelationshipCreatesPendingRelationChangeWithFullManagementInternally() {
+    void updateRelationshipUpdatesAcceptedRelationWithoutCreatingPendingClone() {
+        Relationship acceptedRelationship = Relationship.builder()
+                .id("accepted-relationship")
+                .caregiverId("caregiver-1")
+                .elderlyId("elderly-1")
+                .permissionLevel(PermissionLevel.MANAGE_ALL)
+                .status(RelationStatus.ACCEPTED)
+                .build();
+        Relationship stalePendingRelationship = Relationship.builder()
+                .id("stale-pending-relationship")
+                .caregiverId("caregiver-1")
+                .elderlyId("elderly-1")
+                .status(RelationStatus.PENDING)
+                .build();
+
         when(profileAccessContext.getCurrentUserProfile()).thenReturn(caregiverProfile());
-        when(relationshipRepository.existsByCaregiverIdAndElderlyIdAndStatus(
-                "caregiver-1", "elderly-1", RelationStatus.ACCEPTED)).thenReturn(true);
         when(relationshipRepository.findAllByCaregiverIdAndElderlyIdAndStatus(
-                "caregiver-1", "elderly-1", RelationStatus.PENDING)).thenReturn(List.of());
+                "caregiver-1", "elderly-1", RelationStatus.ACCEPTED)).thenReturn(List.of(acceptedRelationship));
+        when(relationshipRepository.findAllByCaregiverIdAndElderlyIdAndStatus(
+                "caregiver-1", "elderly-1", RelationStatus.PENDING)).thenReturn(List.of(stalePendingRelationship));
 
         relationshipService.updateRelationship("elderly-1", FamilyRelation.OTHER, "Dì ruột");
 
         ArgumentCaptor<Relationship> relationshipCaptor = ArgumentCaptor.forClass(Relationship.class);
         verify(relationshipRepository).save(relationshipCaptor.capture());
-        Relationship pendingRelationship = relationshipCaptor.getValue();
-        assertThat(pendingRelationship.getRelation()).isEqualTo(FamilyRelation.OTHER);
-        assertThat(pendingRelationship.getCustomRelation()).isEqualTo("Dì ruột");
-        assertThat(pendingRelationship.getPermissionLevel()).isEqualTo(PermissionLevel.MANAGE_ALL);
-        assertThat(pendingRelationship.getStatus()).isEqualTo(RelationStatus.PENDING);
+        verify(relationshipRepository).deleteAll(List.of(stalePendingRelationship));
+        Relationship updatedRelationship = relationshipCaptor.getValue();
+        assertThat(updatedRelationship.getId()).isEqualTo("accepted-relationship");
+        assertThat(updatedRelationship.getRelation()).isEqualTo(FamilyRelation.OTHER);
+        assertThat(updatedRelationship.getCustomRelation()).isEqualTo("Dì ruột");
+        assertThat(updatedRelationship.getPermissionLevel()).isEqualTo(PermissionLevel.MANAGE_ALL);
+        assertThat(updatedRelationship.getStatus()).isEqualTo(RelationStatus.ACCEPTED);
+    }
+
+    @Test
+    void updateRelationshipUpdatesPendingInvitationWhenNoAcceptedRelationExists() {
+        Relationship pendingRelationship = Relationship.builder()
+                .id("pending-relationship")
+                .caregiverId("caregiver-1")
+                .elderlyId("elderly-1")
+                .status(RelationStatus.PENDING)
+                .build();
+
+        when(profileAccessContext.getCurrentUserProfile()).thenReturn(caregiverProfile());
+        when(relationshipRepository.findAllByCaregiverIdAndElderlyIdAndStatus(
+                "caregiver-1", "elderly-1", RelationStatus.ACCEPTED)).thenReturn(List.of());
+        when(relationshipRepository.findAllByCaregiverIdAndElderlyIdAndStatus(
+                "caregiver-1", "elderly-1", RelationStatus.PENDING)).thenReturn(List.of(pendingRelationship));
+
+        relationshipService.updateRelationship("elderly-1", FamilyRelation.MOTHER, null);
+
+        ArgumentCaptor<Relationship> relationshipCaptor = ArgumentCaptor.forClass(Relationship.class);
+        verify(relationshipRepository).save(relationshipCaptor.capture());
+        verify(relationshipRepository, never()).deleteAll(any());
+        Relationship updatedRelationship = relationshipCaptor.getValue();
+        assertThat(updatedRelationship.getId()).isEqualTo("pending-relationship");
+        assertThat(updatedRelationship.getRelation()).isEqualTo(FamilyRelation.MOTHER);
+        assertThat(updatedRelationship.getCustomRelation()).isNull();
+        assertThat(updatedRelationship.getPermissionLevel()).isEqualTo(PermissionLevel.MANAGE_ALL);
+        assertThat(updatedRelationship.getStatus()).isEqualTo(RelationStatus.PENDING);
     }
 
     private UserProfile caregiverProfile() {

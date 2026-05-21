@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -46,14 +49,22 @@ public class RelationshipServiceImpl implements RelationshipService {
     public List<Relationship> getPendingElderlyRelationships() {
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
-        return relationshipRepository.findAllByCaregiverIdAndStatus(currentProfile.getId(), RelationStatus.PENDING);
+        List<Relationship> pendingRelationships =
+                relationshipRepository.findAllByCaregiverIdAndStatus(currentProfile.getId(), RelationStatus.PENDING);
+        List<Relationship> acceptedRelationships =
+                relationshipRepository.findAllByCaregiverIdAndStatus(currentProfile.getId(), RelationStatus.ACCEPTED);
+        return excludeAlreadyAccepted(pendingRelationships, acceptedRelationships, Relationship::getElderlyId);
     }
 
     @Override
     public List<Relationship> getPendingCaregiverRelationships() {
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.ELDERLY);
-        return relationshipRepository.findAllByElderlyIdAndStatus(currentProfile.getId(), RelationStatus.PENDING);
+        List<Relationship> pendingRelationships =
+                relationshipRepository.findAllByElderlyIdAndStatus(currentProfile.getId(), RelationStatus.PENDING);
+        List<Relationship> acceptedRelationships =
+                relationshipRepository.findAllByElderlyIdAndStatus(currentProfile.getId(), RelationStatus.ACCEPTED);
+        return excludeAlreadyAccepted(pendingRelationships, acceptedRelationships, Relationship::getCaregiverId);
     }
 
     @Override
@@ -102,12 +113,12 @@ public class RelationshipServiceImpl implements RelationshipService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending invitations can be accepted");
         }
 
-        // Delete any existing ACCEPTED relationship between this pair before accepting the new one
-        relationshipRepository.findAllByCaregiverIdAndElderlyIdAndStatus(
-                relationship.getCaregiverId(), relationship.getElderlyId(), RelationStatus.ACCEPTED)
-                .stream()
-                .filter(rel -> !rel.getId().equals(relationship.getId()))
-                .forEach(relationshipRepository::delete);
+        List<Relationship> acceptedRelationships = relationshipRepository.findAllByCaregiverIdAndElderlyIdAndStatus(
+                relationship.getCaregiverId(), relationship.getElderlyId(), RelationStatus.ACCEPTED);
+        if (acceptedRelationships.stream().anyMatch(rel -> !rel.getId().equals(relationship.getId()))) {
+            relationshipRepository.delete(relationship);
+            return;
+        }
 
         relationship.setStatus(RelationStatus.ACCEPTED);
         relationshipRepository.save(relationship);
@@ -141,25 +152,32 @@ public class RelationshipServiceImpl implements RelationshipService {
         List<Relationship> pendingRelationships = relationshipRepository
                 .findAllByCaregiverIdAndElderlyIdAndStatus(caregiverId, elderlyId, RelationStatus.PENDING);
 
-        if (acceptedRelationships.isEmpty() && pendingRelationships.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không tìm thấy mối quan hệ hợp lệ để cập nhật");
+        Relationship targetRelationship;
+        if (!acceptedRelationships.isEmpty()) {
+            targetRelationship = acceptedRelationships.get(0);
+            if (!pendingRelationships.isEmpty()) {
+                relationshipRepository.deleteAll(pendingRelationships);
+            }
+        } else if (!pendingRelationships.isEmpty()) {
+            targetRelationship = pendingRelationships.get(0);
+            List<Relationship> duplicatePendingRelationships = pendingRelationships.stream()
+                    .skip(1)
+                    .toList();
+            if (!duplicatePendingRelationships.isEmpty()) {
+                relationshipRepository.deleteAll(duplicatePendingRelationships);
+            }
+        } else {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy mối quan hệ hợp lệ để cập nhật");
         }
 
-        Relationship acceptedRelationship = acceptedRelationships.stream().findFirst().orElse(null);
-        Relationship pendingRelationship = pendingRelationships.stream().findFirst()
-                .orElse(Relationship.builder()
-                        .caregiverId(caregiverId)
-                        .elderlyId(elderlyId)
-                        .caregiverTitle(acceptedRelationship == null ? null : acceptedRelationship.getCaregiverTitle())
-                        .status(RelationStatus.PENDING)
-                        .build());
+        targetRelationship.setRelation(normalizeRelation(relation));
+        targetRelationship.setCustomRelation(normalizeCustomRelation(relation, customRelation));
+        targetRelationship.setElderlyTitle(resolveRelationLabel(relation, customRelation, targetRelationship.getElderlyTitle()));
+        if (targetRelationship.getPermissionLevel() == null) {
+            targetRelationship.setPermissionLevel(DEFAULT_CAREGIVER_PERMISSION);
+        }
 
-        pendingRelationship.setRelation(normalizeRelation(relation));
-        pendingRelationship.setCustomRelation(normalizeCustomRelation(relation, customRelation));
-        pendingRelationship.setElderlyTitle(resolveRelationLabel(relation, customRelation, pendingRelationship.getElderlyTitle()));
-        pendingRelationship.setPermissionLevel(DEFAULT_CAREGIVER_PERMISSION);
-
-        relationshipRepository.save(pendingRelationship);
+        relationshipRepository.save(targetRelationship);
     }
 
     @Override
@@ -196,6 +214,23 @@ public class RelationshipServiceImpl implements RelationshipService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "You do not have permission to perform this action");
         }
+    }
+
+    private List<Relationship> excludeAlreadyAccepted(
+            List<Relationship> pendingRelationships,
+            List<Relationship> acceptedRelationships,
+            Function<Relationship, String> relatedProfileId
+    ) {
+        if (pendingRelationships.isEmpty() || acceptedRelationships.isEmpty()) {
+            return pendingRelationships;
+        }
+
+        Set<String> acceptedProfileIds = acceptedRelationships.stream()
+                .map(relatedProfileId)
+                .collect(Collectors.toSet());
+        return pendingRelationships.stream()
+                .filter(relationship -> !acceptedProfileIds.contains(relatedProfileId.apply(relationship)))
+                .toList();
     }
 
     private FamilyRelation normalizeRelation(FamilyRelation relation) {

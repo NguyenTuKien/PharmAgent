@@ -1,5 +1,6 @@
 package ct01.n07.backend.dto.user;
 
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.Gender;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
@@ -30,4 +31,9 @@ public class UpdateProfileRequest {
 
     @Size(max = 500, message = "Avatar URL must be <= 500 characters")
     private String avatarUrl;
+
+    private FamilyRelation relation;
+
+    @Size(max = 100, message = "Custom relation must be <= 100 characters")
+    private String customRelation;
 }
