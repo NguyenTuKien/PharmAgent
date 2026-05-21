@@ -17,28 +17,13 @@ import {
 import {
   buildSessionSnapshot,
   clearSession,
+  deriveAuthStateFromSession,
   loadSession,
   normalizeProfilesPage,
   saveSession,
 } from './session.js'
 
-const persistedSession = loadSession()
-const persistedProfile = persistedSession.activeProfileId
-  ? {
-      id: persistedSession.activeProfileId,
-      role: persistedSession.activeRole,
-    }
-  : null
-
-const initialAuthState = {
-  authToken: persistedSession.authToken ?? null,
-  refreshToken: persistedSession.refreshToken ?? null,
-  accessToken: persistedSession.accessToken ?? null,
-  profiles: [],
-  activeProfile: persistedProfile,
-  status: persistedSession.refreshToken ? 'authenticated' : 'anonymous',
-  error: null,
-}
+const initialAuthState = deriveAuthStateFromSession(loadSession())
 
 function applyLoginResponse(response, set) {
   const profiles = normalizeProfilesPage(response.profiles)
@@ -46,6 +31,7 @@ function applyLoginResponse(response, set) {
   saveSession({
     authToken: response.authToken,
     refreshToken: response.refreshToken,
+    profiles,
   })
 
   set({
@@ -134,27 +120,37 @@ export const useAuthStore = create((set, get) => ({
       refreshToken,
       accessToken: response.accessToken,
       activeProfile,
+      profiles,
     })
     saveSession(snapshot)
 
     set({
       accessToken: response.accessToken,
-      activeProfile,
+      activeProfile: snapshot.activeProfile,
       status: 'authenticated',
       error: null,
     })
 
-    return activeProfile
+    return snapshot.activeProfile
   },
 
   refreshSession: async () => {
-    const { refreshToken, activeProfile, authToken } = get()
+    const { refreshToken, activeProfile, authToken, profiles } = get()
     if (!refreshToken || !activeProfile?.id) {
       get().clearLocalSession()
       throw new Error('Missing refresh token or active profile')
     }
 
-    const response = await refreshTokensRequest(refreshToken, activeProfile.id)
+    set({ status: 'restoring', error: null })
+
+    let response
+    try {
+      response = await refreshTokensRequest(refreshToken, activeProfile.id)
+    } catch (error) {
+      get().clearLocalSession()
+      throw error
+    }
+
     const nextAuthToken = response.authToken ?? authToken
     const nextRefreshToken = response.refreshToken ?? refreshToken
     const nextAccessToken = response.accessToken
@@ -164,6 +160,7 @@ export const useAuthStore = create((set, get) => ({
       refreshToken: nextRefreshToken,
       accessToken: nextAccessToken,
       activeProfile,
+      profiles,
     })
     saveSession(snapshot)
 
@@ -171,6 +168,8 @@ export const useAuthStore = create((set, get) => ({
       authToken: nextAuthToken,
       refreshToken: nextRefreshToken,
       accessToken: nextAccessToken,
+      activeProfile: snapshot.activeProfile,
+      profiles: snapshot.profiles ?? profiles,
       status: 'authenticated',
       error: null,
     })
@@ -201,6 +200,10 @@ export const useAuthStore = create((set, get) => ({
       status: 'anonymous',
       error: null,
     })
+  },
+
+  syncLocalSession: () => {
+    set(deriveAuthStateFromSession(loadSession()))
   },
 }))
 

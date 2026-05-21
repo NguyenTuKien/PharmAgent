@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppShell } from './layout/AppShell.jsx'
 import { useAuthStore } from './modules/auth/authStore.js'
+import { SESSION_STORAGE_KEY } from './modules/auth/session.js'
 import { AdminLayout } from './pages/admin/AdminLayout.jsx'
 import { AdminPillsPage } from './pages/admin/AdminPillsPage.jsx'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage.jsx'
@@ -30,12 +31,24 @@ function SessionBootstrap() {
   const activeProfileId = useAuthStore((state) => state.activeProfile?.id)
   const refreshSession = useAuthStore((state) => state.refreshSession)
   const refreshToken = useAuthStore((state) => state.refreshToken)
+  const syncLocalSession = useAuthStore((state) => state.syncLocalSession)
 
   useEffect(() => {
     if (!accessToken && refreshToken && activeProfileId) {
       refreshSession().catch(() => undefined)
     }
   }, [accessToken, activeProfileId, refreshSession, refreshToken])
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === SESSION_STORAGE_KEY) {
+        syncLocalSession()
+      }
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [syncLocalSession])
 
   return null
 }

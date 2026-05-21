@@ -54,23 +54,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             // 4. Validate Token (Check hạn và Blacklist)
-            if (jwtService.isTokenValid(jwt, userId)) {
-
+            if (jwtService.isTokenValid(jwt, userId) && jwtService.isAccessToken(jwt)) {
                 List<GrantedAuthority> authorities = new ArrayList<>();
+                String role = jwtService.extractRole(jwt);
+                String profileId = jwtService.extractProfileId(jwt);
 
-                // 5. Phân loại Token và Cấp quyền
-                if (jwtService.isAccessToken(jwt)) {
-                    // Nếu là Access Token -> Trích xuất Role và cấp quyền
-                    String role = jwtService.extractRole(jwt);
-                    String profileId = jwtService.extractProfileId(jwt);
-
-                    // Thêm tiền tố "ROLE_" theo chuẩn của Spring Security
-                    authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-
-                    // MẸO DEVOPS: Gắn thẳng profileId vào Request để Controller dùng luôn, không cần bóc JWT lại nữa!
-                    request.setAttribute("profileId", profileId);
+                if (role == null || role.isBlank() || profileId == null || profileId.isBlank()) {
+                    filterChain.doFilter(request, response);
+                    return;
                 }
-                // Nếu là Auth Token -> List authorities rỗng (Không có quyền gì ngoài việc được gọi API /select-profile)
+
+                // Thêm tiền tố "ROLE_" theo chuẩn của Spring Security
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+
+                // Gắn profileId vào Request để Controller dùng, không cần bóc JWT lại.
+                request.setAttribute("profileId", profileId);
 
                 // 6. Tạo Authentication object (Principal bây giờ là userId)
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

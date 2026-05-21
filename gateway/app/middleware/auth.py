@@ -12,7 +12,7 @@ from typing import Annotated, Optional
 from fastapi import Depends, Header, HTTPException, status
 from pydantic import BaseModel
 
-from app.utils.jwt_utils import decode_token, extract_bearer_token, get_roles, get_subject
+from app.utils.jwt_utils import decode_token, extract_bearer_token, get_roles, get_subject, is_token_blacklisted
 
 logger = logging.getLogger("gateway.auth")
 
@@ -27,13 +27,7 @@ class TokenUser(BaseModel):
 
 # ── Core dependency ───────────────────────────────────────────────────────────
 
-async def get_current_user(
-    authorization: Annotated[Optional[str], Header()] = None,
-) -> TokenUser:
-    """
-    FastAPI dependency: bắt buộc có JWT Bearer token hợp lệ.
-    Sử dụng: user: TokenUser = Depends(get_current_user)
-    """
+async def require_access_payload(authorization: Optional[str]) -> dict:
     token = extract_bearer_token(authorization)
     if not token:
         raise HTTPException(
@@ -41,7 +35,39 @@ async def get_current_user(
             detail="Thiếu token xác thực",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
     payload = decode_token(token)
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Access token required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if await is_token_blacklisted(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not get_subject(payload) or not get_roles(payload):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return payload
+
+async def get_current_user(
+    authorization: Annotated[Optional[str], Header()] = None,
+) -> TokenUser:
+    """
+    FastAPI dependency: bắt buộc có JWT Bearer token hợp lệ.
+    Sử dụng: user: TokenUser = Depends(get_current_user)
+    """
+    payload = await require_access_payload(authorization)
     return TokenUser(
         user_id=get_subject(payload),
         roles=get_roles(payload),
@@ -59,7 +85,7 @@ async def optional_user(
     if not token:
         return None
     try:
-        payload = decode_token(token)
+        payload = await require_access_payload(authorization)
         return TokenUser(
             user_id=get_subject(payload),
             roles=get_roles(payload),

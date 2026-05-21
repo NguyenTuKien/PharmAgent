@@ -9,9 +9,12 @@ import jwt
 from fastapi import HTTPException, status
 
 from app.config import get_settings
+from app.utils.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+BLACKLIST_PREFIX = "blacklist:"
 
 
 def _get_signing_key() -> bytes:
@@ -41,6 +44,21 @@ def decode_token(token: str) -> dict:
             detail="Token không hợp lệ",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+async def is_token_blacklisted(token: str) -> bool:
+    """Return True when backend logout has revoked this token in Redis."""
+    try:
+        redis = await get_redis()
+        return bool(await redis.exists(f"{BLACKLIST_PREFIX}{token}"))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("Token blacklist check failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Không thể xác minh trạng thái phiên",
+        ) from exc
 
 
 def extract_bearer_token(authorization: Optional[str]) -> Optional[str]:

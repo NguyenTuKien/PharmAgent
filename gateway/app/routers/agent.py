@@ -7,11 +7,10 @@ QUAN TRỌNG: Router này phải include() TRƯỚC backend router trong main.py
 """
 import logging
 
-from fastapi import APIRouter, HTTPException, Request, status, Depends
+from fastapi import APIRouter, Depends, Request
 
 from app.config import get_settings
-from app.utils.jwt_utils import decode_token, extract_bearer_token
-from app.middleware.auth import TokenUser, require_admin, get_current_user
+from app.middleware.auth import TokenUser, require_access_payload, require_admin, get_current_user
 
 logger = logging.getLogger("gateway.agent")
 settings = get_settings()
@@ -36,20 +35,10 @@ async def agent_health():
         return {"status": "DOWN", "error": str(exc)}
 
 
-def _require_http_token(request: Request) -> None:
-    raw_token = extract_bearer_token(request.headers.get("authorization", ""))
-    if not raw_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
-    try:
-        decode_token(raw_token)
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
-
-
 async def _proxy_agent_http(request: Request):
     from app.routers.proxy import proxy_http_request
 
-    _require_http_token(request)
+    await require_access_payload(request.headers.get("authorization"))
     return await proxy_http_request(request, _AGENT, strip_prefix="/api/agent")
 
 

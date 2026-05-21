@@ -5,6 +5,7 @@ import {
   buildSessionSnapshot,
   canAccessRoles,
   clearSession,
+  deriveAuthStateFromSession,
   loadSession,
   normalizeProfilesPage,
   saveSession,
@@ -43,6 +44,27 @@ test('sanitizeSession strips unknown fields and keeps only usable session values
     accessToken: 'access-token',
     activeProfileId: 'profile-1',
     activeRole: 'CAREGIVER',
+    profiles: [
+      {
+        id: 'profile-1',
+        userId: 'user-1',
+        firstName: 'An',
+        lastName: 'Nguyen',
+        avatarUrl: 'https://example.test/avatar.png',
+        role: 'CAREGIVER',
+        unsafe: 'remove-me',
+      },
+      { id: '', firstName: 'Invalid' },
+    ],
+    activeProfile: {
+      id: 'profile-1',
+      userId: 'user-1',
+      firstName: 'An',
+      lastName: 'Nguyen',
+      avatarUrl: 'https://example.test/avatar.png',
+      role: 'CAREGIVER',
+      unsafe: 'remove-me',
+    },
     unsafe: 'remove-me',
   })
 
@@ -52,6 +74,24 @@ test('sanitizeSession strips unknown fields and keeps only usable session values
     accessToken: 'access-token',
     activeProfileId: 'profile-1',
     activeRole: 'CAREGIVER',
+    profiles: [
+      {
+        id: 'profile-1',
+        userId: 'user-1',
+        firstName: 'An',
+        lastName: 'Nguyen',
+        avatarUrl: 'https://example.test/avatar.png',
+        role: 'CAREGIVER',
+      },
+    ],
+    activeProfile: {
+      id: 'profile-1',
+      userId: 'user-1',
+      firstName: 'An',
+      lastName: 'Nguyen',
+      avatarUrl: 'https://example.test/avatar.png',
+      role: 'CAREGIVER',
+    },
   })
 })
 
@@ -60,7 +100,20 @@ test('buildSessionSnapshot keeps selected profile metadata with tokens', () => {
     authToken: 'auth-token',
     refreshToken: 'refresh-token',
     accessToken: 'access-token',
-    activeProfile: { id: 'profile-1', role: 'ELDERLY' },
+    profiles: [
+      {
+        id: 'profile-1',
+        firstName: 'Binh',
+        lastName: 'Tran',
+        role: 'ELDERLY',
+      },
+    ],
+    activeProfile: {
+      id: 'profile-1',
+      firstName: 'Binh',
+      lastName: 'Tran',
+      role: 'ELDERLY',
+    },
   })
 
   assert.deepEqual(snapshot, {
@@ -69,6 +122,75 @@ test('buildSessionSnapshot keeps selected profile metadata with tokens', () => {
     accessToken: 'access-token',
     activeProfileId: 'profile-1',
     activeRole: 'ELDERLY',
+    profiles: [
+      {
+        id: 'profile-1',
+        firstName: 'Binh',
+        lastName: 'Tran',
+        role: 'ELDERLY',
+      },
+    ],
+    activeProfile: {
+      id: 'profile-1',
+      firstName: 'Binh',
+      lastName: 'Tran',
+      role: 'ELDERLY',
+    },
+  })
+})
+
+test('deriveAuthStateFromSession restores full authenticated profile from storage', () => {
+  const state = deriveAuthStateFromSession({
+    authToken: 'auth-token',
+    refreshToken: 'refresh-token',
+    accessToken: 'access-token',
+    activeProfile: {
+      id: 'profile-1',
+      firstName: 'Binh',
+      lastName: 'Tran',
+      role: 'ELDERLY',
+    },
+    profiles: [
+      {
+        id: 'profile-1',
+        firstName: 'Binh',
+        lastName: 'Tran',
+        role: 'ELDERLY',
+      },
+    ],
+  })
+
+  assert.equal(state.status, 'authenticated')
+  assert.deepEqual(state.activeProfile, {
+    id: 'profile-1',
+    firstName: 'Binh',
+    lastName: 'Tran',
+    role: 'ELDERLY',
+  })
+  assert.deepEqual(state.profiles, [
+    {
+      id: 'profile-1',
+      firstName: 'Binh',
+      lastName: 'Tran',
+      role: 'ELDERLY',
+    },
+  ])
+})
+
+test('deriveAuthStateFromSession waits for refresh before redirecting protected pages', () => {
+  const state = deriveAuthStateFromSession({
+    refreshToken: 'refresh-token',
+    activeProfile: {
+      id: 'profile-1',
+      role: 'CAREGIVER',
+    },
+  })
+
+  assert.equal(state.status, 'restoring')
+  assert.equal(state.accessToken, null)
+  assert.deepEqual(state.activeProfile, {
+    id: 'profile-1',
+    role: 'CAREGIVER',
   })
 })
 
@@ -95,6 +217,11 @@ test('session helpers use localStorage by default so auth survives new tabs', ()
       accessToken: 'access-token',
       activeProfileId: 'profile-1',
       activeRole: 'CAREGIVER',
+      activeProfile: {
+        id: 'profile-1',
+        firstName: 'An',
+        role: 'CAREGIVER',
+      },
     }
 
     saveSession(session)

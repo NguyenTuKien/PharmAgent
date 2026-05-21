@@ -12,7 +12,7 @@ import { navigationItems } from './navigation.js'
 
 function getProfileName(profile) {
   const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ')
-  return name || profile?.id || 'Chua chon ho so'
+  return name || 'Ho so PharmAgent'
 }
 
 export function Topbar() {
