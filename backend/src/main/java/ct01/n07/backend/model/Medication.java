@@ -29,7 +29,7 @@ public class Medication {
     @Field(targetType = FieldType.OBJECT_ID)
     private String patientId;
 
-    @Field(targetType = FieldType.OBJECT_ID)
+    @Field(targetType = FieldType.STRING)
     private String pillId;
 
     private String nickname;

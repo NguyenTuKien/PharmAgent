@@ -111,9 +111,7 @@ export async function analyzeMedicationImage(file) {
   formData.append('image', file)
   formData.append('top_k', '6')
 
-  const response = await apiClient.post('/agent/analyze', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const response = await apiClient.post('/agent/analyze', formData)
   return response.data
 }
 
@@ -143,17 +141,17 @@ export async function getMedicationById(medicationId) {
 }
 
 export async function createCaregiverMedication(data) {
-  const response = await apiClient.post('/caregiver/medications', data)
+  const response = await apiClient.post('/medications', data)
   return response.data
 }
 
 export async function updateCaregiverMedication(medicationId, data) {
-  const response = await apiClient.put(`/caregiver/medications/${medicationId}`, data)
+  const response = await apiClient.put(`/medications/${medicationId}`, data)
   return response.data
 }
 
 export async function deleteCaregiverMedication(medicationId) {
-  await apiClient.delete(`/caregiver/medications/${medicationId}`)
+  await apiClient.delete(`/medications/${medicationId}`)
 }
 
 export async function addMedicationSchedule(medicationId, schedule) {

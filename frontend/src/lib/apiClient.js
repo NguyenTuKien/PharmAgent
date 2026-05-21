@@ -47,6 +47,10 @@ export function getApiErrorMessage(error) {
     return error.response.data.error
   }
 
+  if (Array.isArray(error?.response?.data?.errors)) {
+    return error.response.data.errors.map((e) => e.defaultMessage || e.msg || e).join(', ')
+  }
+
   if (error?.message) {
     return error.message
   }
@@ -54,7 +58,32 @@ export function getApiErrorMessage(error) {
   return 'Request failed'
 }
 
+function isFormDataPayload(data) {
+  return typeof FormData !== 'undefined' && data instanceof FormData
+}
+
+function deleteHeader(headers, headerName) {
+  if (!headers) {
+    return
+  }
+
+  if (typeof headers.delete === 'function') {
+    headers.delete(headerName)
+    return
+  }
+
+  Object.keys(headers).forEach((key) => {
+    if (key.toLowerCase() === headerName.toLowerCase()) {
+      delete headers[key]
+    }
+  })
+}
+
 apiClient.interceptors.request.use((config) => {
+  if (isFormDataPayload(config.data)) {
+    deleteHeader(config.headers, 'Content-Type')
+  }
+
   if (!config.skipAuthHeader) {
     const accessToken = authHandlers.getAccessToken?.()
     if (accessToken) {
