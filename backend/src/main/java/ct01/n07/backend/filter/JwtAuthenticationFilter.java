@@ -64,18 +64,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            List<GrantedAuthority> authorities = new ArrayList<>();
-
-            // 5. Phân loại Token và Cấp quyền
-            if (jwtService.isAccessToken(jwt)) {
-                String role = jwtService.extractRole(jwt);
-                String profileId = jwtService.extractProfileId(jwt);
-                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-                request.setAttribute("profileId", profileId);
+            // Auth token chỉ dùng cho flow chọn profile và không được authenticate
+            // protected API.
+            if (!jwtService.isAccessToken(jwt)) {
+                filterChain.doFilter(request, response);
+                return;
             }
-            // Auth Token → authorities rỗng (chỉ dùng được ở /select-profile)
 
-            // 6. Tạo và ghi Authentication vào SecurityContext
+            List<GrantedAuthority> authorities = new ArrayList<>();
+            String role = jwtService.extractRole(jwt);
+            String profileId = jwtService.extractProfileId(jwt);
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+            request.setAttribute("profileId", profileId);
+
+            // 5. Tạo và ghi Authentication vào SecurityContext
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                     userId,
                     null,
