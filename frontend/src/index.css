@@ -351,8 +351,8 @@ a {
   width: min(1480px, 100%);
   align-items: center;
   gap: 12px;
-  grid-template-areas: "brand search nav actions";
-  grid-template-columns: minmax(190px, max-content) minmax(56px, 336px) minmax(360px, 1fr) auto;
+  grid-template-areas: "brand nav actions";
+  grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
   margin: 0 auto;
 }
 
@@ -415,12 +415,41 @@ a {
   --gst-focus-ring: #76bda8;
   --gst-shadow: 0 12px 28px rgb(22 33 31 / 9%);
   --gst-hover: rgb(31 138 112 / 8%);
+  --gst-tab-active-text: var(--accent-strong);
+  --gst-tab-indicator-bg: var(--accent-soft);
   --gst-bridge-bg: rgb(255 255 255 / 92%);
+  display: inline-flex;
+  max-width: min(100%, 640px);
 }
 
-.header-gooey-search .gooey-search-tabs-bar,
-.header-gooey-search .gooey-search-tabs-right-slot {
+.header-gooey-search .gooey-search-tabs-bar {
   border: 1px solid rgb(184 216 207 / 70%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 78%);
+}
+
+.header-gooey-search .gooey-search-tabs-right-slot {
+  height: 60px;
+  border: 1px solid rgb(184 216 207 / 70%);
+  background: rgb(255 255 255 / 78%);
+}
+
+.header-gooey-search[data-expanded="true"] .gooey-search-tabs-right-slot {
+  width: 60px !important;
+  min-width: 60px;
+  height: 60px !important;
+  flex: 0 0 60px;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.header-gooey-search[data-expanded="true"] .gooey-search-tabs-close-content {
+  justify-self: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 50%;
 }
 
 .header-gooey-search .gooey-search-tabs-input {
@@ -428,12 +457,18 @@ a {
   font-weight: 750;
 }
 
+.header-gooey-search .gooey-search-tabs-tab-indicator {
+  inset: 0;
+  border-radius: 999px;
+  background: var(--accent-soft);
+}
+
 .role-nav-wrap {
   position: relative;
   grid-area: nav;
   min-width: 0;
   padding: 2px;
-  overflow-x: auto;
+  overflow: visible;
   scrollbar-width: none;
 }
 
@@ -443,6 +478,15 @@ a {
 
 .role-nav-wrap--mobile {
   display: none;
+}
+
+.role-nav-wrap--desktop {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  justify-content: center;
+  justify-self: center;
+  overflow: visible;
 }
 
 .role-nav-wrap::after {
@@ -464,22 +508,27 @@ a {
 .role-nav {
   position: relative;
   display: inline-flex;
+  height: 60px;
   min-width: max-content;
-  align-items: stretch;
-  gap: 4px;
-  border: 1px solid rgb(219 228 224 / 76%);
-  border-radius: 16px;
-  padding: 4px;
-  background: rgb(255 255 255 / 74%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 80%);
+  align-items: center;
+  gap: 0;
+  padding: 0;
+}
+
+.header-gooey-search .gooey-search-tabs-tabs-content.role-nav {
+  display: inline-flex;
+  height: 60px;
+  align-items: center;
+  gap: 0;
+  padding: 0;
 }
 
 .role-nav-active-indicator {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
+  top: 0;
+  bottom: 0;
   left: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--accent-soft);
   box-shadow: 0 10px 26px rgb(31 138 112 / 14%);
   transition:
@@ -492,25 +541,45 @@ a {
   position: relative;
   z-index: 1;
   display: inline-flex;
-  width: clamp(86px, 7.3vw, 104px);
-  min-height: 60px;
+  width: clamp(98px, 7.6vw, 116px);
+  height: 60px;
+  min-width: 0;
+  min-height: 0;
   flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  border-radius: 10px;
-  padding: 7px 6px;
+  gap: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 5px 8px 6px;
   color: var(--muted);
   background: transparent;
   font-size: 0.7rem;
   font-weight: 850;
-  line-height: 1.12;
+  line-height: 1.08;
   text-align: center;
   cursor: pointer;
   transition:
     color 180ms ease,
     transform 180ms ease;
+}
+
+.header-gooey-search .gooey-search-tabs-tab.role-nav-link {
+  width: clamp(98px, 7.6vw, 116px);
+  height: 60px;
+  min-width: 0;
+  min-height: 0;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 5px 8px 6px;
+  font-size: 0.7rem;
+  font-weight: 850;
+  line-height: 1.08;
+  white-space: normal;
 }
 
 .role-nav-link:hover {
@@ -525,12 +594,35 @@ a {
   color: var(--accent-strong);
 }
 
+.role-nav-link .gooey-search-tabs-tab-content {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  max-width: 100%;
+  overflow: hidden;
+  line-height: 1.08;
+  transform: translateY(-2px);
+}
+
+.role-nav-link .gooey-search-tabs-tab-icon {
+  flex: 0 0 auto;
+  color: inherit;
+  font-size: 0;
+}
+
+.role-nav-link .gooey-search-tabs-tab-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
 .role-nav-label {
   display: -webkit-box;
-  max-width: 88px;
+  max-width: 108px;
+  max-height: 2.35em;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-height: 1.08;
   text-overflow: ellipsis;
   white-space: normal;
 }
@@ -1365,11 +1457,21 @@ a {
     display: none;
   }
 
+  .role-nav-wrap--mobile .header-gooey-search {
+    width: 100% !important;
+    max-width: none;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search .gooey-search-tabs-right-slot {
+    height: 64px;
+  }
+
   .role-nav {
     display: grid;
     width: 100%;
+    height: 64px;
     min-width: 0;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 4px;
     border: 0;
     padding: 0;
@@ -1377,10 +1479,26 @@ a {
     box-shadow: none;
   }
 
+  .role-nav-wrap--mobile .header-gooey-search .gooey-search-tabs-tabs-content.role-nav {
+    display: grid;
+    width: 100%;
+    height: 64px;
+    min-width: 0;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    padding: 0;
+  }
+
   .role-nav-link {
     width: auto;
     min-width: 0;
-    min-height: 58px;
+    min-height: 56px;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search .gooey-search-tabs-tab.role-nav-link {
+    width: auto;
+    min-width: 0;
+    height: 56px;
   }
 }
 
@@ -1475,15 +1593,17 @@ a {
   .role-nav-link {
     min-height: 56px;
     padding: 7px 5px;
-    font-size: 0.68rem;
+    font-size: 0.66rem;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search .gooey-search-tabs-tab.role-nav-link {
+    height: 56px;
+    padding: 7px 5px;
+    font-size: 0.66rem;
   }
 
   .role-nav-label {
-    max-width: 80px;
-  }
-
-  .header-gooey-search .gooey-search-tabs-input-wrapper {
-    max-width: min(220px, calc(100vw - 124px));
+    max-width: 72px;
   }
 
   .topbar-actions {
@@ -1552,8 +1672,8 @@ a {
   }
 
   .role-nav {
-    gap: 5px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     border-color: transparent;
     padding: 0;
     background: transparent;
@@ -1569,8 +1689,20 @@ a {
   .role-nav-link {
     width: auto;
     min-height: 52px;
+    padding: 6px 3px;
     border: 1px solid rgb(219 228 224 / 80%);
     background: rgb(255 255 255 / 72%);
+    font-size: 0.61rem;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search .gooey-search-tabs-tab.role-nav-link {
+    width: auto;
+    height: 52px;
+    min-height: 52px;
+    padding: 6px 3px;
+    border: 1px solid rgb(219 228 224 / 80%);
+    background: rgb(255 255 255 / 72%);
+    font-size: 0.61rem;
   }
 
   .role-nav-link.is-active {

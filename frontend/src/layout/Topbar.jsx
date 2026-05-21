@@ -4,16 +4,16 @@ import {
   LogOut,
   UserRound,
 } from 'lucide-react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+import logo from '../assets/logo.svg'
+import title from '../assets/system/title.svg'
 import { GooeySearchTabs } from '../components/ui/GooeySearchTabs.jsx'
 import { ConfirmDialog } from '../components/ui/Modal.jsx'
 import { notify } from '../lib/toast.js'
 import { useAuthStore } from '../modules/auth/authStore.js'
 import { getProfileLandingPath } from '../modules/auth/session.js'
-import logo from '../assets/logo.svg'
-import title from '../assets/system/title.svg'
 import { getHeaderUtilityItems, getNavigationItemsForRole } from './navigation.js'
 
 const ROLE_LABELS = {
@@ -41,76 +41,48 @@ function isNavigationItemActive(pathname, itemPath) {
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`)
 }
 
-function RoleIconNav({ activePath, items, onNavigate }) {
-  const navRef = useRef(null)
-  const itemRefs = useRef(new Map())
-  const [indicator, setIndicator] = useState({ left: 0, width: 0, visible: false })
-
+function RoleGooeyNavigation({ activePath, items, onNavigate, onSearch }) {
   const activeItem = items.find((item) => isNavigationItemActive(activePath, item.to)) ?? items[0]
-  const activeItemPath = activeItem?.to
+  const activeNavigationPath = activeItem?.to ?? ''
+  const roleNavigationTabs = useMemo(
+    () =>
+      items.map((item) => {
+        const Icon = item.icon
 
-  useLayoutEffect(() => {
-    const updateIndicator = () => {
-      const activeNode = activeItemPath ? itemRefs.current.get(activeItemPath) : null
-      if (!activeNode) {
-        setIndicator((current) => ({ ...current, visible: false }))
-        return
-      }
-
-      setIndicator({
-        left: activeNode.offsetLeft,
-        width: activeNode.offsetWidth,
-        visible: true,
-      })
-    }
-
-    updateIndicator()
-    window.addEventListener('resize', updateIndicator)
-
-    return () => window.removeEventListener('resize', updateIndicator)
-  }, [activeItemPath, items])
+        return {
+          value: item.to,
+          label: <span className="role-nav-label">{item.label}</span>,
+          icon: <Icon aria-hidden="true" size={20} strokeWidth={2.2} />,
+        }
+      }),
+    [items],
+  )
 
   if (!items.length) {
     return null
   }
 
   return (
-    <nav aria-label="Điều hướng chính" className="role-nav" ref={navRef}>
-      <span
-        aria-hidden="true"
-        className="role-nav-active-indicator"
-        style={{
-          opacity: indicator.visible ? 1 : 0,
-          transform: `translateX(${indicator.left}px)`,
-          width: indicator.width,
-        }}
-      />
-      {items.map((item) => {
-        const Icon = item.icon
-        const isActive = isNavigationItemActive(activePath, item.to)
-
-        return (
-          <button
-            aria-current={isActive ? 'page' : undefined}
-            className={`role-nav-link${isActive ? ' is-active' : ''}`}
-            key={item.to}
-            ref={(node) => {
-              if (node) {
-                itemRefs.current.set(item.to, node)
-              } else {
-                itemRefs.current.delete(item.to)
-              }
-            }}
-            title={item.label}
-            type="button"
-            onClick={() => onNavigate(item.to)}
-          >
-            <Icon size={20} strokeWidth={2.2} />
-            <span className="role-nav-label">{item.label}</span>
-          </button>
-        )
-      })}
-    </nav>
+    <GooeySearchTabs
+      activeTab={activeNavigationPath}
+      className="header-gooey-search"
+      classNames={{
+        activeTab: 'is-active',
+        closeButton: 'role-gooey-close',
+        container: 'role-gooey-container',
+        input: 'role-gooey-input',
+        searchButton: 'role-gooey-search-button',
+        tab: 'role-nav-link',
+        tabList: 'role-nav',
+      }}
+      gooey
+      gooeyIntensity={0.42}
+      placeholder="Tìm trong PharmAgent..."
+      preset="smooth"
+      tabs={roleNavigationTabs}
+      onSearch={onSearch}
+      onTabChange={(path) => onNavigate(path)}
+    />
   )
 }
 
@@ -253,105 +225,98 @@ export function Topbar() {
     setConfirmOpen(true)
   }
 
-  const roleNavigation = (
-    <RoleIconNav
-      activePath={location.pathname}
-      items={visibleItems}
-      onNavigate={(path) => navigate(path)}
-    />
-  )
-
   return (
     <>
-    <header className="topbar">
-      <div className="topbar-main">
-        <button className="header-brand" type="button" onClick={goHome}>
-          <img className="header-brand-logo" src={logo} alt="" />
-          <img className="header-brand-title" src={title} alt="PharmAgent" />
-        </button>
+      <header className="topbar">
+        <div className="topbar-main">
+          <button className="header-brand" type="button" onClick={goHome}>
+            <img className="header-brand-logo" src={logo} alt="" />
+            <img className="header-brand-title" src={title} alt="PharmAgent" />
+          </button>
 
-        <div className="role-nav-wrap role-nav-wrap--desktop">
-          {roleNavigation}
-        </div>
-
-        <div className="header-utilities" ref={actionsRef}>
-          <div className="header-search">
-            <GooeySearchTabs
-              className="header-gooey-search"
-              placeholder="Tìm trong PharmAgent..."
-              preset="smooth"
+          <div className="role-nav-wrap role-nav-wrap--desktop">
+            <RoleGooeyNavigation
+              activePath={location.pathname}
+              items={visibleItems}
+              onNavigate={(path) => navigate(path)}
               onSearch={handleSearch}
             />
           </div>
 
-          <div className="header-actions">
-            <button
-              aria-label={chatAction.label}
-              className="header-action-btn"
-              type="button"
-              onClick={openChat}
-            >
-              <ChatIcon size={20} />
-            </button>
-
-            <div className="header-menu-anchor">
+          <div className="header-utilities" ref={actionsRef}>
+            <div className="header-actions">
               <button
-                aria-expanded={openMenu === 'notifications'}
-                aria-haspopup="menu"
-                aria-label={notificationAction.label}
+                aria-label={chatAction.label}
                 className="header-action-btn"
                 type="button"
-                onClick={() => toggleMenu('notifications')}
+                onClick={openChat}
               >
-                <NotificationIcon size={20} />
+                <ChatIcon size={20} />
               </button>
-              {openMenu === 'notifications' ? <NotificationMenu /> : null}
-            </div>
 
-            <div className="header-menu-anchor">
-              <button
-                aria-expanded={openMenu === 'profile'}
-                aria-haspopup="menu"
-                aria-label={profileAction.label}
-                className="avatar-button"
-                type="button"
-                onClick={() => toggleMenu('profile')}
-              >
-                <span className="avatar-circle avatar-circle--header">
-                  {activeProfile?.avatarUrl ? (
-                    <img src={activeProfile.avatarUrl} alt="" />
-                  ) : (
-                    <span>{getProfileInitials(activeProfile)}</span>
-                  )}
-                </span>
-                <ChevronDown size={15} />
-              </button>
-              {openMenu === 'profile' ? (
-                <AvatarMenu
-                  activeProfile={activeProfile}
-                  onGoHome={goHome}
-                  onLogout={requestLogout}
-                  onSwitchProfile={switchProfile}
-                />
-              ) : null}
+              <div className="header-menu-anchor">
+                <button
+                  aria-expanded={openMenu === 'notifications'}
+                  aria-haspopup="menu"
+                  aria-label={notificationAction.label}
+                  className="header-action-btn"
+                  type="button"
+                  onClick={() => toggleMenu('notifications')}
+                >
+                  <NotificationIcon size={20} />
+                </button>
+                {openMenu === 'notifications' ? <NotificationMenu /> : null}
+              </div>
+
+              <div className="header-menu-anchor">
+                <button
+                  aria-expanded={openMenu === 'profile'}
+                  aria-haspopup="menu"
+                  aria-label={profileAction.label}
+                  className="avatar-button"
+                  type="button"
+                  onClick={() => toggleMenu('profile')}
+                >
+                  <span className="avatar-circle avatar-circle--header">
+                    {activeProfile?.avatarUrl ? (
+                      <img src={activeProfile.avatarUrl} alt="" />
+                    ) : (
+                      <span>{getProfileInitials(activeProfile)}</span>
+                    )}
+                  </span>
+                  <ChevronDown size={15} />
+                </button>
+                {openMenu === 'profile' ? (
+                  <AvatarMenu
+                    activeProfile={activeProfile}
+                    onGoHome={goHome}
+                    onLogout={requestLogout}
+                    onSwitchProfile={switchProfile}
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
+
+        <ConfirmDialog
+          confirmLabel="Đăng xuất"
+          description="Phiên làm việc hiện tại sẽ được xóa khỏi trình duyệt này."
+          open={confirmOpen}
+          title="Đăng xuất khỏi PharmAgent?"
+          onConfirm={handleLogout}
+          onOpenChange={setConfirmOpen}
+        />
+      </header>
+
+      <div className="role-nav-wrap role-nav-wrap--mobile">
+        <RoleGooeyNavigation
+          activePath={location.pathname}
+          items={visibleItems}
+          onNavigate={(path) => navigate(path)}
+          onSearch={handleSearch}
+        />
       </div>
-
-      <ConfirmDialog
-        confirmLabel="Đăng xuất"
-        description="Phiên làm việc hiện tại sẽ được xóa khỏi trình duyệt này."
-        open={confirmOpen}
-        title="Đăng xuất khỏi PharmAgent?"
-        onConfirm={handleLogout}
-        onOpenChange={setConfirmOpen}
-      />
-    </header>
-
-    <div className="role-nav-wrap role-nav-wrap--mobile">
-      {roleNavigation}
-    </div>
     </>
   )
 }

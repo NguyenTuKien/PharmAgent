@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   MessageCircle,
   Pill,
+  ScanSearch,
   Settings,
   UserCog,
   UserRound,
@@ -36,6 +37,12 @@ export const navigationItems = [
     roles: ['ELDERLY'],
   },
   {
+    to: '/scan',
+    label: 'Tìm thuốc',
+    icon: ScanSearch,
+    roles: ['ELDERLY'],
+  },
+  {
     to: '/relationships',
     label: 'Người chăm sóc',
     icon: Users,
@@ -60,6 +67,12 @@ export const navigationItems = [
     roles: ['CAREGIVER'],
   },
   {
+    to: '/scan',
+    label: 'Tìm thuốc',
+    icon: ScanSearch,
+    roles: ['CAREGIVER'],
+  },
+  {
     to: '/reports',
     label: 'Thống kê',
     icon: BarChart3,
@@ -81,6 +94,12 @@ export const navigationItems = [
     to: '/admin/pills',
     label: 'Quản lý thuốc',
     icon: Pill,
+    roles: ['ADMIN'],
+  },
+  {
+    to: '/scan',
+    label: 'Tìm thuốc',
+    icon: ScanSearch,
     roles: ['ADMIN'],
   },
   {

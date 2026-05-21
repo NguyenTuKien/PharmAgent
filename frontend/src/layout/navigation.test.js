@@ -10,6 +10,7 @@ test('returns elderly navigation items only', () => {
     'Lịch uống thuốc',
     'Lịch sử uống thuốc',
     'Thuốc của tôi',
+    'Tìm thuốc',
     'Người chăm sóc',
   ])
 })
@@ -19,6 +20,7 @@ test('returns caregiver navigation items with reports', () => {
     'Người thân',
     'Quản lý thuốc',
     'Lịch uống',
+    'Tìm thuốc',
     'Thống kê',
   ])
 })
@@ -28,6 +30,7 @@ test('returns admin navigation items only', () => {
     'Dashboard',
     'Quản lý users',
     'Quản lý thuốc',
+    'Tìm thuốc',
     'Quản lý session',
   ])
 })
