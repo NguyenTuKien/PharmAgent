@@ -16,6 +16,7 @@
   --danger-soft: #fee4e2;
   --blue: #2f6fed;
   --shadow: 0 20px 50px rgb(22 33 31 / 10%);
+  --bottom-nav-clearance: 0px;
   font-family: "Momo Trust Sans", sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -40,12 +41,14 @@
 html {
   min-width: 320px;
   min-height: 100%;
+  overflow-x: hidden;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  overflow-x: hidden;
 }
 
 button,
@@ -64,6 +67,7 @@ a {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .btn {
@@ -287,6 +291,7 @@ a {
 
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(circle at top left, rgb(31 138 112 / 8%), transparent 32rem),
     var(--bg);
@@ -333,6 +338,8 @@ a {
 .app-main {
   min-width: 0;
   min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: var(--bottom-nav-clearance);
 }
 
 .topbar {
@@ -1397,8 +1404,12 @@ a {
 }
 
 @media (max-width: 1120px) {
+  :root {
+    --bottom-nav-clearance: calc(98px + env(safe-area-inset-bottom));
+  }
+
   .app-main {
-    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    min-height: 100dvh;
   }
 
   .topbar {
@@ -1458,15 +1469,19 @@ a {
   .role-nav-wrap--mobile {
     display: block;
     position: fixed;
-    right: max(10px, env(safe-area-inset-right));
-    bottom: max(10px, env(safe-area-inset-bottom));
-    left: max(10px, env(safe-area-inset-left));
-    z-index: 45;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 80;
     margin: 0;
-    padding: 6px;
+    padding:
+      8px max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
     overflow: visible;
-    border: 1px solid rgb(219 228 224 / 82%);
-    border-radius: 18px;
+    border: 0;
+    border-top: 1px solid rgb(219 228 224 / 82%);
+    border-radius: 18px 18px 0 0;
     background: rgb(246 248 251 / 94%);
     box-shadow: 0 18px 45px rgb(22 33 31 / 16%);
     backdrop-filter: blur(18px);
@@ -1481,16 +1496,57 @@ a {
   }
 
   .role-nav-wrap--mobile .header-gooey-search {
+    display: flex;
     width: 100% !important;
+    min-width: 0;
     max-width: none;
   }
 
   .role-nav-wrap--mobile .role-nav-motion-wrap {
     width: 100%;
+    min-width: 0;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search .gooey-search-tabs-bar {
+    flex: 0 0 44px;
+    min-width: 44px;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search .gooey-search-tabs-bridge {
+    flex: 0 0 auto;
   }
 
   .role-nav-wrap--mobile .header-gooey-search .gooey-search-tabs-right-slot {
+    width: auto !important;
+    min-width: 0;
+    flex: 1 1 auto;
+    justify-items: stretch;
     height: 64px;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search[data-expanded="true"] .gooey-search-tabs-bar {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search[data-expanded="true"] .gooey-search-tabs-input-wrapper {
+    width: auto !important;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search[data-expanded="true"] .gooey-search-tabs-input {
+    min-width: 0;
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search[data-expanded="true"] .gooey-search-tabs-right-slot {
+    width: clamp(48px, 10vw, 60px) !important;
+    flex: 0 0 clamp(48px, 10vw, 60px);
+  }
+
+  .role-nav-wrap--mobile .header-gooey-search[data-expanded="true"] .gooey-search-tabs-close-content {
+    width: clamp(44px, 10vw, 52px);
+    height: clamp(44px, 10vw, 52px);
   }
 
   .role-nav {
@@ -1511,6 +1567,7 @@ a {
     width: 100%;
     height: 64px;
     min-width: 0;
+    align-items: stretch;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 4px;
     padding: 0;
@@ -1526,6 +1583,10 @@ a {
     width: auto;
     min-width: 0;
     height: 56px;
+  }
+
+  .content-panel {
+    padding-bottom: clamp(18px, 4vw, 36px);
   }
 }
 
@@ -1716,9 +1777,10 @@ a {
   .role-nav-link {
     width: auto;
     min-height: 52px;
+    border-radius: 999px;
     padding: 6px 3px;
-    border: 1px solid rgb(219 228 224 / 80%);
-    background: rgb(255 255 255 / 72%);
+    border: 0;
+    background: transparent;
     font-size: 0.61rem;
   }
 
@@ -1726,9 +1788,10 @@ a {
     width: auto;
     height: 52px;
     min-height: 52px;
+    border-radius: 999px;
     padding: 6px 3px;
-    border: 1px solid rgb(219 228 224 / 80%);
-    background: rgb(255 255 255 / 72%);
+    border: 0;
+    background: transparent;
     font-size: 0.61rem;
   }
 

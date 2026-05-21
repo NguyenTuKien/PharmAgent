@@ -20,5 +20,6 @@ public interface RelationshipService {
     void acceptInvitation(String relationshipId);
     void refuseInvitation(String relationshipId);
     void updateRelationship(String elderlyId, FamilyRelation relation, String customRelation);
+    void deleteRelationship(String elderlyId);
     void createRelationship(String caregiverId, String elderlyId, FamilyRelation relation, String customRelation, PermissionLevel permissionLevel);
 }

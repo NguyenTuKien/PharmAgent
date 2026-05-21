@@ -44,4 +44,10 @@ public class CaregiverRelationshipController {
         relationshipService.updateRelationship(targetElderlyId, request.getRelation(), request.getCustomRelation());
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/{targetElderlyId}")
+    public ResponseEntity<Void> deleteRelationship(@PathVariable("targetElderlyId") String targetElderlyId) {
+        relationshipService.deleteRelationship(targetElderlyId);
+        return ResponseEntity.noContent().build();
+    }
 }
