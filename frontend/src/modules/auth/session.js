@@ -19,6 +19,7 @@ const PROFILE_FIELDS = [
 ]
 
 const normalizeString = (value) => (typeof value === 'string' && value.trim() ? value : null)
+const normalizeRole = (role) => normalizeString(role)?.toUpperCase() ?? null
 
 function sanitizeProfile(profile) {
   if (!profile || typeof profile !== 'object') {
@@ -132,12 +133,49 @@ export function canAccessRoles(activeRole, requiredRoles = []) {
     return true
   }
 
-  const normalizedRole = normalizeString(activeRole)?.toUpperCase()
+  const normalizedRole = normalizeRole(activeRole)
   if (!normalizedRole) {
     return false
   }
 
-  return requiredRoles.some((role) => normalizeString(role)?.toUpperCase() === normalizedRole)
+  return requiredRoles.some((role) => normalizeRole(role) === normalizedRole)
+}
+
+export function getAutoSelectableProfile(profiles = []) {
+  const normalizedProfiles = normalizeProfilesPage(profiles)
+  if (!normalizedProfiles.length) {
+    return null
+  }
+
+  const adminProfile = normalizedProfiles.find((profile) => normalizeRole(profile.role) === 'ADMIN')
+  if (adminProfile) {
+    return adminProfile
+  }
+
+  const hasLinkedElderly = normalizedProfiles.some(
+    (profile) => normalizeRole(profile.role) === 'ELDERLY',
+  )
+  const caregiverProfiles = normalizedProfiles.filter(
+    (profile) => normalizeRole(profile.role) === 'CAREGIVER',
+  )
+
+  if (!hasLinkedElderly && caregiverProfiles.length === 1) {
+    return caregiverProfiles[0]
+  }
+
+  if (normalizedProfiles.length === 1 && !hasLinkedElderly) {
+    return normalizedProfiles[0]
+  }
+
+  return null
+}
+
+export function requiresProfileSelection(profiles = []) {
+  return normalizeProfilesPage(profiles).length > 0 && !getAutoSelectableProfile(profiles)
+}
+
+export function getProfileLandingPath(profile) {
+  return normalizeRole(profile?.role) === 'ADMIN' ? '/admin' : '/dashboard'
 }
 
 function getDefaultSessionStorage() {

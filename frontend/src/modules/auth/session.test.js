@@ -6,8 +6,11 @@ import {
   canAccessRoles,
   clearSession,
   deriveAuthStateFromSession,
+  getAutoSelectableProfile,
+  getProfileLandingPath,
   loadSession,
   normalizeProfilesPage,
+  requiresProfileSelection,
   saveSession,
   sanitizeSession,
 } from './session.js'
@@ -199,6 +202,45 @@ test('canAccessRoles accepts roles case-insensitively and allows empty requireme
   assert.equal(canAccessRoles('ELDERLY', ['caregiver']), false)
   assert.equal(canAccessRoles('ADMIN', []), true)
   assert.equal(canAccessRoles(undefined, ['ADMIN']), false)
+})
+
+test('getAutoSelectableProfile skips profile selection for admin accounts', () => {
+  const adminProfile = {
+    id: 'admin-profile',
+    firstName: 'Minh',
+    role: 'ADMIN',
+  }
+
+  assert.deepEqual(getAutoSelectableProfile([adminProfile]), adminProfile)
+  assert.equal(requiresProfileSelection([adminProfile]), false)
+})
+
+test('getAutoSelectableProfile skips profile selection for caregivers without elderly profiles', () => {
+  const caregiverProfile = {
+    id: 'caregiver-profile',
+    firstName: 'An',
+    role: 'CAREGIVER',
+  }
+
+  assert.deepEqual(getAutoSelectableProfile([caregiverProfile]), caregiverProfile)
+  assert.equal(requiresProfileSelection([caregiverProfile]), false)
+})
+
+test('requiresProfileSelection asks caregiver to choose when linked elderly profiles exist', () => {
+  const profiles = [
+    { id: 'caregiver-profile', firstName: 'An', role: 'CAREGIVER' },
+    { id: 'elderly-profile', firstName: 'Binh', role: 'ELDERLY' },
+  ]
+
+  assert.equal(getAutoSelectableProfile(profiles), null)
+  assert.equal(requiresProfileSelection(profiles), true)
+})
+
+test('getProfileLandingPath sends admin profiles to admin area and others to dashboard', () => {
+  assert.equal(getProfileLandingPath({ role: 'ADMIN' }), '/admin')
+  assert.equal(getProfileLandingPath({ role: 'CAREGIVER' }), '/dashboard')
+  assert.equal(getProfileLandingPath({ role: 'ELDERLY' }), '/dashboard')
+  assert.equal(getProfileLandingPath(null), '/dashboard')
 })
 
 test('session helpers use localStorage by default so auth survives new tabs', () => {

@@ -53,8 +53,8 @@ export function LoginPage() {
 
     setIsLoading(true);
     completeGoogleLogin(callback.code)
-      .then(() => {
-        navigate("/profiles", { replace: true });
+      .then((result) => {
+        navigate(result.redirectTo, { replace: true });
       })
       .catch((err) => {
         const message = getToastErrorMessage(
@@ -97,11 +97,13 @@ export function LoginPage() {
 
     setIsLoading(true);
     try {
-      await login(email, password);
+      const result = await login(email, password);
       notify.success("Đăng nhập thành công", {
-        description: "Đang chuyển bạn vào PharmAgent.",
+        description: result.requiresProfileSelection
+          ? "Vui lòng chọn hồ sơ bạn muốn sử dụng."
+          : "Đang chuyển bạn vào PharmAgent.",
       });
-      navigate("/");
+      navigate(result.redirectTo, { replace: true });
     } catch (err) {
       const message = err.response?.data?.message || "";
       if (message.toLowerCase().includes("xác minh")) {

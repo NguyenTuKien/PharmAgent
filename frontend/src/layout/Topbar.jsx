@@ -37,9 +37,7 @@ export function Topbar() {
 
   const handleLogout = async () => {
     await logout()
-    notify.success('Đã đăng xuất', {
-      description: 'Phiên đăng nhập đã được xóa khỏi trình duyệt này.',
-    })
+    notify.success('Đã đăng xuất')
     navigate('/login', { replace: true })
   }
 
