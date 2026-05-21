@@ -142,7 +142,7 @@ def get_pill_by_id(pill_id: str):
 
 @router.post("/admin/pills", response_model=PillResponse)
 def create_pill(request: PillCreateRequest):
-    from ..main import reload_catalog # Lazy import to avoid circular dependency
+    from main import reload_catalog # Lazy import to avoid circular dependency
     init_pills_db()
     
     pill_id = str(uuid.uuid4())
@@ -178,7 +178,7 @@ def create_pill(request: PillCreateRequest):
 
 @router.put("/admin/pills/{pill_id}", response_model=PillResponse)
 def update_pill(pill_id: str, request: PillRequest):
-    from ..main import reload_catalog
+    from main import reload_catalog
     init_pills_db()
     
     conn = sqlite3.connect(DEFAULT_DB_PATH)
@@ -224,7 +224,7 @@ def update_pill(pill_id: str, request: PillRequest):
 
 @router.delete("/admin/pills/{pill_id}")
 def delete_pill(pill_id: str):
-    from ..main import reload_catalog
+    from main import reload_catalog
     init_pills_db()
     
     conn = sqlite3.connect(DEFAULT_DB_PATH)
@@ -238,7 +238,7 @@ def delete_pill(pill_id: str):
 
 @router.post("/admin/pills/{pill_id}/images", response_model=PillResponse)
 def add_pill_image(pill_id: str, request: PillImageBase):
-    from ..main import reload_catalog
+    from main import reload_catalog
     init_pills_db()
     
     conn = sqlite3.connect(DEFAULT_DB_PATH)
@@ -281,7 +281,7 @@ def add_pill_image(pill_id: str, request: PillImageBase):
 
 @router.delete("/admin/pills/{pill_id}/images/{image_id}")
 def delete_pill_image(pill_id: str, image_id: str):
-    from ..main import reload_catalog
+    from main import reload_catalog
     init_pills_db()
     
     conn = sqlite3.connect(DEFAULT_DB_PATH)
