@@ -68,12 +68,6 @@ function profileName(profile) {
   return name || 'Hồ sơ PharmAgent'
 }
 
-function profileInitials(profile) {
-  const parts = profileName(profile).split(/\s+/).filter(Boolean)
-  const initials = parts.length > 1 ? `${parts[0][0]}${parts[parts.length - 1][0]}` : parts[0]?.[0]
-  return (initials || 'P').toUpperCase()
-}
-
 function profilePhone(profile) {
   return profile?.phone || 'Chưa cập nhật số điện thoại'
 }
@@ -101,7 +95,7 @@ function ProfileAvatar({ profile }) {
       {profile?.avatarUrl ? (
         <img className="h-full w-full object-cover" src={profile.avatarUrl} alt="" />
       ) : (
-        <span>{profileInitials(profile)}</span>
+        <User className="h-8 w-8" strokeWidth={1.9} />
       )}
     </div>
   )

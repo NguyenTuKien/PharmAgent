@@ -1,6 +1,6 @@
 package ct01.n07.backend.dto.relationship;
 
-import ct01.n07.backend.model.enums.PermissionLevel;
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.RelationStatus;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +16,8 @@ public class ElderlyProfileResponse {
     private String address;
     private String avatarUrl;
     private String elderlyTitle;
+    private FamilyRelation relation;
+    private String customRelation;
+    private String relationLabel;
     private RelationStatus status;
-    private PermissionLevel permissionLevel;
 }

@@ -7,7 +7,9 @@ import ct01.n07.backend.dto.auth.VerifyEmailRequest;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.User;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.Gender;
+import ct01.n07.backend.model.enums.PermissionLevel;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.model.enums.UserStatus;
 import ct01.n07.backend.producer.MailProducerService;
@@ -166,6 +168,55 @@ class RegistrationFacadeTest {
                 eq("VERIFY_EMAIL:caregiver@example.com"),
                 eq("123456"),
                 eq(Duration.ofMinutes(15)));
+    }
+
+    @Test
+    void registerWithElderlyCreatesRelationshipWithFamilyRelationAndFullManagement() {
+        RegisterRequest request = registerRequest();
+        RegisterRequest.ElderlyRegisterRequest elderly = RegisterRequest.ElderlyRegisterRequest.builder()
+                .firstName("Binh")
+                .lastName("Nguyen")
+                .phone("0987654321")
+                .dateOfBirth(LocalDate.of(1948, 6, 2))
+                .gender(Gender.MALE)
+                .relation(FamilyRelation.FATHER)
+                .build();
+        request.setElderly(elderly);
+        User user = User.builder()
+                .id("user-1")
+                .email("caregiver@example.com")
+                .userStatus(UserStatus.INACTIVE)
+                .build();
+        UserProfile caregiverProfile = UserProfile.builder()
+                .id("caregiver-1")
+                .userId("user-1")
+                .firstName("An")
+                .lastName("Nguyen")
+                .role(Role.CAREGIVER)
+                .build();
+        UserProfile elderlyProfile = UserProfile.builder()
+                .id("elderly-1")
+                .userId("user-1")
+                .role(Role.ELDERLY)
+                .build();
+
+        when(userService.createUser(any(LoginRequest.class), eq(UserStatus.INACTIVE))).thenReturn(user);
+        when(userProfileMapper.toCaregiverProfile(request, "user-1")).thenReturn(caregiverProfile);
+        when(userProfileMapper.toElderlyProfile(request, "user-1")).thenReturn(elderlyProfile);
+        when(userProfileService.saveUserProfile(caregiverProfile)).thenReturn(caregiverProfile);
+        when(userProfileService.saveUserProfile(elderlyProfile)).thenReturn(elderlyProfile);
+        when(jwtService.generateAuthToken("user-1")).thenReturn("onboarding-token");
+        when(otpUtil.generateOtp()).thenReturn("123456");
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        registrationFacade.register(request);
+
+        verify(relationshipService).createRelationship(
+                "caregiver-1",
+                "elderly-1",
+                FamilyRelation.FATHER,
+                null,
+                PermissionLevel.MANAGE_ALL);
     }
 
     private RegisterRequest registerRequest() {

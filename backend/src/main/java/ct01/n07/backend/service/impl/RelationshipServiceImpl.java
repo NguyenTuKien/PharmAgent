@@ -3,6 +3,7 @@ package ct01.n07.backend.service.impl;
 import ct01.n07.backend.dto.relationship.RelationshipInviteRequest;
 import ct01.n07.backend.model.Relationship;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.PermissionLevel;
 import ct01.n07.backend.model.enums.RelationStatus;
 import ct01.n07.backend.model.enums.Role;
@@ -20,6 +21,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class RelationshipServiceImpl implements RelationshipService {
+
+    private static final PermissionLevel DEFAULT_CAREGIVER_PERMISSION = PermissionLevel.MANAGE_ALL;
 
     private final RelationshipRepository relationshipRepository;
     private final UserProfileRepository userProfileRepository;
@@ -76,8 +79,10 @@ public class RelationshipServiceImpl implements RelationshipService {
                 .caregiverId(currentProfile.getId())
                 .elderlyId(request.getTargetElderlyId())
                 .caregiverTitle(request.getCaregiverTitle())
-                .elderlyTitle(request.getElderlyTitle())
-                .permissionLevel(request.getPermissionLevel())
+                .elderlyTitle(resolveRelationLabel(request.getRelation(), request.getCustomRelation(), request.getElderlyTitle()))
+                .relation(normalizeRelation(request.getRelation()))
+                .customRelation(normalizeCustomRelation(request.getRelation(), request.getCustomRelation()))
+                .permissionLevel(DEFAULT_CAREGIVER_PERMISSION)
                 .status(RelationStatus.PENDING)
                 .build();
 
@@ -125,7 +130,7 @@ public class RelationshipServiceImpl implements RelationshipService {
     }
 
     @Override
-    public void updateRelationship(String elderlyId, PermissionLevel permissionLevel) {
+    public void updateRelationship(String elderlyId, FamilyRelation relation, String customRelation) {
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);
 
@@ -148,22 +153,26 @@ public class RelationshipServiceImpl implements RelationshipService {
                         // Tên gợi nhớ sẽ được lấy từ bản ghi cũ (nếu có) hoặc để null
                         .build());
 
-        // 3. Cập nhật quyền hạn (permissionLevel) từ tham số truyền vào
-        pendingRelationship.setPermissionLevel(permissionLevel);
+        // 3. Cập nhật quan hệ hiển thị, quyền quản lý vẫn là toàn quyền nội bộ
+        pendingRelationship.setRelation(normalizeRelation(relation));
+        pendingRelationship.setCustomRelation(normalizeCustomRelation(relation, customRelation));
+        pendingRelationship.setElderlyTitle(resolveRelationLabel(relation, customRelation, pendingRelationship.getElderlyTitle()));
+        pendingRelationship.setPermissionLevel(DEFAULT_CAREGIVER_PERMISSION);
 
         // 4. Lưu lại vào DB
         relationshipRepository.save(pendingRelationship);
     }
 
     @Override
-    public void createRelationship(String caregiverId, String elderlyId, String caregiverTitle, String elderlyTitle,
+    public void createRelationship(String caregiverId, String elderlyId, FamilyRelation relation, String customRelation,
             PermissionLevel permissionLevel) {
         Relationship relationship = Relationship.builder()
                 .caregiverId(caregiverId)
                 .elderlyId(elderlyId)
-                .caregiverTitle(caregiverTitle)
-                .elderlyTitle(elderlyTitle)
-                .permissionLevel(permissionLevel)
+                .elderlyTitle(resolveRelationLabel(relation, customRelation, null))
+                .relation(normalizeRelation(relation))
+                .customRelation(normalizeCustomRelation(relation, customRelation))
+                .permissionLevel(permissionLevel == null ? DEFAULT_CAREGIVER_PERMISSION : permissionLevel)
                 .status(RelationStatus.ACCEPTED)
                 .build();
         relationshipRepository.save(relationship);
@@ -174,5 +183,33 @@ public class RelationshipServiceImpl implements RelationshipService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "You do not have permission to perform this action");
         }
+    }
+
+    private FamilyRelation normalizeRelation(FamilyRelation relation) {
+        return relation == null ? FamilyRelation.OTHER : relation;
+    }
+
+    private String normalizeCustomRelation(FamilyRelation relation, String customRelation) {
+        String normalized = customRelation == null ? null : customRelation.trim();
+        if (normalized == null || normalized.isBlank()) {
+            return null;
+        }
+        return normalizeRelation(relation) == FamilyRelation.OTHER ? normalized : null;
+    }
+
+    private String resolveRelationLabel(FamilyRelation relation, String customRelation, String fallback) {
+        FamilyRelation normalizedRelation = normalizeRelation(relation);
+        String normalizedCustomRelation = normalizeCustomRelation(normalizedRelation, customRelation);
+        if (normalizedRelation == FamilyRelation.OTHER && normalizedCustomRelation != null) {
+            return normalizedCustomRelation;
+        }
+        if (normalizedRelation != FamilyRelation.OTHER) {
+            return normalizedRelation.getLabel();
+        }
+        return hasText(fallback) ? fallback.trim() : normalizedRelation.getLabel();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

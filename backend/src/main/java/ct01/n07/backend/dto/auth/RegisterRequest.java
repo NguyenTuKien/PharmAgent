@@ -1,7 +1,7 @@
 package ct01.n07.backend.dto.auth;
 
 import ct01.n07.backend.model.enums.Gender;
-import ct01.n07.backend.model.enums.PermissionLevel;
+import ct01.n07.backend.model.enums.FamilyRelation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -95,7 +95,10 @@ public class RegisterRequest {
         private String caregiverTitle;
         private String elderlyTitle;
 
-        @NotNull(message = "Permission level is required")
-        private PermissionLevel permissionLevel;
+        @NotNull(message = "Quan hệ không được để trống")
+        private FamilyRelation relation;
+
+        @Size(max = 50, message = "Quan hệ khác không được vượt quá 50 ký tự")
+        private String customRelation;
     }
 }

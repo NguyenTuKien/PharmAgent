@@ -1,4 +1,5 @@
 package ct01.n07.backend.model;
+import ct01.n07.backend.model.enums.FamilyRelation;
 import ct01.n07.backend.model.enums.PermissionLevel;
 import ct01.n07.backend.model.enums.RelationStatus;
 import lombok.AllArgsConstructor;
@@ -33,6 +34,8 @@ public class Relationship {
 
     private String caregiverTitle;
     private String elderlyTitle;
+    private FamilyRelation relation;
+    private String customRelation;
     private PermissionLevel permissionLevel;
     private RelationStatus status;
     private LocalDate startDate;

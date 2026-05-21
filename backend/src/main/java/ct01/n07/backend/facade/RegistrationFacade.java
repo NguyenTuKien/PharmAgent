@@ -9,6 +9,7 @@ import ct01.n07.backend.dto.auth.VerifyEmailRequest;
 import ct01.n07.backend.mapper.UserProfileMapper;
 import ct01.n07.backend.model.User;
 import ct01.n07.backend.model.UserProfile;
+import ct01.n07.backend.model.enums.PermissionLevel;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.model.enums.UserStatus;
 import ct01.n07.backend.producer.MailProducerService;
@@ -91,9 +92,9 @@ public class RegistrationFacade {
             relationshipService.createRelationship(
                     caregiverProfile.getId(),
                     elderlyProfile.getId(),
-                    registerRequest.getElderly().getCaregiverTitle(),
-                    registerRequest.getElderly().getElderlyTitle(),
-                    registerRequest.getElderly().getPermissionLevel()
+                    registerRequest.getElderly().getRelation(),
+                    registerRequest.getElderly().getCustomRelation(),
+                    PermissionLevel.MANAGE_ALL
             );
         }
 
@@ -144,9 +145,9 @@ public class RegistrationFacade {
         relationshipService.createRelationship(
                 caregiverProfile.getId(),
                 elderlyProfile.getId(),
-                request.getCaregiverTitle(),
-                request.getElderlyTitle(),
-                request.getPermissionLevel());
+                request.getRelation(),
+                request.getCustomRelation(),
+                PermissionLevel.MANAGE_ALL);
 
         return AuthMessageResponse.builder()
                 .email(user.getEmail())

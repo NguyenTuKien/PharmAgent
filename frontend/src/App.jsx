@@ -19,7 +19,7 @@ import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.jsx'
 import { NotFoundPage } from './pages/NotFoundPage.jsx'
 import { ProfileSettingsPage } from './pages/ProfileSettingsPage.jsx'
 import { ProfileSelectPage } from './pages/ProfileSelectPage.jsx'
-import { RelationshipsPage } from './pages/RelationshipsPage.jsx'
+import { RelationshipsPage } from './pages/caregiver/RelationshipsPage.jsx'
 import { ScanPage } from './pages/ScanPage.jsx'
 import { UnauthorizedPage } from './pages/UnauthorizedPage.jsx'
 import { WorkspacePage } from './pages/WorkspacePage.jsx'
@@ -145,7 +145,7 @@ function App() {
               path="/chat"
             />
 
-            <Route element={<ProfileSettingsPage />} path="/settings" />
+            <Route element={<ProfileSettingsPage />} path="/my-profile" />
 
             <Route element={<RoleRoute roles={['ADMIN']} />}>
               <Route element={<AdminLayout />} path="/admin">

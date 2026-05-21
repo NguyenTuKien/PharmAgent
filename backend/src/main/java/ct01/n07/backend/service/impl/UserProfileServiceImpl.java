@@ -218,7 +218,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     public UserProfileResponse updateAvatar(UpdateAvatarRequest request) {
         UserProfile currentProfile = getCurrentUserProfile();
         requireEditableCurrentProfile(currentProfile);
-        currentProfile.setAvatarUrl(request.getAvatarUrl());
+        currentProfile.setAvatarUrl(normalizeOptional(request.getAvatarUrl()));
         return userProfileMapper.toResponse(userProfileRepository.save(currentProfile));
     }
 
@@ -270,6 +270,15 @@ public class UserProfileServiceImpl implements UserProfileService {
         if (profile.getRole() == Role.ELDERLY) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ProfileConstant.ELDERLY_PROFILE_READ_ONLY);
         }
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
 

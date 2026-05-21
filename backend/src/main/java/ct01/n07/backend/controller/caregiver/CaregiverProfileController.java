@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * Các thao tác quản lý profile chỉ dành cho CAREGIVER.
- * Phân quyền được cấu hình tập trung tại SecurityConfiguration.
+ * Bảo vệ endpoint được cấu hình tập trung tại SecurityConfiguration.
  */
 @RestController
 @RequiredArgsConstructor

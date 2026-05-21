@@ -163,6 +163,7 @@ public class DataSeeder implements CommandLineRunner {
                     .elderlyId(elderly.getId())
                     .caregiverTitle("Con trai")
                     .elderlyTitle("Bố")
+                    .relation(FamilyRelation.FATHER)
                     .permissionLevel(PermissionLevel.MANAGE_ALL)
                     .status(RelationStatus.ACCEPTED)
                     .startDate(LocalDate.now().minusDays(10))
