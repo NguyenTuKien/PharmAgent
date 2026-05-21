@@ -136,31 +136,44 @@ public class RelationshipServiceImpl implements RelationshipService {
 
         String caregiverId = currentProfile.getId();
 
-        // 1. Đảm bảo mối quan hệ gốc (ACCEPTED) đang tồn tại
-        if (!relationshipRepository.existsByCaregiverIdAndElderlyIdAndStatus(
-                caregiverId, elderlyId, RelationStatus.ACCEPTED)) {
+        List<Relationship> acceptedRelationships = relationshipRepository
+                .findAllByCaregiverIdAndElderlyIdAndStatus(caregiverId, elderlyId, RelationStatus.ACCEPTED);
+        List<Relationship> pendingRelationships = relationshipRepository
+                .findAllByCaregiverIdAndElderlyIdAndStatus(caregiverId, elderlyId, RelationStatus.PENDING);
+
+        if (acceptedRelationships.isEmpty() && pendingRelationships.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không tìm thấy mối quan hệ hợp lệ để cập nhật");
         }
 
-        // 2. Tìm yêu cầu PENDING cũ (nếu có) để GHI ĐÈ, hoặc tạo mới nếu chưa có
-        Relationship pendingRelationship = relationshipRepository
-                .findAllByCaregiverIdAndElderlyIdAndStatus(caregiverId, elderlyId, RelationStatus.PENDING)
-                .stream().findFirst()
+        Relationship acceptedRelationship = acceptedRelationships.stream().findFirst().orElse(null);
+        Relationship pendingRelationship = pendingRelationships.stream().findFirst()
                 .orElse(Relationship.builder()
                         .caregiverId(caregiverId)
                         .elderlyId(elderlyId)
+                        .caregiverTitle(acceptedRelationship == null ? null : acceptedRelationship.getCaregiverTitle())
                         .status(RelationStatus.PENDING)
-                        // Tên gợi nhớ sẽ được lấy từ bản ghi cũ (nếu có) hoặc để null
                         .build());
 
-        // 3. Cập nhật quan hệ hiển thị, quyền quản lý vẫn là toàn quyền nội bộ
         pendingRelationship.setRelation(normalizeRelation(relation));
         pendingRelationship.setCustomRelation(normalizeCustomRelation(relation, customRelation));
         pendingRelationship.setElderlyTitle(resolveRelationLabel(relation, customRelation, pendingRelationship.getElderlyTitle()));
         pendingRelationship.setPermissionLevel(DEFAULT_CAREGIVER_PERMISSION);
 
-        // 4. Lưu lại vào DB
         relationshipRepository.save(pendingRelationship);
+    }
+
+    @Override
+    public void deleteRelationship(String elderlyId) {
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
+        requireRole(currentProfile, Role.CAREGIVER);
+
+        List<Relationship> relationships = relationshipRepository
+                .findAllByCaregiverIdAndElderlyId(currentProfile.getId(), elderlyId);
+        if (relationships.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy mối quan hệ để xóa");
+        }
+
+        relationshipRepository.deleteAll(relationships);
     }
 
     @Override

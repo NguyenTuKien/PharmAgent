@@ -32,6 +32,7 @@ import { useAuthStore } from '../../modules/auth/authStore.js'
 import {
   acceptCaregiverInvitation,
   createManagedElderlyProfile,
+  deleteCaregiverRelationship,
   deleteManagedElderlyProfile,
   getCaregiverRelationships,
   getElderlyRelationships,
@@ -182,6 +183,25 @@ function relationPayload(form) {
     relation: form.relation || 'OTHER',
     customRelation: form.relation === 'OTHER' ? normalizeOptional(form.customRelation) : null,
   }
+}
+
+function relationFormFromProfile(profile) {
+  return {
+    relation: profile?.relation ?? 'OTHER',
+    customRelation: profile?.customRelation ?? '',
+  }
+}
+
+function isManagedLocalProfile(profile) {
+  return profile?.source === 'local'
+}
+
+function canEditProfileFields(profile) {
+  return !profile || isManagedLocalProfile(profile)
+}
+
+function canEditProfileRelation(profile) {
+  return Boolean(profile && !isManagedLocalProfile(profile))
 }
 
 function relationshipKey(profile) {
@@ -348,9 +368,14 @@ function AvatarPicker({ disabled, onClear, onFile, profile, uploading, value }) 
   )
 }
 
-function RelationSelect({ value, onChange, className }) {
+function RelationSelect({ value, onChange, className, disabled = false }) {
   return (
-    <select className={cx(inputClass, className)} value={value ?? 'FATHER'} onChange={(event) => onChange(event.target.value)}>
+    <select
+      className={cx(inputClass, className)}
+      disabled={disabled}
+      value={value ?? 'FATHER'}
+      onChange={(event) => onChange(event.target.value)}
+    >
       {FAMILY_RELATION_OPTIONS.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
@@ -360,16 +385,17 @@ function RelationSelect({ value, onChange, className }) {
   )
 }
 
-function RelationFields({ customRelation, onCustomRelationChange, onRelationChange, relation }) {
+function RelationFields({ customRelation, disabled = false, onCustomRelationChange, onRelationChange, relation }) {
   return (
     <div className="grid gap-4">
       <Field label="Quan hệ">
-        <RelationSelect value={relation} onChange={onRelationChange} />
+        <RelationSelect disabled={disabled} value={relation} onChange={onRelationChange} />
       </Field>
       {relation === 'OTHER' ? (
         <Field label="Quan hệ khác">
           <input
             className={inputClass}
+            disabled={disabled}
             placeholder="Nhập cách gọi"
             value={customRelation}
             onChange={(event) => onCustomRelationChange(event.target.value)}
@@ -397,6 +423,10 @@ function LoadingState({ children }) {
   )
 }
 
+function SkeletonBlock({ className }) {
+  return <span aria-hidden="true" className={cx('block animate-pulse rounded bg-slate-200/80', className)} />
+}
+
 function StatusPill({ status }) {
   const normalizedStatus = (status || '').toUpperCase()
   const tones = {
@@ -415,6 +445,20 @@ function StatusPill({ status }) {
     >
       {statusLabel(normalizedStatus)}
     </span>
+  )
+}
+
+function IconActionButton({ children, label, onClick }) {
+  return (
+    <button
+      aria-label={label}
+      className="inline-grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-100 active:scale-[0.98]"
+      title={label}
+      type="button"
+      onClick={onClick}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -476,14 +520,24 @@ function ProfileDrawer({
   onClose,
   onSubmit,
   open,
+  relationForm,
+  setRelationForm,
   setField,
   uploadingAvatar,
 }) {
   const isEdit = Boolean(editTarget)
+  const editableProfileFields = canEditProfileFields(editTarget)
+  const editableRelation = canEditProfileRelation(editTarget)
 
   return (
     <CenteredCardShell
-      description={isEdit ? 'Cập nhật thông tin nhận diện, liên hệ và ảnh đại diện cho hồ sơ đang quản lý.' : 'Tạo hồ sơ người thân mới trong tài khoản chăm sóc của bạn.'}
+      description={
+        isEdit
+          ? editableProfileFields
+            ? 'Cập nhật thông tin nhận diện, liên hệ và ảnh đại diện cho hồ sơ đang quản lý.'
+            : 'Cập nhật quan hệ gia đình với hồ sơ người thân đã kết nối.'
+          : 'Tạo hồ sơ người thân mới trong tài khoản chăm sóc của bạn.'
+      }
       eyebrow="Hồ sơ người thân"
       open={open}
       title={isEdit ? 'Chỉnh sửa hồ sơ' : 'Tạo hồ sơ mới'}
@@ -491,7 +545,7 @@ function ProfileDrawer({
     >
       <form className="grid gap-5" onSubmit={onSubmit}>
         <AvatarPicker
-          disabled={loading}
+          disabled={loading || !editableProfileFields}
           profile={editTarget}
           uploading={uploadingAvatar}
           value={form.avatarUrl}
@@ -507,18 +561,39 @@ function ProfileDrawer({
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Họ">
-                <input className={inputClass} value={form.firstName} onChange={setField('firstName')} />
+                <input
+                  className={inputClass}
+                  disabled={!editableProfileFields || loading}
+                  value={form.firstName}
+                  onChange={setField('firstName')}
+                />
               </Field>
               <Field label="Tên">
-                <input className={inputClass} value={form.lastName} onChange={setField('lastName')} />
+                <input
+                  className={inputClass}
+                  disabled={!editableProfileFields || loading}
+                  value={form.lastName}
+                  onChange={setField('lastName')}
+                />
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Ngày sinh">
-                <input className={inputClass} type="date" value={form.dateOfBirth} onChange={setField('dateOfBirth')} />
+                <input
+                  className={inputClass}
+                  disabled={!editableProfileFields || loading}
+                  type="date"
+                  value={form.dateOfBirth}
+                  onChange={setField('dateOfBirth')}
+                />
               </Field>
               <Field label="Giới tính">
-                <select className={inputClass} value={form.gender} onChange={setField('gender')}>
+                <select
+                  className={inputClass}
+                  disabled={!editableProfileFields || loading}
+                  value={form.gender}
+                  onChange={setField('gender')}
+                >
                   <option value="MALE">Nam</option>
                   <option value="FEMALE">Nữ</option>
                   <option value="OTHER">Khác</option>
@@ -533,13 +608,45 @@ function ProfileDrawer({
               <h3 className="mt-1 text-base font-black text-slate-950">Số điện thoại và địa chỉ</h3>
             </div>
             <Field label="Số điện thoại">
-              <input className={inputClass} value={form.phone} onChange={setField('phone')} />
+              <input
+                className={inputClass}
+                disabled={!editableProfileFields || loading}
+                value={form.phone}
+                onChange={setField('phone')}
+              />
             </Field>
             <Field label="Địa chỉ">
-              <textarea className={textareaClass} value={form.address} onChange={setField('address')} />
+              <textarea
+                className={textareaClass}
+                disabled={!editableProfileFields || loading}
+                value={form.address}
+                onChange={setField('address')}
+              />
             </Field>
           </div>
         </div>
+
+        {editableRelation ? (
+          <div className="grid gap-4 rounded-lg border border-amber-100 bg-amber-50/70 p-4">
+            <div>
+              <p className="text-xs font-black uppercase text-amber-700">Quan hệ gia đình</p>
+              <h3 className="mt-1 text-base font-black text-slate-950">Cách gọi người thân</h3>
+            </div>
+            <RelationFields
+              disabled={loading}
+              customRelation={relationForm.customRelation}
+              relation={relationForm.relation}
+              onCustomRelationChange={(value) => setRelationForm((current) => ({ ...current, customRelation: value }))}
+              onRelationChange={(value) =>
+                setRelationForm((current) => ({
+                  ...current,
+                  relation: value,
+                  customRelation: value === 'OTHER' ? current.customRelation : '',
+                }))
+              }
+            />
+          </div>
+        ) : null}
 
         <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
           <AppButton tone="ghost" onClick={onClose}>
@@ -547,7 +654,7 @@ function ProfileDrawer({
           </AppButton>
           <AppButton disabled={loading || uploadingAvatar} type="submit">
             {loading ? <LoaderCircle className="animate-spin" size={16} /> : <Check size={16} />}
-            {isEdit ? 'Lưu hồ sơ' : 'Tạo hồ sơ'}
+            {isEdit && editableRelation ? 'Lưu quan hệ' : isEdit ? 'Lưu hồ sơ' : 'Tạo hồ sơ'}
           </AppButton>
         </div>
       </form>
@@ -731,9 +838,7 @@ function DetailInfoRow({ icon: Icon, label, value }) {
   )
 }
 
-function ProfileDetailCard({ onChat, onClose, onEdit, onEditRelation, open, profile }) {
-  const isLocalProfile = profile?.source === 'local'
-
+function ProfileDetailCard({ onClose, onDelete, onEdit, open, profile }) {
   return (
     <CenteredCardShell
       description="Xem nhanh thông tin liên hệ, quan hệ gia đình và trạng thái kết nối của hồ sơ được chọn."
@@ -773,27 +878,18 @@ function ProfileDetailCard({ onChat, onClose, onEdit, onEditRelation, open, prof
             </p>
           </div>
 
-          <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+          <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+            <AppButton onClick={() => onEdit(profile)}>
+              <Pencil size={16} />
+              Sửa hồ sơ
+            </AppButton>
+            <AppButton tone="danger" onClick={() => onDelete(profile)}>
+              <Trash2 size={16} />
+              Xóa hồ sơ
+            </AppButton>
             <AppButton tone="ghost" onClick={onClose}>
               Đóng
             </AppButton>
-            {isLocalProfile ? (
-              <AppButton onClick={() => onEdit(profile)}>
-                <Pencil size={16} />
-                Sửa hồ sơ
-              </AppButton>
-            ) : (
-              <>
-                <AppButton disabled={profile.status !== 'ACCEPTED'} tone="secondary" onClick={() => onChat(profile)}>
-                  <MessageCircle size={16} />
-                  Chat
-                </AppButton>
-                <AppButton tone="ghost" onClick={() => onEditRelation(profile)}>
-                  <Pencil size={16} />
-                  Quan hệ
-                </AppButton>
-              </>
-            )}
           </div>
         </div>
       ) : null}
@@ -801,109 +897,120 @@ function ProfileDetailCard({ onChat, onClose, onEdit, onEditRelation, open, prof
   )
 }
 
-function RelationshipTable({ onChat, onDeleteLocalProfile, onEditLocalProfile, onEditRelation, onView, relationships, selectedKey }) {
-  if (!relationships.length) {
+function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
+  if (!isLoading && !relationships.length) {
     return <EmptyState>Không có người thân trong trạng thái này.</EmptyState>
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200">
-      <table className="min-w-[980px] w-full border-collapse bg-white text-left">
-        <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-100">
+      <table className="w-full min-w-[920px] table-fixed border-collapse text-left">
+        <colgroup>
+          <col className="w-[32%]" />
+          <col className="w-[28%]" />
+          <col className="w-[18%]" />
+          <col className="w-[14%]" />
+          <col className="w-[8%]" />
+        </colgroup>
+        <thead className="border-b border-slate-100 bg-slate-50/90 text-xs font-black uppercase text-slate-500">
           <tr>
-            <th className="px-4 py-3">Người thân</th>
-            <th className="px-4 py-3">Số điện thoại</th>
-            <th className="px-4 py-3">Địa chỉ</th>
-            <th className="px-4 py-3">Quan hệ</th>
-            <th className="px-4 py-3">Trạng thái</th>
-            <th className="px-4 py-3">Thao tác</th>
+            <th className="px-5 py-3.5">Người thân</th>
+            <th className="px-5 py-3.5">Liên hệ</th>
+            <th className="px-5 py-3.5">Quan hệ</th>
+            <th className="px-5 py-3.5">Trạng thái</th>
+            <th className="px-5 py-3.5 text-right">Mở</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {relationships.map((profile) => {
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, index) => (
+              <tr key={`relationship-skeleton-${index}`}>
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <SkeletonBlock className="h-11 w-11 rounded-xl" />
+                    <div className="grid min-w-0 flex-1 gap-2">
+                      <SkeletonBlock className="h-4 w-40 max-w-full" />
+                      <SkeletonBlock className="h-3 w-28 max-w-full" />
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-4">
+                  <div className="grid gap-2">
+                    <SkeletonBlock className="h-3.5 w-36 max-w-full" />
+                    <SkeletonBlock className="h-3.5 w-48 max-w-full" />
+                  </div>
+                </td>
+                <td className="px-5 py-4">
+                  <SkeletonBlock className="h-8 w-24" />
+                </td>
+                <td className="px-5 py-4">
+                  <SkeletonBlock className="h-8 w-24" />
+                </td>
+                <td className="px-5 py-4">
+                  <div className="flex justify-end">
+                    <SkeletonBlock className="h-9 w-9" />
+                  </div>
+                </td>
+              </tr>
+            ))
+          ) : (
+            relationships.map((profile) => {
             const key = relationshipKey(profile)
             const isSelected = key === selectedKey
-            const phoneHref = profile.phone ? `tel:${profile.phone}` : undefined
-            const isLocalProfile = profile.source === 'local'
 
             return (
               <tr
-                className={cx('cursor-pointer transition hover:bg-emerald-50/50', isSelected && 'bg-emerald-50/70')}
+                className={cx('cursor-pointer align-top transition hover:bg-emerald-50/50', isSelected && 'bg-emerald-50/70')}
                 key={profile.relationshipId ?? key}
                 onClick={() => onView(profile)}
               >
-                <td className="px-4 py-3">
-                  <button className="flex min-w-0 items-center gap-3 text-left" type="button" onClick={() => onView(profile)}>
+                <td className="px-5 py-4">
+                  <button
+                    className="flex min-w-0 items-center gap-3 text-left"
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onView(profile)
+                    }}
+                  >
                     <ProfileBadge profile={profile} size="sm" />
                     <span className="min-w-0">
-                      <strong className="block max-w-48 truncate text-sm font-black text-slate-950">{fullName(profile)}</strong>
-                      <small className="mt-1 block max-w-48 truncate text-xs font-bold text-slate-500">
-                        {relationshipLabel(profile)}
+                      <strong className="block truncate text-sm font-black text-slate-950">{fullName(profile)}</strong>
+                      <small className="mt-1 block truncate text-xs font-bold text-slate-500">
+                        {GENDER_LABELS[profile.gender] || 'Chưa cập nhật'} · {profile.dateOfBirth || 'Chưa có ngày sinh'}
                       </small>
                     </span>
                   </button>
                 </td>
-                <td className="px-4 py-3 text-sm font-semibold text-slate-700">{profile.phone || 'Chưa cập nhật'}</td>
-                <td className="max-w-56 px-4 py-3 text-sm font-semibold text-slate-700">
-                  <span className="line-clamp-2">{profile.address || 'Chưa cập nhật'}</span>
+                <td className="px-5 py-4">
+                  <div className="grid gap-2 text-sm font-semibold text-slate-700">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Phone className="shrink-0 text-slate-400" size={15} />
+                      <span className="truncate">{profile.phone || 'Chưa cập nhật số điện thoại'}</span>
+                    </span>
+                    <span className="flex min-w-0 items-start gap-2 text-slate-500">
+                      <MapPin className="mt-0.5 shrink-0 text-slate-400" size={15} />
+                      <span className="line-clamp-2">{profile.address || 'Chưa cập nhật địa chỉ'}</span>
+                    </span>
+                  </div>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-5 py-4">
                   <RelationChip profile={profile} />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-5 py-4">
                   <StatusPill status={profile.status} />
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
-                    <AppButton size="sm" tone="secondary" onClick={() => onView(profile)}>
-                      <Eye size={14} />
-                      Chi tiết
-                    </AppButton>
-                    {isLocalProfile ? (
-                      <>
-                        <AppButton size="sm" tone="ghost" onClick={() => onEditLocalProfile(profile)}>
-                          <Pencil size={14} />
-                          Sửa
-                        </AppButton>
-                        <AppButton size="sm" tone="danger" onClick={() => onDeleteLocalProfile(profile)}>
-                          <Trash2 size={14} />
-                          Xóa
-                        </AppButton>
-                      </>
-                    ) : (
-                      <>
-                        <AppButton disabled={profile.status !== 'ACCEPTED'} size="sm" tone="ghost" onClick={() => onChat(profile)}>
-                          <MessageCircle size={14} />
-                          Chat
-                        </AppButton>
-                        <AppButton size="sm" tone="ghost" onClick={() => onEditRelation(profile)}>
-                          <Pencil size={14} />
-                          Quan hệ
-                        </AppButton>
-                      </>
-                    )}
-                    <a
-                      aria-disabled={!phoneHref}
-                      className={cx(
-                        'inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition',
-                        'hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800',
-                        !phoneHref && 'pointer-events-none cursor-not-allowed opacity-60',
-                      )}
-                      href={phoneHref}
-                      onClick={(event) => {
-                        if (!phoneHref) {
-                          event.preventDefault()
-                        }
-                      }}
-                    >
-                      <Phone size={14} />
-                      Gọi
-                    </a>
+                <td className="px-5 py-4 text-right">
+                  <div onClick={(event) => event.stopPropagation()}>
+                    <IconActionButton label={`Mở chi tiết ${fullName(profile)}`} onClick={() => onView(profile)}>
+                      <Eye size={16} />
+                    </IconActionButton>
                   </div>
                 </td>
               </tr>
             )
-          })}
+            })
+          )}
         </tbody>
       </table>
     </div>
@@ -1075,49 +1182,12 @@ function InviteDrawer({
   )
 }
 
-function RelationDrawer({ form, loading, onClose, onSubmit, setForm, target }) {
-  return (
-    <CenteredCardShell
-      description="Thay đổi cách gọi quan hệ. Yêu cầu sẽ chờ người thân xác nhận trước khi cập nhật chính thức."
-      eyebrow="Quan hệ"
-      maxWidth="max-w-2xl"
-      open={Boolean(target)}
-      title="Chỉnh sửa quan hệ"
-      onClose={onClose}
-    >
-      <form className="grid gap-4" onSubmit={onSubmit}>
-        <div className="flex items-start gap-3 rounded-lg border border-sky-100 bg-sky-50 p-3">
-          <ProfileBadge profile={target} />
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase text-sky-700">Người thân</p>
-            <strong className="mt-1 block truncate text-sm font-black text-slate-950">{target ? fullName(target) : 'Chưa chọn hồ sơ'}</strong>
-            <span className="mt-1 block text-xs font-bold text-slate-600">Yêu cầu thay đổi quan hệ sẽ chuyển sang trạng thái chờ xác nhận.</span>
-          </div>
-        </div>
-        <RelationFields
-          customRelation={form.customRelation}
-          relation={form.relation}
-          onCustomRelationChange={(value) => setForm((current) => ({ ...current, customRelation: value }))}
-          onRelationChange={(value) => setForm((current) => ({ ...current, relation: value, customRelation: value === 'OTHER' ? current.customRelation : '' }))}
-        />
-        <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
-          <AppButton tone="ghost" onClick={onClose}>
-            Hủy
-          </AppButton>
-          <AppButton disabled={loading} type="submit">
-            {loading ? <LoaderCircle className="animate-spin" size={16} /> : <Check size={16} />}
-            Gửi yêu cầu
-          </AppButton>
-        </div>
-      </form>
-    </CenteredCardShell>
-  )
-}
-
 function ConfirmDeleteDialog({ target, onCancel, onConfirm }) {
   if (!target) {
     return null
   }
+
+  const isLocalProfile = isManagedLocalProfile(target)
 
   return (
     <>
@@ -1137,7 +1207,9 @@ function ConfirmDeleteDialog({ target, onCancel, onConfirm }) {
           </IconButton>
         </div>
         <p className="text-sm font-semibold text-slate-600">
-          Bạn có chắc muốn xóa hồ sơ “{fullName(target)}”? Thao tác này chỉ áp dụng với hồ sơ trong tài khoản của bạn.
+          {isLocalProfile
+            ? `Bạn có chắc muốn xóa hồ sơ “${fullName(target)}”? Thao tác này chỉ áp dụng với hồ sơ trong tài khoản của bạn.`
+            : `Bạn có chắc muốn xóa kết nối với “${fullName(target)}”? Hồ sơ gốc của người thân sẽ không bị xóa khỏi hệ thống.`}
         </p>
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <AppButton tone="ghost" onClick={onCancel}>
@@ -1172,23 +1244,34 @@ function CaregiverRelationshipsPage() {
   const [editTarget, setEditTarget] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [relationTarget, setRelationTarget] = useState(null)
   const [relationForm, setRelationForm] = useState({ relation: 'FATHER', customRelation: '' })
   const [detailTarget, setDetailTarget] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [searching, setSearching] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [updatingRelation, setUpdatingRelation] = useState(false)
+  const caregiverLoadRequestRef = useRef(0)
+  const hasLoadedCaregiverDataRef = useRef(false)
 
   const loadCaregiverData = useCallback(async () => {
-    setLoading(true)
+    const requestId = caregiverLoadRequestRef.current + 1
+    caregiverLoadRequestRef.current = requestId
+
+    const isInitialLoad = !hasLoadedCaregiverDataRef.current
+    setLoading(isInitialLoad)
+    setRefreshing(!isInitialLoad)
     try {
       const [profilesPage, accepted, pending] = await Promise.all([
         getProfiles({ page: 0, size: 100 }),
         getCaregiverRelationships(),
         getPendingCaregiverRelationships(),
       ])
+
+      if (caregiverLoadRequestRef.current !== requestId) {
+        return
+      }
+
       const accountProfiles = asPageContent(profilesPage)
       const relativeProfiles = accountProfiles.filter((profile) => profile.role === 'ELDERLY')
       setLocalProfiles(relativeProfiles)
@@ -1196,9 +1279,15 @@ function CaregiverRelationshipsPage() {
       setPendingRelationships(Array.isArray(pending) ? pending : [])
       replaceProfiles([useAuthStore.getState().activeProfile, ...accountProfiles].filter(Boolean))
     } catch (err) {
-      notify.apiError(err, 'Không thể tải danh sách người thân')
+      if (caregiverLoadRequestRef.current === requestId) {
+        notify.apiError(err, 'Không thể tải danh sách người thân')
+      }
     } finally {
-      setLoading(false)
+      if (caregiverLoadRequestRef.current === requestId) {
+        hasLoadedCaregiverDataRef.current = true
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
   }, [replaceProfiles])
 
@@ -1236,6 +1325,7 @@ function CaregiverRelationshipsPage() {
     setEditTarget(null)
     setDetailTarget(null)
     setForm(EMPTY_PROFILE_FORM)
+    setRelationForm({ relation: 'FATHER', customRelation: '' })
     setDrawerOpen(true)
   }
 
@@ -1253,9 +1343,14 @@ function CaregiverRelationshipsPage() {
     setDetailTarget(null)
     setDrawerOpen(true)
     setForm(profileToForm(profile))
+    setRelationForm(relationFormFromProfile(profile))
+    if (!isManagedLocalProfile(profile)) {
+      return
+    }
+
     try {
       const detail = await getManagedElderlyProfile(profile.id)
-      setEditTarget(detail)
+      setEditTarget({ ...detail, source: 'local' })
       setForm(profileToForm(detail))
     } catch (err) {
       notify.apiError(err, 'Không thể tải chi tiết hồ sơ')
@@ -1272,22 +1367,29 @@ function CaregiverRelationshipsPage() {
 
   async function handleSaveProfile(event) {
     event.preventDefault()
-    if (uploadingAvatar) {
+    const shouldSaveProfile = !editTarget || isManagedLocalProfile(editTarget)
+    const shouldSaveRelation = canEditProfileRelation(editTarget)
+
+    if (shouldSaveProfile && uploadingAvatar) {
       notify.warning('Vui lòng chờ ảnh đại diện tải xong')
       return
     }
-    if (!validateProfileForm()) {
+    if (shouldSaveProfile && !validateProfileForm()) {
       return
     }
 
     setSaving(true)
     try {
-      if (editTarget?.id) {
+      if (editTarget?.id && shouldSaveProfile) {
         await updateManagedElderlyProfile(editTarget.id, buildProfilePayload(form))
         notify.success('Đã cập nhật hồ sơ người thân')
-      } else {
+      } else if (!editTarget) {
         await createManagedElderlyProfile(buildProfilePayload(form))
         notify.success('Đã tạo hồ sơ người thân')
+      }
+      if (shouldSaveRelation) {
+        await updateCaregiverRelationship(relationshipKey(editTarget), relationPayload(relationForm))
+        notify.success('Đã cập nhật quan hệ')
       }
       setDrawerOpen(false)
       await loadCaregiverData()
@@ -1304,8 +1406,13 @@ function CaregiverRelationshipsPage() {
     }
 
     try {
-      await deleteManagedElderlyProfile(deleteTarget.id)
-      notify.success('Đã xóa hồ sơ người thân')
+      if (isManagedLocalProfile(deleteTarget)) {
+        await deleteManagedElderlyProfile(deleteTarget.id)
+        notify.success('Đã xóa hồ sơ người thân')
+      } else {
+        await deleteCaregiverRelationship(relationshipKey(deleteTarget))
+        notify.success('Đã xóa kết nối người thân')
+      }
       await loadCaregiverData()
     } catch (err) {
       notify.apiError(err, 'Không thể xóa hồ sơ')
@@ -1361,33 +1468,6 @@ function CaregiverRelationshipsPage() {
     }
   }
 
-  async function handleSaveRelation(event) {
-    event.preventDefault()
-    if (!relationTarget) {
-      return
-    }
-
-    setUpdatingRelation(true)
-    try {
-      await updateCaregiverRelationship(relationshipKey(relationTarget), relationPayload(relationForm))
-      notify.success('Đã gửi yêu cầu cập nhật quan hệ')
-      setRelationTarget(null)
-      await loadCaregiverData()
-    } catch (err) {
-      notify.apiError(err, 'Không thể cập nhật quan hệ')
-    } finally {
-      setUpdatingRelation(false)
-    }
-  }
-
-  function openRelationDrawer(profile) {
-    setRelationTarget(profile)
-    setRelationForm({
-      relation: profile.relation ?? 'OTHER',
-      customRelation: profile.customRelation ?? '',
-    })
-  }
-
   function handleNavigate(path, action, profile) {
     const targetProfile = profile ?? selectedProfile
     navigate(`${path}${profileQuery(targetProfile, action)}`)
@@ -1398,19 +1478,14 @@ function CaregiverRelationshipsPage() {
     setDetailTarget(profile)
   }
 
-  function handleChat(profile) {
-    setDetailTarget(null)
-    navigate(`/chat${profileQuery(profile)}`)
-  }
-
   function handleEditFromDetail(profile) {
     setDetailTarget(null)
     openEditDrawer(profile)
   }
 
-  function handleEditRelationFromDetail(profile) {
+  function handleDeleteFromDetail(profile) {
     setDetailTarget(null)
-    openRelationDrawer(profile)
+    setDeleteTarget(profile)
   }
 
   const allRelationships = useMemo(
@@ -1461,7 +1536,9 @@ function CaregiverRelationshipsPage() {
     const availableIds = allRelationships.map((profile) => relationshipKey(profile)).filter(Boolean)
 
     if (!availableIds.length) {
-      setSelectedRelationshipId(null)
+      if (selectedRelationshipId) {
+        setSelectedRelationshipId(null)
+      }
       return
     }
 
@@ -1472,10 +1549,6 @@ function CaregiverRelationshipsPage() {
 
   const selectedRelationship = allRelationships.find((profile) => relationshipKey(profile) === selectedRelationshipId)
   const selectedProfile = selectedRelationship ?? null
-
-  if (loading) {
-    return <LoadingState>Đang tải danh sách người thân...</LoadingState>
-  }
 
   return (
     <div className="mx-auto grid w-full max-w-[1480px] gap-5 p-4 sm:p-6 lg:p-8">
@@ -1497,7 +1570,13 @@ function CaregiverRelationshipsPage() {
             <p className="text-xs font-black uppercase text-emerald-700">Danh sách kết nối</p>
             <h2 className="mt-1 text-xl font-black text-slate-950">Người thân theo trạng thái</h2>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {refreshing ? (
+              <span className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 text-xs font-black text-emerald-700" role="status">
+                <LoaderCircle className="animate-spin" size={14} />
+                Đang cập nhật
+              </span>
+            ) : null}
             <AppButton tone="secondary" onClick={openCreateDrawer}>
               <Plus size={16} />
               Tạo hồ sơ
@@ -1537,12 +1616,9 @@ function CaregiverRelationshipsPage() {
         </div>
 
         <RelationshipTable
+          isLoading={loading}
           relationships={filteredRelationships}
           selectedKey={relationshipKey(selectedProfile)}
-          onChat={handleChat}
-          onDeleteLocalProfile={setDeleteTarget}
-          onEditLocalProfile={openEditDrawer}
-          onEditRelation={openRelationDrawer}
           onView={handleViewRelationship}
         />
       </section>
@@ -1556,6 +1632,8 @@ function CaregiverRelationshipsPage() {
         form={form}
         loading={saving}
         open={drawerOpen}
+        relationForm={relationForm}
+        setRelationForm={setRelationForm}
         uploadingAvatar={uploadingAvatar}
         onAvatarClear={clearAvatar}
         onAvatarFile={handleAvatarFile}
@@ -1584,22 +1662,12 @@ function CaregiverRelationshipsPage() {
         onSearch={handleSearch}
       />
 
-      <RelationDrawer
-        form={relationForm}
-        loading={updatingRelation}
-        setForm={setRelationForm}
-        target={relationTarget}
-        onClose={() => setRelationTarget(null)}
-        onSubmit={handleSaveRelation}
-      />
-
       <ProfileDetailCard
         open={Boolean(detailTarget)}
         profile={detailTarget}
-        onChat={handleChat}
         onClose={() => setDetailTarget(null)}
+        onDelete={handleDeleteFromDetail}
         onEdit={handleEditFromDetail}
-        onEditRelation={handleEditRelationFromDetail}
       />
 
       <ConfirmDeleteDialog target={deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDeleteProfile} />

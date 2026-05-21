@@ -109,8 +109,17 @@ export async function inviteElderlyProfile(data) {
 }
 
 export async function updateCaregiverRelationship(targetElderlyId, data) {
-  const response = await apiClient.patch(`/caregiver/relationship/${targetElderlyId}`, data)
+  const response = await apiClient.patch(`/caregiver/relationship/${targetElderlyId}`, data, {
+    params: {
+      permissionLevel: 'MANAGE_ALL',
+      permissionlevel: 'MANAGE_ALL',
+    },
+  })
   return response.data
+}
+
+export async function deleteCaregiverRelationship(targetElderlyId) {
+  await apiClient.delete(`/caregiver/relationship/${targetElderlyId}`)
 }
 
 export async function getElderlyRelationships() {
