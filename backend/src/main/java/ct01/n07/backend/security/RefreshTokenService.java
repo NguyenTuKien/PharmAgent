@@ -4,9 +4,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,9 @@ public class RefreshTokenService {
     private final StringRedisTemplate redisTemplate;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    @Value("${jwt.refresh-expiration-ms:604800000}") // 7 days
+    private long refreshExpirationMs = Duration.ofDays(7).toMillis();
+
     public RefreshTokenService(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
@@ -27,7 +32,7 @@ public class RefreshTokenService {
         byte[] tokenBytes = new byte[TOKEN_BYTE_LENGTH];
         secureRandom.nextBytes(tokenBytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
-        redisTemplate.opsForValue().set(keyFor(token), userId);
+        redisTemplate.opsForValue().set(keyFor(token), userId, Duration.ofMillis(refreshExpirationMs));
         return token;
     }
 

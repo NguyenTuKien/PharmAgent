@@ -16,8 +16,9 @@ spring:
 
 jwt:
   secret: "dummy_secret_for_testing_purposes_only_1234567890_secured"
-  auth-expiration-ms: 300000
+  auth-expiration-ms: 900000
   access-expiration-ms: 900000
+  refresh-expiration-ms: 604800000
 
 logging:
   level:

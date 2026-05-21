@@ -18,9 +18,9 @@ services:
     image: redis:7-alpine
     restart: always
     env_file: .env
-    command: /bin/sh -c 'redis-server --requirepass "$${SPRING_DATA_REDIS_PASSWORD}" --appendonly yes --appendfsync everysec'
+    command: /bin/sh -c 'exec redis-server --requirepass "$${SPRING_DATA_REDIS_PASSWORD:?SPRING_DATA_REDIS_PASSWORD is required}" --appendonly yes --appendfsync everysec'
     healthcheck:
-      test: [ "CMD-SHELL", "redis-cli -a \"$${SPRING_DATA_REDIS_PASSWORD}\" ping | grep PONG" ]
+      test: [ "CMD-SHELL", "redis-cli -a \"$${SPRING_DATA_REDIS_PASSWORD:?SPRING_DATA_REDIS_PASSWORD is required}\" ping | grep PONG" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -61,6 +61,8 @@ services:
     image: ${DOCKER_REGISTRY:-ghcr.io/nguyentukien}/pharmagent-backend:${TAG:-latest}
     restart: always
     env_file: .env
+    environment:
+      SPRING_DATA_REDIS_URL: redis://:${SPRING_DATA_REDIS_PASSWORD:?SPRING_DATA_REDIS_PASSWORD is required}@redis:6379
     depends_on:
       database:
         condition: service_healthy
@@ -83,6 +85,8 @@ services:
     image: ${DOCKER_REGISTRY:-ghcr.io/nguyentukien}/pharmagent-gateway:${TAG:-latest}
     restart: always
     env_file: .env
+    environment:
+      REDIS_URL: redis://:${SPRING_DATA_REDIS_PASSWORD:?SPRING_DATA_REDIS_PASSWORD is required}@redis:6379
     ports: [ "9000:9000" ]
     depends_on:
       backend:

@@ -128,9 +128,8 @@ public class AuthFacade {
     public TokenRefreshResponse refresh(TokenRefreshRequest request) {
         String token = normalizeToken(request.getRefreshToken());
 
-        // 1. Kiểm tra refresh session token. Token mới là opaque token lưu hash ở server;
-        // legacy JWT refresh token còn hợp lệ sẽ được migrate ở cuối hàm.
-        boolean serverManagedRefreshToken = jwtService.isServerManagedRefreshToken(token);
+        // 1. Kiểm tra refresh session token. Token mới là opaque token lưu hash ở server.
+        // Legacy JWT refresh token còn hợp lệ sẽ được migrate bằng cách rotate sang opaque token mới.
         Optional<String> resolvedUserId = jwtService.resolveRefreshTokenUserId(token);
         if (resolvedUserId.isEmpty()) {
             log.warn("refresh rejected due to invalid refresh token");
@@ -138,26 +137,37 @@ public class AuthFacade {
         }
         String userId = resolvedUserId.get();
 
-        // 2. Kiểm tra quyền truy cập Profile
-        UserProfile profile = userProfileService.findById(request.getProfileId());
-        if (!profile.getUserId().equals(userId)) {
-            throw new AccessDeniedException("Dữ liệu không khớp. Vui lòng đăng nhập lại.");
+        // 2. Nếu đã có profile, xác thực quyền trước khi rotate token để request sai
+        // không vô tình làm mất phiên hợp lệ hiện tại.
+        String profileId = normalizeToken(request.getProfileId());
+        UserProfile profile = null;
+        if (profileId != null && !profileId.isBlank()) {
+            profile = userProfileService.findById(profileId);
+            if (!profile.getUserId().equals(userId)) {
+                throw new AccessDeniedException("Dữ liệu không khớp. Vui lòng đăng nhập lại.");
+            }
         }
 
-        // 3. Cấp lại token truy cập ngắn hạn. Refresh token server-managed được giữ nguyên
-        // để session chỉ mất khi logout hoặc người dùng xoá storage.
+        // 3. Rotate refresh token trên mỗi lần dùng để giảm rủi ro replay nếu token cũ bị lộ.
         String newAuthToken = jwtService.generateAuthToken(userId);
-        String newAccessToken = jwtService.generateAccessToken(userId, profile.getId(), profile.getRole().name());
-        String refreshToken = token;
-        if (!serverManagedRefreshToken) {
-            refreshToken = jwtService.generateRefreshToken(userId);
-            jwtService.blacklistTokens(List.of(token));
+        String newRefreshToken = jwtService.generateRefreshToken(userId);
+        jwtService.blacklistTokens(List.of(token));
+
+        // 4. Nếu chưa chọn profile, chỉ cấp lại auth token cho màn chọn profile.
+        if (profile == null) {
+            return TokenRefreshResponse.builder()
+                    .authToken(newAuthToken)
+                    .refreshToken(newRefreshToken)
+                    .build();
         }
+
+        // 5. Nếu đã có profile, cấp lại access token profile-scoped.
+        String newAccessToken = jwtService.generateAccessToken(userId, profile.getId(), profile.getRole().name());
 
         return TokenRefreshResponse.builder()
                 .authToken(newAuthToken)
                 .accessToken(newAccessToken)
-                .refreshToken(refreshToken)
+                .refreshToken(newRefreshToken)
                 .build();
     }
 

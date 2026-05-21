@@ -1,5 +1,4 @@
 import {
-  Activity,
   BarChart3,
   Bell,
   CalendarClock,
@@ -10,7 +9,7 @@ import {
   MessageCircle,
   Pill,
   ScanSearch,
-  Settings,
+  ShieldCheck,
   UserCog,
   UserRound,
   Users,
@@ -99,8 +98,14 @@ export const navigationItems = [
     roles: ['ADMIN'],
   },
   {
+    to: '/scan',
+    label: 'Tìm thuốc',
+    icon: ScanSearch,
+    roles: ['ADMIN'],
+  },
+  {
     to: '/admin/sessions',
-    label: 'Quan ly Session',
+    label: 'Quản lý session',
     icon: ShieldCheck,
     roles: ['ADMIN'],
   },

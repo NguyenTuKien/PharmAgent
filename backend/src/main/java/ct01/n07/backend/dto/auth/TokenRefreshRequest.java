@@ -16,7 +16,6 @@ public class TokenRefreshRequest {
     @Size(max = 500, message = "Refresh Token không được vượt quá 500 ký tự")
     private String refreshToken;
 
-    @NotBlank(message = "Profile ID không được để trống")
     @Size(max = 50, message = "Profile ID không được vượt quá 50 ký tự")
     private String profileId;
 }
