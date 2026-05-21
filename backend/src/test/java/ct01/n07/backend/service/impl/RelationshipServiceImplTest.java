@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -130,11 +131,45 @@ class RelationshipServiceImplTest {
         assertThat(updatedRelationship.getStatus()).isEqualTo(RelationStatus.PENDING);
     }
 
+    @Test
+    void updateCaregiverTitleLetsElderlyNameCaregiverWithoutChangingCaregiverRelation() {
+        Relationship relationship = Relationship.builder()
+                .id("relationship-1")
+                .caregiverId("caregiver-1")
+                .elderlyId("elderly-1")
+                .caregiverTitle("Người chăm sóc")
+                .elderlyTitle("Mẹ")
+                .relation(FamilyRelation.MOTHER)
+                .status(RelationStatus.ACCEPTED)
+                .build();
+
+        when(profileAccessContext.getCurrentUserProfile()).thenReturn(elderlyProfile());
+        when(relationshipRepository.findByIdAndElderlyId("relationship-1", "elderly-1"))
+                .thenReturn(Optional.of(relationship));
+
+        relationshipService.updateCaregiverTitle("relationship-1", "Con gái");
+
+        ArgumentCaptor<Relationship> relationshipCaptor = ArgumentCaptor.forClass(Relationship.class);
+        verify(relationshipRepository).save(relationshipCaptor.capture());
+        Relationship updatedRelationship = relationshipCaptor.getValue();
+        assertThat(updatedRelationship.getCaregiverTitle()).isEqualTo("Con gái");
+        assertThat(updatedRelationship.getElderlyTitle()).isEqualTo("Mẹ");
+        assertThat(updatedRelationship.getRelation()).isEqualTo(FamilyRelation.MOTHER);
+    }
+
     private UserProfile caregiverProfile() {
         return UserProfile.builder()
                 .id("caregiver-1")
                 .userId("user-1")
                 .role(Role.CAREGIVER)
+                .build();
+    }
+
+    private UserProfile elderlyProfile() {
+        return UserProfile.builder()
+                .id("elderly-1")
+                .userId("user-2")
+                .role(Role.ELDERLY)
                 .build();
     }
 }

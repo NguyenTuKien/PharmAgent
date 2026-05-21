@@ -181,6 +181,24 @@ public class RelationshipServiceImpl implements RelationshipService {
     }
 
     @Override
+    public void updateCaregiverTitle(String relationshipId, String caregiverTitle) {
+        UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
+        requireRole(currentProfile, Role.ELDERLY);
+
+        Relationship relationship = relationshipRepository.findByIdAndElderlyId(relationshipId, currentProfile.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Không tìm thấy mối quan hệ hợp lệ để cập nhật"));
+
+        if (relationship.getStatus() != RelationStatus.ACCEPTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Chỉ có thể cập nhật cách gọi cho người hỗ trợ đã xác nhận");
+        }
+
+        relationship.setCaregiverTitle(caregiverTitle.trim());
+        relationshipRepository.save(relationship);
+    }
+
+    @Override
     public void deleteRelationship(String elderlyId) {
         UserProfile currentProfile = profileAccessContext.getCurrentUserProfile();
         requireRole(currentProfile, Role.CAREGIVER);

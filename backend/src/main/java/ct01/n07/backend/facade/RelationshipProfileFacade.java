@@ -75,9 +75,9 @@ public class RelationshipProfileFacade {
                             .address(profile.getAddress())
                             .caregiverTitle(rel.getCaregiverTitle())
                             .avatarUrl(profile.getAvatarUrl())
-                            .relation(resolveRelation(rel))
-                            .customRelation(rel.getCustomRelation())
-                            .relationLabel(resolveRelationLabel(rel))
+                            .relation(FamilyRelation.OTHER)
+                            .customRelation(null)
+                            .relationLabel(resolveCaregiverTitleLabel(rel))
                             .status(rel.getStatus())
                             .build();
                 })
@@ -137,9 +137,9 @@ public class RelationshipProfileFacade {
                             .address(profile.getAddress())
                             .caregiverTitle(rel.getCaregiverTitle())
                             .avatarUrl(profile.getAvatarUrl())
-                            .relation(resolveRelation(rel))
-                            .customRelation(rel.getCustomRelation())
-                            .relationLabel(resolveRelationLabel(rel))
+                            .relation(FamilyRelation.OTHER)
+                            .customRelation(null)
+                            .relationLabel(resolveCaregiverTitleLabel(rel))
                             .status(rel.getStatus())
                             .build();
                 })
@@ -161,5 +161,10 @@ public class RelationshipProfileFacade {
         }
         String legacyTitle = relationship.getElderlyTitle();
         return legacyTitle != null && !legacyTitle.isBlank() ? legacyTitle.trim() : relation.getLabel();
+    }
+
+    private String resolveCaregiverTitleLabel(Relationship relationship) {
+        String caregiverTitle = relationship.getCaregiverTitle();
+        return caregiverTitle != null && !caregiverTitle.isBlank() ? caregiverTitle.trim() : "Người hỗ trợ";
     }
 }

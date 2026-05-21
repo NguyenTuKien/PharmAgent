@@ -52,7 +52,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -984,6 +985,7 @@ a {
   grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
   align-items: start;
   gap: clamp(14px, 2vw, 22px);
+  color: var(--text);
 }
 
 .medicalocr-upload-panel,
@@ -1009,6 +1011,16 @@ a {
   gap: 16px;
 }
 
+.medicalocr-panel-heading h2 {
+  font-weight: 800;
+}
+
+.medicalocr-panel-heading p:not(.eyebrow) {
+  max-width: 54ch;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
 .status-pill,
 .decision-pill {
   display: inline-flex;
@@ -1019,7 +1031,7 @@ a {
   border-radius: 999px;
   padding: 0 12px;
   color: var(--muted);
-  background: #fff;
+  background: var(--surface-strong);
   font-size: 0.82rem;
   font-weight: 800;
   white-space: nowrap;
@@ -1054,7 +1066,7 @@ a {
   border-radius: 8px;
   color: var(--accent-strong);
   background:
-    linear-gradient(180deg, rgb(255 255 255 / 72%), rgb(223 243 237 / 72%)),
+    linear-gradient(180deg, rgb(242 248 245 / 90%), rgb(238 244 241 / 90%)),
     radial-gradient(circle at 50% 20%, rgb(31 138 112 / 12%), transparent 34%);
   cursor: pointer;
   transition:
@@ -1069,6 +1081,12 @@ a {
   transform: translateY(-1px);
 }
 
+.image-dropzone:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(31 138 112 / 14%);
+  outline: none;
+}
+
 .image-dropzone span {
   display: grid;
   place-items: center;
@@ -1076,14 +1094,18 @@ a {
   text-align: center;
 }
 
+.image-dropzone strong {
+  font-weight: 800;
+}
+
 .image-dropzone small {
   color: var(--muted);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .image-dropzone.has-image {
   border-style: solid;
-  background: #fff;
+  background: var(--surface-strong);
 }
 
 .image-dropzone img {
@@ -1109,7 +1131,7 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
-  background: rgb(255 255 255 / 72%);
+  background: var(--surface-strong);
   box-shadow: 0 12px 30px rgb(22 33 31 / 5%);
 }
 
@@ -1121,8 +1143,9 @@ a {
   border-radius: 8px;
   padding: 12px 14px;
   color: var(--text);
-  background: #fff;
-  font-weight: 650;
+  background: var(--bg);
+  font-weight: 600;
+  line-height: 1.55;
   outline: none;
 }
 
@@ -1162,13 +1185,14 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: clamp(14px, 2vw, 22px);
-  background: #fff;
+  background: var(--bg);
   box-shadow: 0 16px 40px rgb(22 33 31 / 7%);
 }
 
 .primary-drug-card h3 {
   margin: 0;
   font-size: clamp(1.35rem, 2.2vw, 2.35rem);
+  font-weight: 800;
   line-height: 1.1;
 }
 
@@ -1178,14 +1202,14 @@ a {
   place-items: center;
   overflow: hidden;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .drug-image-frame {
   min-height: clamp(150px, 20vw, 230px);
   border: 1px solid var(--border);
   color: var(--muted);
-  background: linear-gradient(180deg, #fff, #f7fbf9);
+  background: linear-gradient(180deg, var(--surface), var(--surface-strong));
 }
 
 .drug-image-frame img,
@@ -1200,8 +1224,8 @@ a {
   align-items: center;
   gap: 6px;
   margin-top: 10px;
-  color: var(--blue);
-  font-weight: 800;
+  color: var(--accent-strong);
+  font-weight: 700;
 }
 
 .chip-row {
@@ -1240,7 +1264,7 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
-  background: rgb(255 255 255 / 74%);
+  background: var(--bg);
 }
 
 .ocr-panel {
@@ -1258,11 +1282,12 @@ a {
 .medicalocr-section-heading h3 {
   margin: 0;
   font-size: 1rem;
+  font-weight: 800;
 }
 
 .medicalocr-section-heading span {
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .candidate-list {
@@ -1301,6 +1326,7 @@ a {
 
 .candidate-card strong {
   min-width: 0;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -1308,7 +1334,7 @@ a {
   grid-column: 2;
   color: var(--accent);
   font-style: normal;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .candidate-thumb {
@@ -1322,6 +1348,8 @@ a {
   overflow: auto;
   margin: 0;
   color: var(--text);
+  font-weight: 500;
+  line-height: 1.65;
   white-space: pre-wrap;
 }
 
@@ -1338,7 +1366,7 @@ a {
 .scan-caregiver-action span {
   color: var(--muted);
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .center-page {
