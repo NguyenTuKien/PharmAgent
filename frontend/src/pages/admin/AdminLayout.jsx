@@ -5,7 +5,7 @@ export function AdminLayout() {
   const isRoot = location.pathname === '/admin' || location.pathname === '/admin/'
 
   if (isRoot) {
-    return <Navigate replace to="/admin/users" />
+    return <Navigate replace to="/admin/dashboard" />
   }
 
   return (

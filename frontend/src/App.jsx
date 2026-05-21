@@ -53,6 +53,13 @@ function SessionBootstrap() {
   return null
 }
 
+function RoleWorkspacePage({ copies, fallback }) {
+  const activeRole = useAuthStore((state) => state.activeProfile?.role)
+  const copy = copies[activeRole] ?? fallback
+
+  return <WorkspacePage description={copy.description} title={copy.title} />
+}
+
 function App() {
   return (
     <>
@@ -77,19 +84,57 @@ function App() {
             <Route element={<DashboardPage />} path="/dashboard" />
             <Route
               element={
-                <WorkspacePage
-                  description="Khung module quan ly thuoc da san sang de gan CRUD, upload anh va lich lieu uong."
-                  title="Don thuoc"
+                <RoleWorkspacePage
+                  copies={{
+                    ELDERLY: {
+                      title: 'Thuốc của tôi',
+                      description:
+                        'Danh sách thuốc cá nhân, thông tin liều dùng và hình ảnh nhận diện thuốc.',
+                    },
+                    CAREGIVER: {
+                      title: 'Quản lý thuốc',
+                      description:
+                        'Khu vực quản lý thuốc cho người thân, gồm CRUD, upload ảnh và lịch liều uống.',
+                    },
+                  }}
+                  fallback={{
+                    title: 'Quản lý thuốc',
+                    description: 'Khung module quản lý thuốc đã sẵn sàng để gắn API.',
+                  }}
                 />
               }
               path="/medications"
             />
-            <Route element={<ScanPage />} path="/scan" />
             <Route
               element={
                 <WorkspacePage
-                  description="Khu vuc nay se gan API moi quan he caregiver/elderly va quyen truy cap theo profile."
-                  title="Nguoi cham soc"
+                  description="Lưu lại các lần uống thuốc, trạng thái xác nhận và ghi chú bất thường."
+                  title="Lịch sử uống thuốc"
+                />
+              }
+              path="/dose-history"
+            />
+            <Route element={<ScanPage />} path="/scan" />
+            <Route
+              element={
+                <RoleWorkspacePage
+                  copies={{
+                    ELDERLY: {
+                      title: 'Người chăm sóc',
+                      description:
+                        'Danh sách người chăm sóc, quyền truy cập và lời mời đang chờ xử lý.',
+                    },
+                    CAREGIVER: {
+                      title: 'Người thân',
+                      description:
+                        'Quản lý elderly, tìm và mời người thân, xem chi tiết hồ sơ và quyền chăm sóc.',
+                    },
+                  }}
+                  fallback={{
+                    title: 'Người thân',
+                    description:
+                      'Khu vực quản lý mối quan hệ caregiver/elderly và quyền truy cập theo profile.',
+                  }}
                 />
               }
               path="/relationships"
@@ -99,19 +144,47 @@ function App() {
               <Route
                 element={
                   <WorkspacePage
-                    description="Bao cao dung thuoc, ton kho va canh bao se dung chart component da cai san."
-                    title="Bao cao"
+                    description="Báo cáo dùng thuốc, tồn kho và cảnh báo sẽ dùng chart component đã cài sẵn."
+                    title="Thống kê"
                   />
                 }
                 path="/reports"
               />
             </Route>
 
+            <Route
+              element={
+                <WorkspacePage
+                  description="Khu vực chat giữa elderly, caregiver và đội ngũ quản trị khi cần hỗ trợ."
+                  title="Chat"
+                />
+              }
+              path="/chat"
+            />
+
             <Route element={<RoleRoute roles={['ADMIN']} />}>
               <Route element={<AdminLayout />} path="/admin">
-                <Route index element={<Navigate replace to="users" />} />
+                <Route index element={<Navigate replace to="dashboard" />} />
+                <Route
+                  element={
+                    <WorkspacePage
+                      description="Tổng quan hệ thống, tài khoản, thư viện thuốc và phiên đăng nhập."
+                      title="Dashboard"
+                    />
+                  }
+                  path="dashboard"
+                />
                 <Route element={<AdminUsersPage />} path="users" />
                 <Route element={<AdminPillsPage />} path="pills" />
+                <Route
+                  element={
+                    <WorkspacePage
+                      description="Theo dõi và quản lý các phiên đăng nhập, refresh token và thiết bị truy cập."
+                      title="Quản lý session"
+                    />
+                  }
+                  path="sessions"
+                />
               </Route>
             </Route>
 

@@ -1,53 +1,119 @@
 import {
   BarChart3,
-  Camera,
+  Bell,
+  CalendarClock,
+  CalendarDays,
+  ClipboardList,
+  History,
   LayoutDashboard,
+  MessageCircle,
   Pill,
-  ShieldCheck,
+  Settings,
+  UserCog,
+  UserRound,
   Users,
 } from 'lucide-react'
+
+import { canAccessRoles } from '../modules/auth/session.js'
 
 export const navigationItems = [
   {
     to: '/dashboard',
-    label: 'Tong quan',
-    icon: LayoutDashboard,
-    roles: ['ELDERLY', 'CAREGIVER'],
+    label: 'Lịch uống thuốc',
+    icon: CalendarClock,
+    roles: ['ELDERLY'],
+  },
+  {
+    to: '/dose-history',
+    label: 'Lịch sử uống thuốc',
+    icon: History,
+    roles: ['ELDERLY'],
   },
   {
     to: '/medications',
-    label: 'Don thuoc',
+    label: 'Thuốc của tôi',
     icon: Pill,
-    roles: ['ELDERLY', 'CAREGIVER'],
-  },
-  {
-    to: '/scan',
-    label: 'Quet thuoc',
-    icon: Camera,
-    roles: ['ELDERLY', 'CAREGIVER'],
+    roles: ['ELDERLY'],
   },
   {
     to: '/relationships',
-    label: 'Nguoi cham soc',
+    label: 'Người chăm sóc',
     icon: Users,
-    roles: ['CAREGIVER', 'ELDERLY'],
+    roles: ['ELDERLY'],
+  },
+  {
+    to: '/relationships',
+    label: 'Người thân',
+    icon: Users,
+    roles: ['CAREGIVER'],
+  },
+  {
+    to: '/medications',
+    label: 'Quản lý thuốc',
+    icon: ClipboardList,
+    roles: ['CAREGIVER'],
+  },
+  {
+    to: '/dashboard',
+    label: 'Lịch uống',
+    icon: CalendarDays,
+    roles: ['CAREGIVER'],
   },
   {
     to: '/reports',
-    label: 'Bao cao',
+    label: 'Thống kê',
     icon: BarChart3,
-    roles: ['CAREGIVER', 'ADMIN'],
+    roles: ['CAREGIVER'],
+  },
+  {
+    to: '/admin/dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    roles: ['ADMIN'],
   },
   {
     to: '/admin/users',
-    label: 'Tai khoan',
-    icon: Users,
+    label: 'Quản lý users',
+    icon: UserCog,
     roles: ['ADMIN'],
   },
   {
     to: '/admin/pills',
-    label: 'Thu vien thuoc',
+    label: 'Quản lý thuốc',
     icon: Pill,
     roles: ['ADMIN'],
   },
+  {
+    to: '/admin/sessions',
+    label: 'Quản lý session',
+    icon: Settings,
+    roles: ['ADMIN'],
+  },
 ]
+
+export function getNavigationItemsForRole(activeRole) {
+  return navigationItems.filter((item) => canAccessRoles(activeRole, item.roles ?? []))
+}
+
+export const headerUtilityItems = [
+  {
+    key: 'chat',
+    label: 'Chat',
+    icon: MessageCircle,
+    to: '/chat',
+  },
+  {
+    key: 'notifications',
+    label: 'Thông báo',
+    icon: Bell,
+  },
+  {
+    key: 'profile',
+    label: 'Avatar',
+    icon: UserRound,
+  },
+]
+
+export function getHeaderUtilityItems() {
+  return headerUtilityItems
+}
