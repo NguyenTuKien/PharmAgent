@@ -29,6 +29,14 @@ public interface UserProfileService {
 
     UserProfileResponse createProfile(CreateProfileRequest request);
 
+    UserProfileResponse createManagedElderlyProfile(CreateProfileRequest request);
+
+    UserProfileResponse getManagedElderlyProfile(String profileId);
+
+    UserProfileResponse updateManagedElderlyProfile(String profileId, UpdateProfileRequest request);
+
+    void deleteManagedElderlyProfile(String profileId);
+
     void deleteProfile(String profileId);
 
     UserProfileResponse getMyProfile();

@@ -13,4 +13,7 @@ public final class ProfileConstant {
     public static final String PROFILE_NOT_BELONG_TO_USER = "Profile does not belong to current user";
     public static final String PROFILE_ALREADY_DELETED = "Profile is already deleted";
     public static final String PHONE_ALREADY_EXISTS = "Phone already exists";
+    public static final String ELDERLY_PROFILE_READ_ONLY = "Elderly profile is read-only";
+    public static final String CAREGIVER_REQUIRED = "Caregiver profile is required for this action";
+    public static final String MANAGED_ELDERLY_REQUIRED = "Only elderly profiles in the current account can be managed";
 }

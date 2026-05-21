@@ -2,6 +2,7 @@ import {
   ChevronDown,
   Home,
   LogOut,
+  Settings,
   UserRound,
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -155,7 +156,7 @@ function NotificationMenu() {
   )
 }
 
-function AvatarMenu({ activeProfile, onGoHome, onLogout, onSwitchProfile }) {
+function AvatarMenu({ activeProfile, onGoHome, onLogout, onOpenSettings, onSwitchProfile }) {
   return (
     <div className="header-popover header-popover--profile" role="menu">
       <div className="profile-menu-card">
@@ -178,6 +179,10 @@ function AvatarMenu({ activeProfile, onGoHome, onLogout, onSwitchProfile }) {
       <button className="popover-row" role="menuitem" type="button" onClick={onSwitchProfile}>
         <UserRound size={17} />
         <span>Đổi hồ sơ</span>
+      </button>
+      <button className="popover-row" role="menuitem" type="button" onClick={onOpenSettings}>
+        <Settings size={17} />
+        <span>Hồ sơ & cài đặt</span>
       </button>
       <button className="popover-row popover-row--danger" role="menuitem" type="button" onClick={onLogout}>
         <LogOut size={17} />
@@ -268,6 +273,11 @@ export function Topbar() {
     navigate('/profiles')
   }
 
+  const openSettings = () => {
+    setOpenMenu(null)
+    navigate('/settings')
+  }
+
   const toggleMenu = (menu) => {
     setOpenMenu((current) => (current === menu ? null : menu))
   }
@@ -343,6 +353,7 @@ export function Topbar() {
                     activeProfile={activeProfile}
                     onGoHome={goHome}
                     onLogout={requestLogout}
+                    onOpenSettings={openSettings}
                     onSwitchProfile={switchProfile}
                   />
                 ) : null}
