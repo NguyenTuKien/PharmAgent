@@ -4,7 +4,7 @@ import {
   LogOut,
   UserRound,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import logo from '../assets/logo.svg'
@@ -42,6 +42,7 @@ function isNavigationItemActive(pathname, itemPath) {
 }
 
 function RoleGooeyNavigation({ activePath, items, onNavigate, onSearch }) {
+  const navRootRef = useRef(null)
   const activeItem = items.find((item) => isNavigationItemActive(activePath, item.to)) ?? items[0]
   const activeNavigationPath = activeItem?.to ?? ''
   const roleNavigationTabs = useMemo(
@@ -58,31 +59,82 @@ function RoleGooeyNavigation({ activePath, items, onNavigate, onSearch }) {
     [items],
   )
 
+  useLayoutEffect(() => {
+    const navRoot = navRootRef.current
+
+    if (!navRoot) {
+      return undefined
+    }
+
+    let animationFrame = 0
+
+    const updateActiveIndicator = () => {
+      const tabList = navRoot.querySelector('.gooey-search-tabs-tabs-content.role-nav')
+      const activeTab = tabList?.querySelector('.role-nav-link.is-active')
+
+      if (!tabList || !activeTab) {
+        return
+      }
+
+      const listRect = tabList.getBoundingClientRect()
+      const tabRect = activeTab.getBoundingClientRect()
+
+      navRoot.style.setProperty('--role-nav-indicator-x', `${tabRect.left - listRect.left}px`)
+      navRoot.style.setProperty('--role-nav-indicator-width', `${tabRect.width}px`)
+    }
+
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(animationFrame)
+      animationFrame = window.requestAnimationFrame(updateActiveIndicator)
+    }
+
+    scheduleUpdate()
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', scheduleUpdate)
+
+      return () => {
+        window.cancelAnimationFrame(animationFrame)
+        window.removeEventListener('resize', scheduleUpdate)
+      }
+    }
+
+    const resizeObserver = new ResizeObserver(scheduleUpdate)
+    resizeObserver.observe(navRoot)
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame)
+      resizeObserver.disconnect()
+    }
+  }, [activeNavigationPath, items.length])
+
   if (!items.length) {
     return null
   }
 
   return (
-    <GooeySearchTabs
-      activeTab={activeNavigationPath}
-      className="header-gooey-search"
-      classNames={{
-        activeTab: 'is-active',
-        closeButton: 'role-gooey-close',
-        container: 'role-gooey-container',
-        input: 'role-gooey-input',
-        searchButton: 'role-gooey-search-button',
-        tab: 'role-nav-link',
-        tabList: 'role-nav',
-      }}
-      gooey
-      gooeyIntensity={0.42}
-      placeholder="Tìm trong PharmAgent..."
-      preset="smooth"
-      tabs={roleNavigationTabs}
-      onSearch={onSearch}
-      onTabChange={(path) => onNavigate(path)}
-    />
+    <div className="role-nav-motion-wrap" ref={navRootRef}>
+      <GooeySearchTabs
+        activeTab={activeNavigationPath}
+        className="header-gooey-search"
+        classNames={{
+          activeTab: 'is-active',
+          closeButton: 'role-gooey-close',
+          container: 'role-gooey-container',
+          input: 'role-gooey-input',
+          searchButton: 'role-gooey-search-button',
+          tab: 'role-nav-link',
+          tabList: 'role-nav',
+        }}
+        gooey
+        gooeyIntensity={0.42}
+        placeholder="Tìm trong PharmAgent..."
+        preset="smooth"
+        tabs={roleNavigationTabs}
+        onSearch={onSearch}
+        onTabChange={(path) => onNavigate(path)}
+      />
+    </div>
   )
 }
 
