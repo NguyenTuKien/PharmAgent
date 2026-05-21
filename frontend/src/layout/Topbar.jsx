@@ -189,6 +189,7 @@ export function Topbar() {
   const actionsRef = useRef(null)
   const activeProfile = useAuthStore((state) => state.activeProfile)
   const logout = useAuthStore((state) => state.logout)
+  const deselectProfile = useAuthStore((state) => state.deselectProfile)
   const visibleItems = useMemo(
     () => getNavigationItemsForRole(activeProfile?.role),
     [activeProfile?.role],
@@ -259,6 +260,7 @@ export function Topbar() {
 
   const switchProfile = () => {
     setOpenMenu(null)
+    deselectProfile()
     navigate('/profiles')
   }
 

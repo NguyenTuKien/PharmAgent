@@ -21,6 +21,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class MedicationCoreServiceImpl implements MedicationCoreService {
@@ -32,6 +34,12 @@ public class MedicationCoreServiceImpl implements MedicationCoreService {
     private final MedicationPermissionValidator permissionValidator;
     private final EventDoseSyncService eventDoseSyncService;
     private final MedicationRequestValidator medicationRequestValidator;
+
+    @Override
+    public List<Medication> getMedicationsByPatientIds(List<String> patientIds) {
+        return medicationRepository.findByPatientIdIn(patientIds);
+    }
+
 
     @Override
     public MedicationResponse createMedication(MedicationCreateRequest request) {

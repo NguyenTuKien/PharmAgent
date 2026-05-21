@@ -17,6 +17,8 @@ public interface MedicationRepository extends MongoRepository<Medication, String
 
     Page<Medication> findByPatientId(String patientId, Pageable pageable);
 
+    List<Medication> findByPatientIdIn(List<String> patientIds);
+
     Page<Medication> findByPatientIdAndIsActive(String patientId, boolean isActive, Pageable pageable);
 
     @Query(value = "{ 'isActive': true }", fields = "{ 'patientId': 1 }")

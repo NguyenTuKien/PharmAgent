@@ -6,7 +6,12 @@ import ct01.n07.backend.dto.medication.MedicationUpdateRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import ct01.n07.backend.model.Medication;
+import java.util.List;
+
 public interface MedicationCoreService {
+    List<Medication> getMedicationsByPatientIds(List<String> patientIds);
+
     MedicationResponse createMedication(MedicationCreateRequest request);
 
     Page<MedicationResponse> getMedications(String patientId, Boolean isActive, Pageable pageable);

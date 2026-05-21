@@ -22,6 +22,7 @@ import { NotFoundPage } from './pages/NotFoundPage.jsx'
 import { ProfileSettingsPage } from './pages/ProfileSettingsPage.jsx'
 import { ProfileSelectPage } from './pages/ProfileSelectPage.jsx'
 import { RelationshipsPage } from './pages/caregiver/RelationshipsPage.jsx'
+import { ReportsPage } from './pages/caregiver/ReportsPage.jsx'
 import { ScanPage } from './pages/ScanPage.jsx'
 import { UnauthorizedPage } from './pages/UnauthorizedPage.jsx'
 import { WorkspacePage } from './pages/WorkspacePage.jsx'
@@ -97,15 +98,7 @@ function App() {
             </Route>
 
             <Route element={<RoleRoute roles={['CAREGIVER', 'ADMIN']} />}>
-              <Route
-                element={
-                  <WorkspacePage
-                    description="Báo cáo dùng thuốc, tồn kho và cảnh báo sẽ dùng chart component đã cài sẵn."
-                    title="Thống kê"
-                  />
-                }
-                path="/reports"
-              />
+              <Route element={<ReportsPage />} path="/reports" />
             </Route>
 
             <Route element={<RoleRoute roles={['ELDERLY', 'CAREGIVER']} />}>

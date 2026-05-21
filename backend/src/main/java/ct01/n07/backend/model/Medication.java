@@ -53,4 +53,3 @@ public class Medication {
     @LastModifiedDate
     private Instant updatedAt;
 }
-

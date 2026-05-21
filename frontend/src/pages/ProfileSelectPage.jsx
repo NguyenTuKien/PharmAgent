@@ -191,6 +191,7 @@ function AutoContinueState({ profile }) {
 
 export function ProfileSelectPage() {
   const navigate = useNavigate()
+  const preventAutoSelect = useAuthStore((state) => state.preventAutoSelect)
   const profiles = useAuthStore((state) => state.profiles)
   const selectProfile = useAuthStore((state) => state.selectProfile)
   const logout = useAuthStore((state) => state.logout)
@@ -227,12 +228,12 @@ export function ProfileSelectPage() {
   )
 
   useEffect(() => {
-    if (!autoProfile || autoSelectFailed || selectedId) {
+    if (!autoProfile || autoSelectFailed || selectedId || preventAutoSelect) {
       return
     }
 
     chooseProfile(autoProfile.id, { auto: true })
-  }, [autoProfile, autoSelectFailed, chooseProfile, selectedId])
+  }, [autoProfile, autoSelectFailed, chooseProfile, selectedId, preventAutoSelect])
 
   const handleLogout = async () => {
     await logout()
@@ -240,7 +241,7 @@ export function ProfileSelectPage() {
     navigate('/login', { replace: true })
   }
 
-  if (autoProfile && !autoSelectFailed) {
+  if (autoProfile && !autoSelectFailed && !preventAutoSelect) {
     return <AutoContinueState profile={autoProfile} />
   }
 

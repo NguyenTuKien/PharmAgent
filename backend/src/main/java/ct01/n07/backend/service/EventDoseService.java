@@ -12,6 +12,13 @@ public interface EventDoseService {
 
     List<EventDose> getAllDoseEvents();
 
+    List<EventDose> getDoseEventsByMedicationIdsAndScheduledAtBetween(
+            List<String> medicationIds,
+            java.time.LocalDateTime startTime,
+            java.time.LocalDateTime endTime
+    );
+
+
     EventDose getEventDoseById(String id);
 
     EventDose saveEventDose(EventDose eventDose);
