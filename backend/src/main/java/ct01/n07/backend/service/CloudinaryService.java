@@ -7,7 +7,7 @@ public interface CloudinaryService {
     /**
      * Tạo thông tin presigned để FE upload ảnh trực tiếp lên Cloudinary.
      *
-     * @param folder "avatars" hoặc "pills"
+     * @param folder "avatar", "pill" hoặc "chat"
      * @return PresignedUploadResponse chứa uploadUrl, signature, timestamp, ...
      */
     PresignedUploadResponse generatePresignedUpload(String folder);

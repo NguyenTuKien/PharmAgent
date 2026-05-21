@@ -7,7 +7,7 @@ import { apiClient } from './apiClient.js'
  * 3. Trả về secure_url
  *
  * @param {File} file - File ảnh cần upload
- * @param {'avatar'|'pill'} folder - Folder đích trên Cloudinary
+ * @param {'avatar'|'pill'|'chat'} folder - Folder đích trên Cloudinary
  * @returns {Promise<string>} secure_url của ảnh
  */
 export async function uploadImageToCloudinary(file, folder = 'pill') {

@@ -1,0 +1,14 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:5173",
+      "localStorage": [
+        {
+          "name": "pharmagent.session.v1",
+          "value": "{\"accessToken\":\"qa-access-token\",\"refreshToken\":\"qa-refresh-token\",\"activeProfile\":{\"id\":\"qa-elderly-profile\",\"firstName\":\"Minh\",\"lastName\":\"Nguyen\",\"role\":\"ELDERLY\"},\"activeProfileId\":\"qa-elderly-profile\",\"activeRole\":\"ELDERLY\",\"profiles\":[{\"id\":\"qa-elderly-profile\",\"firstName\":\"Minh\",\"lastName\":\"Nguyen\",\"role\":\"ELDERLY\"}]}"
+        }
+      ]
+    }
+  ]
+}

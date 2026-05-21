@@ -981,15 +981,25 @@ a {
 
 .medicalocr-scan {
   display: grid;
-  grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.1fr);
-  gap: 18px;
+  grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(14px, 2vw, 22px);
 }
 
 .medicalocr-upload-panel,
 .medicalocr-result-panel {
   display: grid;
   align-content: start;
-  gap: 18px;
+  gap: 16px;
+}
+
+.medicalocr-upload-panel {
+  position: sticky;
+  top: 102px;
+}
+
+.medicalocr-result-panel {
+  min-width: 0;
 }
 
 .medicalocr-panel-heading {
@@ -1035,15 +1045,28 @@ a {
 }
 
 .image-dropzone {
+  position: relative;
   display: grid;
-  min-height: 430px;
+  min-height: clamp(300px, 42vw, 500px);
   place-items: center;
   overflow: hidden;
-  border: 1px dashed #b8d8cf;
+  border: 1px dashed rgb(31 138 112 / 36%);
   border-radius: 8px;
   color: var(--accent-strong);
-  background: linear-gradient(135deg, #f8fcfa 0%, #edf8f4 100%);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 72%), rgb(223 243 237 / 72%)),
+    radial-gradient(circle at 50% 20%, rgb(31 138 112 / 12%), transparent 34%);
   cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.image-dropzone:hover {
+  border-color: rgb(31 138 112 / 62%);
+  box-shadow: 0 18px 44px rgb(22 33 31 / 9%);
+  transform: translateY(-1px);
 }
 
 .image-dropzone span {
@@ -1066,25 +1089,33 @@ a {
 .image-dropzone img {
   width: 100%;
   height: 100%;
-  max-height: 620px;
+  max-height: 560px;
   object-fit: contain;
 }
 
 .scan-actions {
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scan-actions .btn {
+  width: 100%;
 }
 
 .text-search-box {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 14px;
-  background: rgb(255 255 255 / 58%);
+  padding: 16px;
+  background: rgb(255 255 255 / 72%);
+  box-shadow: 0 12px 30px rgb(22 33 31 / 5%);
 }
 
 .text-search-input {
   width: 100%;
+  min-height: 96px;
   resize: vertical;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1112,7 +1143,7 @@ a {
 
 .medicalocr-loading {
   display: grid;
-  min-height: 360px;
+  min-height: min(54vh, 420px);
   place-items: center;
   align-content: center;
   gap: 12px;
@@ -1126,17 +1157,18 @@ a {
 
 .primary-drug-card {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(160px, 0.34fr) minmax(0, 1fr);
+  gap: clamp(14px, 2vw, 22px);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 16px;
-  background: rgb(255 255 255 / 72%);
+  padding: clamp(14px, 2vw, 22px);
+  background: #fff;
+  box-shadow: 0 16px 40px rgb(22 33 31 / 7%);
 }
 
 .primary-drug-card h3 {
   margin: 0;
-  font-size: clamp(1.35rem, 2.4vw, 2.2rem);
+  font-size: clamp(1.35rem, 2.2vw, 2.35rem);
   line-height: 1.1;
 }
 
@@ -1150,8 +1182,10 @@ a {
 }
 
 .drug-image-frame {
-  min-height: 160px;
+  min-height: clamp(150px, 20vw, 230px);
+  border: 1px solid var(--border);
   color: var(--muted);
+  background: linear-gradient(180deg, #fff, #f7fbf9);
 }
 
 .drug-image-frame img,
@@ -1197,8 +1231,8 @@ a {
 
 .medicalocr-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 14px;
 }
 
 .candidate-panel,
@@ -1206,7 +1240,11 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
-  background: rgb(255 255 255 / 58%);
+  background: rgb(255 255 255 / 74%);
+}
+
+.ocr-panel {
+  order: 2;
 }
 
 .medicalocr-section-heading {
@@ -1229,12 +1267,13 @@ a {
 
 .candidate-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
 .candidate-card {
   display: grid;
-  grid-template-columns: 70px minmax(0, 1fr) auto;
+  grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   border: 1px solid var(--border);
@@ -1244,6 +1283,15 @@ a {
   background: var(--surface);
   text-align: left;
   cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.candidate-card:hover {
+  border-color: rgb(31 138 112 / 38%);
+  transform: translateY(-1px);
 }
 
 .candidate-card.active {
@@ -1252,27 +1300,45 @@ a {
 }
 
 .candidate-card strong {
+  min-width: 0;
   line-height: 1.2;
 }
 
 .candidate-card em {
+  grid-column: 2;
   color: var(--accent);
   font-style: normal;
   font-weight: 900;
 }
 
 .candidate-thumb {
-  width: 70px;
+  width: 64px;
   height: 64px;
   color: var(--muted);
 }
 
 .ocr-panel p {
-  max-height: 300px;
+  max-height: 220px;
   overflow: auto;
   margin: 0;
   color: var(--text);
   white-space: pre-wrap;
+}
+
+.scan-caregiver-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.scan-caregiver-action span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
 }
 
 .center-page {
@@ -1590,13 +1656,52 @@ a {
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1100px) {
   .dashboard-grid,
   .scan-layout,
   .medicalocr-scan,
   .medicalocr-grid,
   .primary-drug-card {
     grid-template-columns: 1fr;
+  }
+
+  .medicalocr-upload-panel {
+    position: static;
+  }
+
+  .image-dropzone {
+    min-height: clamp(260px, 58vw, 460px);
+  }
+}
+
+@media (max-width: 720px) {
+  .scan-actions,
+  .candidate-list {
+    grid-template-columns: 1fr;
+  }
+
+  .medicalocr-panel-heading,
+  .scan-caregiver-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .medicalocr-panel-heading .decision-pill,
+  .scan-caregiver-action .btn {
+    width: 100%;
+  }
+
+  .candidate-card {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+  }
+
+  .candidate-card em {
+    grid-column: auto;
+  }
+
+  .candidate-thumb {
+    width: 58px;
+    height: 58px;
   }
 }
 

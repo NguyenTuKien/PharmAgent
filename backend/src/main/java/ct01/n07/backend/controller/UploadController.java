@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
  * Controller cung cấp presigned upload URL để FE tự upload ảnh lên Cloudinary.
  *
  * Luồng:
- *  1. FE gọi GET /upload/presign?folder=avatar  (hoặc pill)
+ *  1. FE gọi GET /upload/presign?folder=avatar  (hoặc pill, chat)
  *  2. Backend trả về { uploadUrl, cloudName, apiKey, folder, timestamp, signature }
  *  3. FE POST multipart thẳng đến Cloudinary với các trường trên
  *  4. Cloudinary trả về { secure_url, ... } – FE dùng URL đó gọi tiếp API cập nhật
@@ -25,7 +25,7 @@ public class UploadController {
     /**
      * Lấy thông tin presigned để upload ảnh.
      *
-     * @param folder "avatar" hoặc "pill"
+     * @param folder "avatar", "pill" hoặc "chat"
      */
     @GetMapping("/presign")
     public ResponseEntity<PresignedUploadResponse> getPresignedUpload(
