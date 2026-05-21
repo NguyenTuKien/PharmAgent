@@ -30,7 +30,10 @@ public class Medication {
     private String patientId;
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     @Field(targetType = FieldType.STRING)
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     private String pillId;
