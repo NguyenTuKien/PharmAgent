@@ -62,7 +62,9 @@ async def check_token_blacklist(token: str, payload: dict) -> None:
 
 # ── Core dependency ───────────────────────────────────────────────────────────
 
-async def require_access_payload(authorization: Optional[str]) -> dict:
+async def require_access_payload(
+    authorization: Annotated[Optional[str], Header()] = None
+) -> TokenUser:
     token = extract_bearer_token(authorization)
     if not token:
         raise HTTPException(
@@ -72,6 +74,13 @@ async def require_access_payload(authorization: Optional[str]) -> dict:
         )
 
     payload = decode_token(token)
+    
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Yêu cầu Access Token hợp lệ (chọn profile) để thực hiện thao tác này",
+        )
+
     await check_token_blacklist(token, payload)
     return TokenUser(
         user_id=get_subject(payload),
@@ -79,18 +88,23 @@ async def require_access_payload(authorization: Optional[str]) -> dict:
         raw_payload=payload,
     )
 
+get_current_user = require_access_payload
+
 
 async def optional_user(
     authorization: Annotated[Optional[str], Header()] = None,
 ) -> Optional[TokenUser]:
     """
-    FastAPI dependency: trả về TokenUser nếu có token hợp lệ, None nếu không.
+    FastAPI dependency: trả về TokenUser nếu có token hợp lệ (Access Token), None nếu không.
     """
     token = extract_bearer_token(authorization)
     if not token:
         return None
     try:
         payload = decode_token(token)
+        if payload.get("type") != "access":
+            return None
+            
         await check_token_blacklist(token, payload)
         return TokenUser(
             user_id=get_subject(payload),

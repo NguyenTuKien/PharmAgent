@@ -11,6 +11,7 @@ import {
   Pill,
   ScanSearch,
   Settings,
+  ShieldCheck,
   UserCog,
   UserRound,
   Users,

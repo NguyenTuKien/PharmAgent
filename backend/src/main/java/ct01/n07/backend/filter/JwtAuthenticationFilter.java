@@ -27,14 +27,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userId;
 
-        // 1. Kiểm tra Header - không có token thì bỏ qua, để Spring Security xử lý anonymous
+        // 1. Kiểm tra Header - không có token thì bỏ qua, để Spring Security xử lý
+        // anonymous
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -54,7 +55,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 3. Nếu có userId và chưa được xác thực trong Context
         if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            // 4. Validate Token: hạn sử dụng + chữ ký + blacklist token + user-level revocation
+            // 4. Validate Token: hạn sử dụng + chữ ký + blacklist token + user-level
+            // revocation
             if (!jwtService.isTokenValid(jwt, userId)) {
                 // Token hợp lệ về cú pháp nhưng đã bị thu hồi hoặc hết hạn
                 // Trả về 401 để frontend interceptor kích hoạt refresh hoặc logout
@@ -77,8 +79,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                     userId,
                     null,
-                    authorities
-            );
+                    authorities);
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }
