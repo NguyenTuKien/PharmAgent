@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 
 import { Button } from '../components/ui/Button.jsx'
@@ -1282,20 +1283,15 @@ function MedicationFormModal({
     }))
   }
 
-  const formPatient = patients.find((profile) => patientId(profile) === form.patientId)
-  const scheduleCount = form.schedules.length
-  const doseCount = form.schedules.reduce((count, schedule) => count + schedule.times.length, 0)
-  const selectedPillName = form.selectedPill ? pillName(form.selectedPill) : form.pillQuery || 'Chưa chọn thuốc'
-
-  return (
+  const modal = (
     <>
-      <div className="caregiver-medication-overlay fixed inset-0 z-[80] bg-slate-950/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
+      <div className="caregiver-medication-overlay fixed inset-0 z-[110] bg-slate-950/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="caregiver-medication-dialog fixed inset-0 z-[120] flex min-h-0 items-stretch justify-center p-2 sm:items-center sm:p-6" role="dialog" aria-modal="true">
         <form
-          className="caregiver-medication-modal flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-slate-50 shadow-2xl ring-1 ring-slate-900/5 sm:max-h-[calc(100vh-3rem)]"
+          className="caregiver-medication-modal flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-slate-50 shadow-2xl ring-1 ring-slate-900/10 sm:h-auto sm:max-h-[calc(100dvh-3rem)] sm:rounded-2xl"
           onSubmit={onSubmit}
         >
-        <header className="caregiver-drawer-header flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 bg-white p-4 sm:p-5">
+        <header className="caregiver-drawer-header relative shrink-0 border-b border-slate-200 bg-white p-4 pr-16 sm:p-5 sm:pr-16">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-teal-700">
               {mode === 'edit' ? 'Cập nhật thuốc' : 'Thêm thuốc mới'}
@@ -1309,7 +1305,7 @@ function MedicationFormModal({
           </div>
           <button
             aria-label="Đóng"
-            className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+            className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 sm:right-5 sm:top-5"
             type="button"
             onClick={onClose}
           >
@@ -1317,13 +1313,13 @@ function MedicationFormModal({
           </button>
         </header>
 
-        <div className="caregiver-modal-scroll flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100/50">
+        <div className="caregiver-modal-scroll min-h-0 flex-1 overflow-y-auto bg-slate-100/50 p-3 sm:p-6">
           <div className="mx-auto grid w-full max-w-4xl gap-6">
-            <section className="caregiver-form-section rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50 sm:p-7">
+            <section className="caregiver-form-section rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50 sm:p-7">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bước 1</p>
-                  <h3 className="text-xl font-black text-slate-950">Chọn hồ sơ và thuốc</h3>
+                  <h3 className="text-lg font-black text-slate-950 sm:text-xl">Chọn hồ sơ và thuốc</h3>
                 </div>
                 <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-black text-teal-800">Pill Catalog</span>
               </div>
@@ -1348,11 +1344,11 @@ function MedicationFormModal({
                   <label className={labelClass}>
                     Tìm kiếm thuốc từ danh mục hệ thống
                   </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="caregiver-pill-search flex min-w-[260px] flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:border-teal-400 focus-within:ring-1 focus-within:ring-teal-400">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
+                    <div className="caregiver-pill-search flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:border-teal-400 focus-within:ring-1 focus-within:ring-teal-400">
                       <Search className="text-slate-400" size={18} />
                       <input
-                        className="min-h-11 flex-1 border-0 bg-transparent text-sm font-bold text-slate-950 outline-none"
+                        className="min-h-11 min-w-0 flex-1 border-0 bg-transparent text-sm font-bold text-slate-950 outline-none"
                         placeholder="Tìm tên thuốc, hoạt chất..."
                         value={form.pillQuery}
                         onChange={(event) => updateField('pillQuery', event.target.value)}
@@ -1364,16 +1360,15 @@ function MedicationFormModal({
                         }}
                       />
                     </div>
-                    <Button disabled={pillSearching || !form.pillQuery.trim()} variant="secondary" onClick={() => runPillSearch()}>
+                    <Button className="w-full sm:w-auto" disabled={pillSearching || !form.pillQuery.trim()} variant="secondary" onClick={() => runPillSearch()}>
                       {pillSearching ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
                       Tìm
                     </Button>
-                    <div className="hidden h-8 w-px bg-slate-200 sm:block" />
-                    <Button disabled={scanLoading} variant="ghost" onClick={() => setCameraOpen(true)}>
+                    <Button className="w-full sm:w-auto" disabled={scanLoading} variant="ghost" onClick={() => setCameraOpen(true)}>
                       <Camera size={16} />
                       Camera
                     </Button>
-                    <Button disabled={scanLoading} variant="ghost" onClick={() => fileInputRef.current?.click()}>
+                    <Button className="w-full sm:w-auto" disabled={scanLoading} variant="ghost" onClick={() => fileInputRef.current?.click()}>
                       {scanLoading ? <Loader2 className="animate-spin" size={16} /> : <UploadCloud size={16} />}
                       Ảnh
                     </Button>
@@ -1435,11 +1430,11 @@ function MedicationFormModal({
               </div>
             </section>
 
-            <section className="caregiver-form-section rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50 sm:p-7">
+            <section className="caregiver-form-section rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50 sm:p-7">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bước 2</p>
-                  <h3 className="text-xl font-black text-slate-950">Thông tin kê đơn</h3>
+                  <h3 className="text-lg font-black text-slate-950 sm:text-xl">Thông tin kê đơn</h3>
                 </div>
                 <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-black text-sky-800">Liều dùng</span>
               </div>
@@ -1529,11 +1524,11 @@ function MedicationFormModal({
               </datalist>
             </section>
 
-            <section className="caregiver-form-section rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50 sm:p-7">
+            <section className="caregiver-form-section rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50 sm:p-7">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bước 3</p>
-                  <h3 className="text-xl font-black text-slate-950">Lịch uống và nhắc nhở</h3>
+                  <h3 className="text-lg font-black text-slate-950 sm:text-xl">Lịch uống và nhắc nhở</h3>
                 </div>
                 <Button size="sm" variant="secondary" onClick={addSchedule}>
                   <Plus size={15} />
@@ -1653,7 +1648,7 @@ function MedicationFormModal({
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {schedule.times.map((dose) => (
-                          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 rounded-lg border border-slate-200 bg-white p-2" key={dose.localId}>
+                          <div className="grid gap-2 rounded-lg border border-slate-200 bg-white p-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" key={dose.localId}>
                             <input
                               aria-label="Giờ uống"
                               className={fieldClass}
@@ -1672,7 +1667,7 @@ function MedicationFormModal({
                             />
                             <button
                               aria-label="Xóa giờ uống"
-                              className="grid h-11 w-11 place-items-center rounded-lg text-rose-700 transition hover:bg-rose-50"
+                              className="grid h-11 w-full place-items-center rounded-lg text-rose-700 transition hover:bg-rose-50 sm:w-11"
                               disabled={schedule.times.length === 1}
                               type="button"
                               onClick={() => removeDose(schedule.localId, dose.localId)}
@@ -1690,11 +1685,11 @@ function MedicationFormModal({
           </div>
         </div>
 
-        <footer className="grid gap-2 border-t border-slate-200 bg-white p-4 sm:flex sm:justify-end sm:p-5">
-          <Button disabled={saving} variant="ghost" onClick={onClose}>
+        <footer className="grid shrink-0 gap-2 border-t border-slate-200 bg-white p-4 sm:flex sm:justify-end sm:p-5">
+          <Button className="w-full sm:w-auto" disabled={saving} variant="ghost" onClick={onClose}>
             Hủy
           </Button>
-          <Button disabled={saving} type="submit" variant="primary">
+          <Button className="w-full sm:w-auto" disabled={saving} type="submit" variant="primary">
             {saving ? <Loader2 className="animate-spin" size={17} /> : <CheckCircle2 size={17} />}
             {mode === 'edit' ? 'Lưu thay đổi' : 'Lưu thuốc'}
           </Button>
@@ -1709,6 +1704,8 @@ function MedicationFormModal({
       />
     </>
   )
+
+  return createPortal(modal, document.body)
 }
 
 export default MedicationsPage
