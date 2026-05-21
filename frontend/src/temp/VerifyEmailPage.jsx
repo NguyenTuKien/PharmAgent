@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../modules/auth/authFacade.js";
-import { resendOTP } from "../api/authApi.js";
+import { resendOTP } from "../modules/auth/authApi.js";
 import { getToastErrorMessage, notify } from "../lib/toast.js";
 import logo from "../assets/logo.svg";
 import title from "../assets/title.svg";

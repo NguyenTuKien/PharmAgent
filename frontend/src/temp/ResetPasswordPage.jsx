@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { resetPassword } from "../api/authApi.js";
+import { resetPassword } from "../modules/auth/authApi.js";
 import { getToastErrorMessage, notify } from "../lib/toast.js";
 import logo from "../assets/logo.svg";
 import title from "../assets/title.svg";

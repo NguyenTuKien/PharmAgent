@@ -4,9 +4,22 @@ import { test } from 'node:test'
 import {
   buildSessionSnapshot,
   canAccessRoles,
+  clearSession,
+  loadSession,
   normalizeProfilesPage,
+  saveSession,
   sanitizeSession,
 } from './session.js'
+
+function createMemoryStorage() {
+  const values = new Map()
+
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: (key) => values.delete(key),
+  }
+}
 
 test('normalizeProfilesPage returns Spring Page content when provided', () => {
   const profiles = normalizeProfilesPage({
@@ -64,4 +77,36 @@ test('canAccessRoles accepts roles case-insensitively and allows empty requireme
   assert.equal(canAccessRoles('ELDERLY', ['caregiver']), false)
   assert.equal(canAccessRoles('ADMIN', []), true)
   assert.equal(canAccessRoles(undefined, ['ADMIN']), false)
+})
+
+test('session helpers use localStorage by default so auth survives new tabs', () => {
+  const originalLocalStorage = globalThis.localStorage
+  const originalSessionStorage = globalThis.sessionStorage
+  const localStorage = createMemoryStorage()
+  const sessionStorage = createMemoryStorage()
+
+  globalThis.localStorage = localStorage
+  globalThis.sessionStorage = sessionStorage
+
+  try {
+    const session = {
+      authToken: 'auth-token',
+      refreshToken: 'refresh-token',
+      accessToken: 'access-token',
+      activeProfileId: 'profile-1',
+      activeRole: 'CAREGIVER',
+    }
+
+    saveSession(session)
+
+    assert.deepEqual(loadSession(), session)
+    assert.equal(sessionStorage.getItem('pharmagent.session.v1'), null)
+
+    clearSession()
+
+    assert.deepEqual(loadSession(), {})
+  } finally {
+    globalThis.localStorage = originalLocalStorage
+    globalThis.sessionStorage = originalSessionStorage
+  }
 })
