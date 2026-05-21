@@ -5,8 +5,8 @@ import { readOnboardingState, useAuth } from "../../modules/auth/authFacade.js";
 import { getToastErrorMessage, notify } from "../../lib/toast.js";
 import logo from "../../assets/logo.svg";
 import title from "../../assets/title.svg";
-import AuthFormBackground from "../../temp/AuthFormBackground.jsx";
-import InteractiveBackground from "../../temp/InteractiveBackground.jsx";
+import AuthFormBackground from "./AuthFormBackground.jsx";
+import InteractiveBackground from "./InteractiveBackground.jsx";
 import "../../styles/auth/auth.css";
 
 export function ElderlySetupPage() {
