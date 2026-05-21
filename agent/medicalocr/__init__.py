@@ -1,0 +1,2 @@
+"""MedicalOCR package."""
+
