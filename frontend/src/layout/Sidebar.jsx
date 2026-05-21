@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 
 import logo from '../assets/logo.svg'
-import title from '../assets/title.svg'
+import title from '../assets/system/title.svg'
 import { useAuthStore } from '../modules/auth/authStore.js'
 import { canAccessRoles } from '../modules/auth/session.js'
 import { navigationItems } from './navigation.js'

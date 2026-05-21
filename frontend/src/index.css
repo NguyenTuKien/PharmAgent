@@ -867,8 +867,6 @@ a {
   width: min(420px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
   color: var(--text);
-  border-radius: 8px !important;
-  box-shadow: 0 18px 42px rgb(22 33 31 / 14%) !important;
   overflow-wrap: anywhere;
   word-break: normal;
 }

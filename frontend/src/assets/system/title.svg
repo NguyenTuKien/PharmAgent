@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="220" viewBox="245 62 1180 220" role="img" aria-label="PharmAgent - Thuốc đúng, sống khỏe" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="pharmGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#45e6d6"/>
+      <stop offset="1" stop-color="#19b8a8"/>
+    </linearGradient>
+    <linearGradient id="agentGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3c95ef"/>
+      <stop offset="1" stop-color="#146bd5"/>
+    </linearGradient>
+    <filter id="softTextShadow" x="-8%" y="-20%" width="116%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#052331" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#softTextShadow)">
+    <text x="330" y="168" fill="url(#pharmGradient)" font-family="Momo Trust Sans, Inter, Arial, sans-serif" font-size="132" font-weight="800" letter-spacing="-7">Pharm</text>
+    <text x="765" y="168" fill="url(#agentGradient)" font-family="Momo Trust Sans, Inter, Arial, sans-serif" font-size="132" font-weight="800" letter-spacing="-7">Agent</text>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M285 224H346L356 205L365 238L378 189L392 232L405 216H474" stroke="#45e6d6" stroke-width="6"/>
+    <path d="M1088 224H1202" stroke="#3c95ef" stroke-width="6"/>
+    <path d="M1320 224H1392" stroke="#3c95ef" stroke-width="6"/>
+    <path d="M1206 213C1206 196 1219 185 1234 185C1244 185 1254 190 1260 199C1266 190 1276 185 1287 185C1302 185 1315 196 1315 213C1315 240 1260 261 1260 261C1260 261 1206 240 1206 213Z" stroke="#3c95ef" stroke-width="6"/>
+  </g>
+
+  <path d="M1253 210H1267V220H1277V234H1267V244H1253V234H1243V220H1253Z" fill="#3c95ef"/>
+
+  <text x="505" y="238" fill="#000000" font-family="Momo Trust Sans, Inter, Arial, sans-serif" font-size="48" font-weight="720">
+    Thuốc đúng, sống khỏe
+  </text>
+</svg>

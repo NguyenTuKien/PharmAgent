@@ -18,7 +18,7 @@ services:
     image: redis:7-alpine
     restart: always
     env_file: .env
-    command: /bin/sh -c 'redis-server --requirepass "$${SPRING_DATA_REDIS_PASSWORD}"'
+    command: /bin/sh -c 'redis-server --requirepass "$${SPRING_DATA_REDIS_PASSWORD}" --appendonly yes --appendfsync everysec'
     healthcheck:
       test: [ "CMD-SHELL", "redis-cli -a \"$${SPRING_DATA_REDIS_PASSWORD}\" ping | grep PONG" ]
       interval: 10s
