@@ -31,7 +31,10 @@ public class Medication {
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     @Field(targetType = FieldType.STRING)
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
