@@ -1065,7 +1065,7 @@ export function MedicationsPage() {
         />
       </section>
 
-      <MedicationFormDrawer
+      <MedicationFormModal
         activeRole={activeRole}
         form={form}
         mode={drawerMode}
@@ -1093,7 +1093,7 @@ export function MedicationsPage() {
   )
 }
 
-function MedicationFormDrawer({
+function MedicationFormModal({
   activeRole,
   form,
   mode,
@@ -1289,13 +1289,12 @@ function MedicationFormDrawer({
 
   return (
     <>
-      <div className="caregiver-medication-overlay fixed inset-0 z-[80] bg-slate-950/35 backdrop-blur-sm" onClick={onClose} />
-      <form
-        aria-modal="true"
-        className="caregiver-medication-drawer fixed right-0 top-0 z-[90] grid h-dvh w-[min(1080px,100vw)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-l border-slate-200 bg-slate-50 shadow-2xl shadow-slate-950/20"
-        role="dialog"
-        onSubmit={onSubmit}
-      >
+      <div className="caregiver-medication-overlay fixed inset-0 z-[80] bg-slate-950/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
+        <form
+          className="caregiver-medication-modal flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-slate-50 shadow-2xl ring-1 ring-slate-900/5 sm:max-h-[calc(100vh-3rem)]"
+          onSubmit={onSubmit}
+        >
         <header className="caregiver-drawer-header flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 bg-white p-4 sm:p-5">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-teal-700">
@@ -1318,65 +1317,21 @@ function MedicationFormDrawer({
           </button>
         </header>
 
-        <div className="caregiver-drawer-scroll overflow-y-auto p-4 sm:p-5">
-          <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="caregiver-compose-rail grid content-start gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 xl:sticky xl:top-0">
-              <div className="flex items-center gap-3">
-                <PatientAvatar profile={formPatient} />
-                <div className="min-w-0">
-                  <span className="block text-xs font-black uppercase tracking-[0.12em] text-slate-500">Hồ sơ</span>
-                  <strong className="block truncate text-sm font-black text-slate-950">{fullName(formPatient)}</strong>
-                </div>
-              </div>
-              <div className="rounded-lg bg-teal-50 p-3 text-teal-950 ring-1 ring-teal-100">
-                <span className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">Thuốc</span>
-                <strong className="mt-1 block break-words text-base font-black">{selectedPillName}</strong>
-                <p className="mt-1 text-xs font-bold text-teal-700">
-                  {form.selectedPill
-                    ? pillActiveIngredient(form.selectedPill) || pillManufacturer(form.selectedPill) || 'Đã khớp Pill Catalog'
-                    : 'Tìm trong Pill Catalog hoặc quét ảnh'}
-                </p>
-              </div>
-              <dl className="grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <dt className="text-xs font-black uppercase text-slate-500">Liều</dt>
-                  <dd className="mt-1 font-black text-slate-950">{form.dosageAmount || '-'} {form.dosageUnit}</dd>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <dt className="text-xs font-black uppercase text-slate-500">Tồn</dt>
-                  <dd className="mt-1 font-black text-slate-950">{form.totalQuantity || '-'} đơn vị</dd>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <dt className="text-xs font-black uppercase text-slate-500">Lịch</dt>
-                  <dd className="mt-1 font-black text-slate-950">{scheduleCount}</dd>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <dt className="text-xs font-black uppercase text-slate-500">Giờ</dt>
-                  <dd className="mt-1 font-black text-slate-950">{doseCount}</dd>
-                </div>
-              </dl>
-              <div className="grid gap-2 rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
-                <span className="font-black uppercase tracking-[0.12em] text-amber-800">Luồng nhập</span>
-                <span>1. Chọn người thân</span>
-                <span>2. Chọn thuốc từ catalog</span>
-                <span>3. Lưu liều và lịch nhắc</span>
-              </div>
-            </aside>
-
-            <div className="grid min-w-0 gap-5">
-            <section className="caregiver-form-section rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 sm:p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <div className="caregiver-modal-scroll flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100/50">
+          <div className="mx-auto grid w-full max-w-4xl gap-6">
+            <section className="caregiver-form-section rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50 sm:p-7">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bước 1</p>
-                  <h3 className="text-lg font-black text-slate-950">Chọn hồ sơ và thuốc</h3>
+                  <h3 className="text-xl font-black text-slate-950">Chọn hồ sơ và thuốc</h3>
                 </div>
                 <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-black text-teal-800">Pill Catalog</span>
               </div>
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,0.42fr)_minmax(0,1fr)]">
+              <div className="grid gap-5">
                 <label className={labelClass}>
                   Hồ sơ bệnh nhân
                   <select
-                    className={fieldClass}
+                    className={cx(fieldClass, 'max-w-md')}
                     disabled={activeRole !== 'CAREGIVER'}
                     value={form.patientId}
                     onChange={(event) => updateField('patientId', event.target.value)}
@@ -1390,12 +1345,15 @@ function MedicationFormDrawer({
                 </label>
 
                 <div className="grid gap-3">
-                  <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
-                    <div className="caregiver-pill-search flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3">
+                  <label className={labelClass}>
+                    Tìm kiếm thuốc từ danh mục hệ thống
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="caregiver-pill-search flex min-w-[260px] flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:border-teal-400 focus-within:ring-1 focus-within:ring-teal-400">
                       <Search className="text-slate-400" size={18} />
                       <input
                         className="min-h-11 flex-1 border-0 bg-transparent text-sm font-bold text-slate-950 outline-none"
-                        placeholder="Tìm tên thuốc trong danh mục"
+                        placeholder="Tìm tên thuốc, hoạt chất..."
                         value={form.pillQuery}
                         onChange={(event) => updateField('pillQuery', event.target.value)}
                         onKeyDown={(event) => {
@@ -1410,6 +1368,7 @@ function MedicationFormDrawer({
                       {pillSearching ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
                       Tìm
                     </Button>
+                    <div className="hidden h-8 w-px bg-slate-200 sm:block" />
                     <Button disabled={scanLoading} variant="ghost" onClick={() => setCameraOpen(true)}>
                       <Camera size={16} />
                       Camera
@@ -1476,15 +1435,15 @@ function MedicationFormDrawer({
               </div>
             </section>
 
-            <section className="caregiver-form-section rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+            <section className="caregiver-form-section rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50 sm:p-7">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bước 2</p>
-                  <h3 className="text-lg font-black text-slate-950">Thông tin kê đơn</h3>
+                  <h3 className="text-xl font-black text-slate-950">Thông tin kê đơn</h3>
                 </div>
                 <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-black text-sky-800">Liều dùng</span>
               </div>
-              <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 <label className={labelClass}>
                   Tên gợi nhớ
                   <input className={fieldClass} value={form.nickname} onChange={(event) => updateField('nickname', event.target.value)} />
@@ -1570,11 +1529,11 @@ function MedicationFormDrawer({
               </datalist>
             </section>
 
-            <section className="caregiver-form-section rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+            <section className="caregiver-form-section rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50 sm:p-7">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bước 3</p>
-                  <h3 className="text-lg font-black text-slate-950">Lịch uống và nhắc nhở</h3>
+                  <h3 className="text-xl font-black text-slate-950">Lịch uống và nhắc nhở</h3>
                 </div>
                 <Button size="sm" variant="secondary" onClick={addSchedule}>
                   <Plus size={15} />
@@ -1582,7 +1541,7 @@ function MedicationFormDrawer({
                 </Button>
               </div>
 
-              <div className="mt-4 grid gap-4">
+              <div className="grid gap-5">
                 {form.schedules.map((schedule, index) => (
                   <div className="caregiver-schedule-card rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4" key={schedule.localId}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1598,7 +1557,7 @@ function MedicationFormDrawer({
                       </button>
                     </div>
 
-                    <div className="mt-3 grid gap-3 lg:grid-cols-4">
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <label className={labelClass}>
                         Tần suất
                         <select
@@ -1729,7 +1688,6 @@ function MedicationFormDrawer({
               </div>
             </section>
           </div>
-          </div>
         </div>
 
         <footer className="grid gap-2 border-t border-slate-200 bg-white p-4 sm:flex sm:justify-end sm:p-5">
@@ -1741,7 +1699,8 @@ function MedicationFormDrawer({
             {mode === 'edit' ? 'Lưu thay đổi' : 'Lưu thuốc'}
           </Button>
         </footer>
-      </form>
+        </form>
+      </div>
 
       <CameraCapture
         open={cameraOpen}
