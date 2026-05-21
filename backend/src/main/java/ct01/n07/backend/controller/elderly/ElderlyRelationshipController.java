@@ -1,13 +1,17 @@
 package ct01.n07.backend.controller.elderly;
 
 import ct01.n07.backend.dto.relationship.CaregiverProfileResponse;
+import ct01.n07.backend.dto.relationship.RelationshipCaregiverTitleRequest;
 import ct01.n07.backend.facade.RelationshipProfileFacade;
 import ct01.n07.backend.service.RelationshipService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,6 +43,14 @@ public class ElderlyRelationshipController {
     @PutMapping("/{id}/refuse")
     public ResponseEntity<Void> refuseInvitation(@PathVariable("id") String relationshipId) {
         relationshipService.refuseInvitation(relationshipId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<Void> updateCaregiverTitle(
+            @PathVariable("id") String relationshipId,
+            @Valid @RequestBody RelationshipCaregiverTitleRequest request) {
+        relationshipService.updateCaregiverTitle(relationshipId, request.getCaregiverTitle());
         return ResponseEntity.ok().build();
     }
 }

@@ -131,6 +131,11 @@ export async function getPendingElderlyRelationships() {
   return response.data
 }
 
+export async function updateElderlyCaregiverTitle(relationshipId, caregiverTitle) {
+  const response = await apiClient.patch(`/elderly/relationship/${relationshipId}`, { caregiverTitle })
+  return response.data
+}
+
 export async function acceptCaregiverInvitation(relationshipId) {
   const response = await apiClient.put(`/elderly/relationship/${relationshipId}/accept`)
   return response.data

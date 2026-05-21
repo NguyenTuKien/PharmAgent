@@ -43,6 +43,7 @@ import {
   updateCaregiverMedication,
 } from '../modules/medication/medicationApi.js'
 import '../styles/caregiver/medications.css'
+import '../styles/elderly/medications.css'
 
 const MEAL_OPTIONS = [
   { value: 'BEFORE_MEAL', label: 'Trước bữa ăn' },
@@ -474,6 +475,295 @@ function scheduleLabel(schedule) {
   return SCHEDULE_LABELS[type] ?? type
 }
 
+function medicationTimes(medication) {
+  return (medication?.schedules ?? [])
+    .flatMap((schedule, scheduleIndex) =>
+      medicationDoseTimes(schedule).map((dose, doseIndex) => ({
+        amount: quantityValue(dose),
+        key: `${schedule.id ?? scheduleIndex}-${dose.id ?? doseIndex}-${normalizeTimeInput(timeValue(dose))}`,
+        schedule,
+        time: normalizeTimeInput(timeValue(dose)),
+      })),
+    )
+    .filter((dose) => dose.time)
+    .sort((first, second) => first.time.localeCompare(second.time))
+}
+
+function medicationDisplayName(medication, pill) {
+  return medication?.nickname || pillName(pill, 'Thuốc chưa đặt tên')
+}
+
+function medicationDateRange(medication) {
+  const startDate = medication?.startDate || 'Chưa có ngày bắt đầu'
+  const endDate = medication?.endDate || 'Không đặt ngày kết thúc'
+  return `${startDate} - ${endDate}`
+}
+
+function ElderlyStatCard({ icon: Icon, label, value, note, tone = 'green' }) {
+  return (
+    <article className={cx('elderly-stat-card', `elderly-stat-card--${tone}`)}>
+      <span className="elderly-stat-card__icon">
+        <Icon size={26} />
+      </span>
+      <span className="elderly-stat-card__label">{label}</span>
+      <strong>{value}</strong>
+      {note ? <span className="elderly-stat-card__note">{note}</span> : null}
+    </article>
+  )
+}
+
+function ElderlyMedicationCard({ medication, pill, active, onClick }) {
+  const times = medicationTimes(medication)
+  const lowStock = Number(medication.totalQuantity ?? 0) <= 7
+  const visibleTimes = times.slice(0, 3)
+
+  return (
+    <button
+      className={cx('elderly-medication-card', active && 'is-active')}
+      type="button"
+      onClick={onClick}
+    >
+      <div className="elderly-medication-card__main">
+        <PillThumb pill={pill} />
+        <span className="min-w-0">
+          <strong>{medicationDisplayName(medication, pill)}</strong>
+          <small>{pillName(pill, medication.pillId)}</small>
+        </span>
+      </div>
+
+      <div className="elderly-medication-card__facts">
+        <span>{medication.dosageAmount} {medication.dosageUnit}</span>
+        <span>{MEAL_LABELS[medication.mealRelation] ?? medication.mealRelation ?? 'Theo chỉ dẫn'}</span>
+      </div>
+
+      <div className="elderly-medication-card__times">
+        {visibleTimes.length ? (
+          visibleTimes.map((dose) => (
+            <span key={`${medication.id}-${dose.key}`}>
+              <Clock3 size={18} />
+              {dose.time}
+            </span>
+          ))
+        ) : (
+          <span>
+            <Clock3 size={18} />
+            Khi cần
+          </span>
+        )}
+        {times.length > visibleTimes.length ? <span>+{times.length - visibleTimes.length} giờ</span> : null}
+      </div>
+
+      {lowStock ? (
+        <div className="elderly-medication-card__warning">
+          <AlertTriangle size={18} />
+          Sắp hết thuốc
+        </div>
+      ) : null}
+    </button>
+  )
+}
+
+function ElderlyMedicationDetail({ medication, patient, pill }) {
+  if (!medication) {
+    return (
+      <article className="elderly-medication-detail elderly-medication-detail--empty">
+        <span>
+          <Pill size={42} />
+        </span>
+        <h2>Chọn một thuốc để xem giờ uống</h2>
+        <p>Danh sách bên trái có các thuốc trong hồ sơ của {fullName(patient)}.</p>
+      </article>
+    )
+  }
+
+  const schedules = medication.schedules ?? []
+  const times = medicationTimes(medication)
+
+  return (
+    <article className="elderly-medication-detail">
+      <header className="elderly-medication-detail__header">
+        <div className="elderly-medication-detail__title">
+          <PillThumb pill={pill} />
+          <div>
+            <p>{fullName(patient)}</p>
+            <h2>{medicationDisplayName(medication, pill)}</h2>
+            <span>{pillName(pill, medication.pillId)}</span>
+          </div>
+        </div>
+        <div className="elderly-readonly-badge">Chỉ xem</div>
+      </header>
+
+      <section className="elderly-dose-summary" aria-label="Thông tin chính">
+        <InfoChip label="Mỗi lần uống" value={`${medication.dosageAmount} ${medication.dosageUnit}`} />
+        <InfoChip label="Cách dùng" value={medication.route || 'Theo chỉ dẫn'} />
+        <InfoChip label="Bữa ăn" value={MEAL_LABELS[medication.mealRelation] ?? medication.mealRelation ?? 'Theo chỉ dẫn'} />
+        <InfoChip label="Còn lại" value={`${medication.totalQuantity ?? 0} ${medication.dosageUnit ?? 'đơn vị'}`} />
+      </section>
+
+      <section className="elderly-time-panel">
+        <div className="elderly-section-heading">
+          <h3>Giờ uống thuốc</h3>
+          <span>{times.length ? `${times.length} giờ` : 'Khi cần'}</span>
+        </div>
+
+        <div className="elderly-time-grid">
+          {times.length ? (
+            times.map((dose) => (
+              <div className="elderly-time-chip" key={`${medication.id}-${dose.key}`}>
+                <Clock3 size={22} />
+                <strong>{dose.time}</strong>
+                <span>{dose.amount || medication.dosageAmount} {medication.dosageUnit}</span>
+              </div>
+            ))
+          ) : (
+            <p className="elderly-empty-note">Thuốc này dùng khi cần hoặc chưa có giờ nhắc cố định.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="elderly-simple-info">
+        <div className="elderly-section-heading">
+          <h3>Thông tin thêm</h3>
+        </div>
+        <dl>
+          <DetailRow label="Mục đích" value={medication.purpose || 'Chưa cập nhật'} />
+          <DetailRow label="Người kê đơn" value={medication.prescribedBy || 'Chưa cập nhật'} />
+          <DetailRow label="Thời gian dùng" value={medicationDateRange(medication)} />
+          <DetailRow label="Ghi chú" value={medication.instruction || 'Không có ghi chú'} />
+        </dl>
+      </section>
+
+      {schedules.length ? (
+        <section className="elderly-simple-info">
+          <div className="elderly-section-heading">
+            <h3>Lịch lặp</h3>
+          </div>
+          <div className="elderly-schedule-list">
+            {schedules.map((schedule, index) => (
+              <div key={schedule.id ?? `${scheduleLabel(schedule)}-${index}`}>
+                <strong>{scheduleLabel(schedule)}</strong>
+                <span>{schedule.startDate || medication.startDate || 'Chưa đặt'} - {schedule.endDate || medication.endDate || 'Không đặt'}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </article>
+  )
+}
+
+function ElderlyMedicationsView({
+  activeFilter,
+  filteredMedications,
+  medicationsLoading,
+  onFilterChange,
+  onRefresh,
+  pillMap,
+  searchLabel,
+  selectedMedication,
+  selectedMedicationId,
+  selectedPatient,
+  setSelectedMedicationId,
+  summary,
+}) {
+  const selectedPill = selectedMedication ? pillMap[normalizePillId(selectedMedication.pillId)] : null
+
+  return (
+    <div className="elderly-medications-page mx-auto grid w-full max-w-[1280px] gap-5 pb-6 text-slate-950">
+      <section className="elderly-medications-hero">
+        <div>
+          <p>Thuốc của tôi</p>
+          <h1>Hôm nay cần nhớ những thuốc này</h1>
+          <span>Danh sách này để xem. Người chăm sóc sẽ cập nhật thuốc khi cần.</span>
+        </div>
+        <div className="elderly-profile-strip">
+          <PatientAvatar profile={selectedPatient} size="lg" />
+          <span>
+            <small>Hồ sơ của tôi</small>
+            <strong>{fullName(selectedPatient)}</strong>
+          </span>
+        </div>
+      </section>
+
+      <section className="elderly-summary-grid" aria-label="Tổng quan thuốc">
+        <ElderlyStatCard icon={Pill} label="Đang uống" note="thuốc" value={summary.activeCount} />
+        <ElderlyStatCard icon={CalendarClock} label="Giờ nhắc" note="trong ngày" tone="blue" value={summary.scheduleTimes} />
+        <ElderlyStatCard icon={PackageCheck} label="Sắp hết" note="cần nhắc người chăm sóc" tone={summary.lowStock ? 'amber' : 'green'} value={summary.lowStock} />
+      </section>
+
+      <section className="elderly-readonly-note">
+        <CheckCircle2 size={22} />
+        <span>Trang này không có thao tác thêm, sửa hoặc xóa thuốc.</span>
+        <Button variant="ghost" onClick={onRefresh}>
+          <RefreshCcw size={18} />
+          Làm mới
+        </Button>
+      </section>
+
+      <section className="elderly-medications-layout">
+        <aside className="elderly-medication-list-panel">
+          <div className="elderly-list-header">
+            <div>
+              <p>Danh sách thuốc</p>
+              <h2>Chọn thuốc để xem rõ hơn</h2>
+            </div>
+            <div className="elderly-filter-tabs">
+              {[
+                { value: 'active', label: 'Đang dùng' },
+                { value: 'all', label: 'Tất cả' },
+              ].map((filter) => (
+                <button
+                  className={cx(activeFilter === filter.value && 'is-active')}
+                  key={filter.value}
+                  type="button"
+                  onClick={() => onFilterChange(filter.value)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {searchLabel ? (
+            <p className="elderly-search-note">Đang lọc theo "{searchLabel}"</p>
+          ) : null}
+
+          <div className="elderly-medication-list">
+            {medicationsLoading ? (
+              <div className="elderly-loading-state">
+                <Loader2 className="animate-spin" size={30} />
+                <span>Đang tải thuốc</span>
+              </div>
+            ) : filteredMedications.length ? (
+              filteredMedications.map((medication) => (
+                <ElderlyMedicationCard
+                  active={medication.id === selectedMedicationId}
+                  key={medication.id}
+                  medication={medication}
+                  pill={pillMap[normalizePillId(medication.pillId)]}
+                  onClick={() => setSelectedMedicationId(medication.id)}
+                />
+              ))
+            ) : (
+              <div className="elderly-empty-state">
+                <Pill size={42} />
+                <h3>Chưa có thuốc trong hồ sơ</h3>
+                <p>Nhờ người chăm sóc thêm thuốc để lịch uống hiện ở đây.</p>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <ElderlyMedicationDetail
+          medication={selectedMedication}
+          patient={selectedPatient}
+          pill={selectedPill}
+        />
+      </section>
+    </div>
+  )
+}
+
 function MedicationRow({ medication, pill, active, onClick }) {
   const schedules = medication.schedules ?? []
   const timesCount = schedules.reduce((count, schedule) => count + medicationDoseTimes(schedule).length, 0)
@@ -513,7 +803,7 @@ function MedicationRow({ medication, pill, active, onClick }) {
   )
 }
 
-function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
+function MedicationDetail({ canManage = true, medication, patient, pill, onEdit, onDelete }) {
   if (!medication) {
     return (
       <article className="caregiver-medication-detail grid min-h-[420px] content-center justify-items-center rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
@@ -521,9 +811,6 @@ function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
           <Pill size={34} />
         </span>
         <h2 className="mt-4 text-xl font-black text-slate-950">Chọn một thuốc để xem chi tiết</h2>
-        <p className="mt-2 max-w-md text-sm font-bold text-slate-500">
-          Bảng bên trái hiển thị thuốc, lịch nhắc và tồn kho theo hồ sơ đang chọn.
-        </p>
       </article>
     )
   }
@@ -549,16 +836,18 @@ function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" onClick={onEdit}>
-            <FilePenLine size={16} />
-            Sửa
-          </Button>
-          <Button size="sm" variant="danger" onClick={onDelete}>
-            <Trash2 size={16} />
-            Xóa
-          </Button>
-        </div>
+        {canManage ? (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="ghost" onClick={onEdit}>
+              <FilePenLine size={16} />
+              Sửa
+            </Button>
+            <Button size="sm" variant="danger" onClick={onDelete}>
+              <Trash2 size={16} />
+              Xóa
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -644,6 +933,8 @@ export function MedicationsPage() {
   const [searchParams] = useSearchParams()
   const activeProfile = useAuthStore((state) => state.activeProfile)
   const activeRole = activeProfile?.role
+  const canManageMedications = activeRole === 'CAREGIVER'
+  const isElderlyMedicationView = activeRole === 'ELDERLY'
   const [patients, setPatients] = useState([])
   const [patientsLoading, setPatientsLoading] = useState(true)
   const [selectedPatientId, setSelectedPatientId] = useState('')
@@ -705,6 +996,12 @@ export function MedicationsPage() {
   useEffect(() => {
     loadPatients()
   }, [loadPatients])
+
+  useEffect(() => {
+    if (isElderlyMedicationView && activeFilter === 'inactive') {
+      setActiveFilter('active')
+    }
+  }, [activeFilter, isElderlyMedicationView])
 
   useEffect(() => {
     if (!patients.length) {
@@ -777,6 +1074,10 @@ export function MedicationsPage() {
   }, [loadMedicationsForPatient])
 
   const openCreateDrawer = useCallback(async (preset = {}) => {
+    if (!canManageMedications) {
+      return
+    }
+
     let normalizedPillId = normalizePillId(preset.pillId)
     const presetPillName = preset.pillName?.trim() ?? ''
     let selectedPill = null
@@ -817,7 +1118,7 @@ export function MedicationsPage() {
       pillQuery: selectedPill ? pillName(selectedPill, presetPillName) : presetPillName,
     })
     setDrawerMode('create')
-  }, [selectedPatient])
+  }, [canManageMedications, selectedPatient])
 
   useEffect(() => {
     if (!drawerMode) {
@@ -832,6 +1133,10 @@ export function MedicationsPage() {
   }, [drawerMode])
 
   const openEditDrawer = useCallback(async (medication) => {
+    if (!canManageMedications || !medication) {
+      return
+    }
+
     const normalizedPillId = normalizePillId(medication.pillId)
     let pill = pillMap[normalizedPillId]
 
@@ -846,15 +1151,15 @@ export function MedicationsPage() {
 
     setForm(medicationToForm(medication, selectedPatient, pill))
     setDrawerMode('edit')
-  }, [pillMap, selectedPatient])
+  }, [canManageMedications, pillMap, selectedPatient])
 
   useEffect(() => {
     const actionKey = `${requestedProfileId ?? ''}:${requestedAction ?? ''}:${selectedPatientId}:${requestedPillId}:${requestedPillName}`
-    if (requestedAction === 'add' && selectedPatientId && actionHandledRef.current !== actionKey) {
+    if (canManageMedications && requestedAction === 'add' && selectedPatientId && actionHandledRef.current !== actionKey) {
       actionHandledRef.current = actionKey
       openCreateDrawer({ pillId: requestedPillId, pillName: requestedPillName })
     }
-  }, [openCreateDrawer, requestedAction, requestedPillId, requestedPillName, requestedProfileId, selectedPatientId])
+  }, [canManageMedications, openCreateDrawer, requestedAction, requestedPillId, requestedPillName, requestedProfileId, selectedPatientId])
 
   const filteredMedications = useMemo(() => {
     if (!searchText) {
@@ -889,6 +1194,11 @@ export function MedicationsPage() {
 
   const submitMedication = async (event) => {
     event.preventDefault()
+    if (!canManageMedications) {
+      notify.warning('Hồ sơ người cao tuổi chỉ được xem danh sách thuốc')
+      return
+    }
+
     const validationMessage = validateMedicationForm(form)
     if (validationMessage) {
       notify.warning(validationMessage)
@@ -923,7 +1233,7 @@ export function MedicationsPage() {
   }
 
   const confirmDeleteMedication = async () => {
-    if (!deleteTarget?.id) {
+    if (!canManageMedications || !deleteTarget?.id) {
       return
     }
 
@@ -939,6 +1249,25 @@ export function MedicationsPage() {
 
   const selectedPill = selectedMedication ? pillMap[normalizePillId(selectedMedication.pillId)] : null
 
+  if (isElderlyMedicationView) {
+    return (
+      <ElderlyMedicationsView
+        activeFilter={activeFilter}
+        filteredMedications={filteredMedications}
+        medicationsLoading={medicationsLoading || patientsLoading}
+        pillMap={pillMap}
+        searchLabel={searchParams.get('q')}
+        selectedMedication={selectedMedication}
+        selectedMedicationId={selectedMedicationId}
+        selectedPatient={selectedPatient}
+        summary={summary}
+        setSelectedMedicationId={setSelectedMedicationId}
+        onFilterChange={setActiveFilter}
+        onRefresh={loadMedicationsForPatient}
+      />
+    )
+  }
+
   return (
     <div className="caregiver-medications-page mx-auto grid w-full max-w-[1500px] gap-4 pb-4 text-slate-950 sm:gap-5 lg:pb-6 xl:gap-6">
       <section className="caregiver-medication-hero rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/70 sm:p-5 lg:p-7">
@@ -951,7 +1280,7 @@ export function MedicationsPage() {
               Trung tâm quản lý thuốc
             </h1>
             <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600 sm:text-base">
-              Theo dõi đơn thuốc, lịch nhắc uống, tồn kho và kết quả nhận diện từ Pill Catalog cho từng hồ sơ chăm sóc.
+              Theo dõi đơn thuốc, tạo lịch nhắc uống thuốc cho từng hồ sơ chăm sóc.
             </p>
             <div className="mt-5 grid gap-3 rounded-lg border border-slate-200 bg-white/85 p-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
               <PatientAvatar profile={selectedPatient} size="lg" />
@@ -982,10 +1311,12 @@ export function MedicationsPage() {
               <RefreshCcw size={17} />
               Làm mới
             </Button>
-            <Button disabled={!selectedPatientId} variant="primary" onClick={() => openCreateDrawer()}>
-              <Plus size={17} />
-              Thêm thuốc
-            </Button>
+            {canManageMedications ? (
+              <Button disabled={!selectedPatientId} variant="primary" onClick={() => openCreateDrawer()}>
+                <Plus size={17} />
+                Thêm thuốc
+              </Button>
+            ) : null}
           </div>
         </div>
       </section>
@@ -1058,6 +1389,7 @@ export function MedicationsPage() {
         </aside>
 
         <MedicationDetail
+          canManage={canManageMedications}
           medication={selectedMedication}
           patient={selectedPatient}
           pill={selectedPill}
@@ -1066,30 +1398,34 @@ export function MedicationsPage() {
         />
       </section>
 
-      <MedicationFormModal
-        activeRole={activeRole}
-        form={form}
-        mode={drawerMode}
-        patients={patients}
-        saving={saving}
-        selectedMedication={selectedMedication}
-        setForm={setForm}
-        onClose={() => setDrawerMode(null)}
-        onSubmit={submitMedication}
-      />
+      {canManageMedications ? (
+        <>
+          <MedicationFormModal
+            activeRole={activeRole}
+            form={form}
+            mode={drawerMode}
+            patients={patients}
+            saving={saving}
+            selectedMedication={selectedMedication}
+            setForm={setForm}
+            onClose={() => setDrawerMode(null)}
+            onSubmit={submitMedication}
+          />
 
-      <ConfirmDialog
-        confirmLabel="Xóa thuốc"
-        description={deleteTarget ? `${deleteTarget.nickname || 'Thuốc này'} sẽ bị xóa khỏi hồ sơ và các nhắc nhở liên quan sẽ dừng lại.` : ''}
-        open={Boolean(deleteTarget)}
-        title="Xóa thuốc khỏi hồ sơ?"
-        onConfirm={confirmDeleteMedication}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeleteTarget(null)
-          }
-        }}
-      />
+          <ConfirmDialog
+            confirmLabel="Xóa thuốc"
+            description={deleteTarget ? `${deleteTarget.nickname || 'Thuốc này'} sẽ bị xóa khỏi hồ sơ và các nhắc nhở liên quan sẽ dừng lại.` : ''}
+            open={Boolean(deleteTarget)}
+            title="Xóa thuốc khỏi hồ sơ?"
+            onConfirm={confirmDeleteMedication}
+            onOpenChange={(open) => {
+              if (!open) {
+                setDeleteTarget(null)
+              }
+            }}
+          />
+        </>
+      ) : null}
     </div>
   )
 }
