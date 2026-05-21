@@ -39,7 +39,8 @@ export function ProfileSelectPage() {
     try {
       await selectProfile(profileId)
       clearOnboardingState()
-      navigate('/dashboard')
+      const selected = profiles.find((p) => p.id === profileId)
+      navigate(selected?.role?.toUpperCase() === 'ADMIN' ? '/admin' : '/dashboard')
     } catch (err) {
       const message = getToastErrorMessage(err, 'Không thể chọn hồ sơ. Vui lòng thử lại.')
       notify.error(message, {

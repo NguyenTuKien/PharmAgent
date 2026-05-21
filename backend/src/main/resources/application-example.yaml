@@ -64,6 +64,6 @@ management:
         include: health
 
 cloudinary:
-  cloud-name: dummy_cloud_name
-  api-key: "000000000000000"
-  api-secret: dummy_api_secret_here
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}

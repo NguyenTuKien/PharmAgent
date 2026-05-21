@@ -28,7 +28,6 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final UserDeviceRepository userDeviceRepository;
-    private final PillRepository pillRepository;
     private final MedicationRepository medicationRepository;
     
     private final RelationshipRepository relationshipRepository;
@@ -59,10 +58,7 @@ public class DataSeeder implements CommandLineRunner {
         upsertChatAndCall(caregiver, elderly);
         upsertNotification(caregiver, elderly);
 
-        Pill paracetamol = upsertParacetamol();
-        upsertAmlodipine();
-
-        Medication medication = upsertMedication(elderly, paracetamol);
+        Medication medication = upsertMedication(elderly, "111111111111111111111111");
         upsertEventDose(elderly, medication);
 
         log.info("== Seed sample data completed ==");
@@ -241,63 +237,11 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
-    private Pill upsertParacetamol() {
-        Pill pill = pillRepository.findByNameAndStrength("Paracetamol 500mg", "500mg").orElseGet(Pill::new);
-        if (pill.getId() == null) {
-            pill.setCreatedAt(Instant.now());
-        }
 
-        pill.setName("Paracetamol 500mg");
-        pill.setGenericName("Paracetamol");
-        pill.setBrandName("Panadol");
-        pill.setStrength("500mg");
-        pill.setDosageForm("Vien nen");
-        pill.setColor("Trang");
-        pill.setShape("Tron");
-        pill.setDescription("Thuoc giam dau ha sot");
-        pill.setUsageInstructions("Uong sau khi an no. Khong uong qua 4 vien/ngay.");
-        pill.setWarning("Khong dung cho nguoi suy gan");
-        pill.setSideEffects("Co the gay buon ngu nhe.");
-        pill.setManufacturer("GlaxoSmithKline");
-        pill.setActive(true);
-        pill.setImages(List.of(
-                PillImage.builder()
-                        .imageUrl("https://example.com/panadol-front.jpg")
-                        .viewType(ViewType.FRONT)
-                        .isPrimary(true)
-                        .build()));
-
-        return pillRepository.save(pill);
-    }
-
-    private void upsertAmlodipine() {
-        Pill pill = pillRepository.findByNameAndStrength("Amlodipine 5mg", "5mg").orElseGet(Pill::new);
-        if (pill.getId() == null) {
-            pill.setCreatedAt(Instant.now());
-        }
-
-        pill.setName("Amlodipine 5mg");
-        pill.setGenericName("Amlodipine");
-        pill.setBrandName("Amlor");
-        pill.setStrength("5mg");
-        pill.setDosageForm("Vien nang");
-        pill.setColor("Vang");
-        pill.setShape(null);
-        pill.setDescription("Thuoc huyet ap");
-        pill.setUsageInstructions("Uong vao buoi sang, truoc hoac sau an deu duoc.");
-        pill.setWarning(null);
-        pill.setSideEffects(null);
-        pill.setManufacturer(null);
-        pill.setActive(true);
-        pill.setImages(List.of());
-
-        pillRepository.save(pill);
-    }
-
-    private Medication upsertMedication(User elderly, Pill paracetamol) {
+    private Medication upsertMedication(User elderly, String pillId) {
         String nickname = "Thuoc dau dau (hop xanh)";
         Medication medication = medicationRepository
-                .findByPatientIdAndPillIdAndNickname(elderly.getId(), paracetamol.getId(), nickname)
+                .findByPatientIdAndPillIdAndNickname(elderly.getId(), pillId, nickname)
                 .orElseGet(Medication::new);
 
         if (medication.getId() == null) {
@@ -305,7 +249,7 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         medication.setPatientId(elderly.getId());
-        medication.setPillId(paracetamol.getId());
+        medication.setPillId(pillId);
         medication.setNickname(nickname);
         medication.setDosageAmount(new BigDecimal("1.0"));
         medication.setDosageUnit("Vien");

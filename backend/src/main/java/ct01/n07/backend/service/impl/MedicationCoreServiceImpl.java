@@ -8,7 +8,6 @@ import ct01.n07.backend.model.Medication;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.repository.MedicationRepository;
-import ct01.n07.backend.repository.PillRepository;
 import ct01.n07.backend.repository.UserProfileRepository;
 import ct01.n07.backend.security.MedicationPermissionValidator;
 import ct01.n07.backend.security.ProfileAccessContext;
@@ -26,7 +25,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class MedicationCoreServiceImpl implements MedicationCoreService {
 
     private final MedicationRepository medicationRepository;
-    private final PillRepository pillRepository;
     private final UserProfileRepository userProfileRepository;
     private final ProfileAccessContext profileAccessContext;
     private final MedicationMapper medicationMapper;
@@ -45,10 +43,6 @@ public class MedicationCoreServiceImpl implements MedicationCoreService {
 
         if (!userProfileRepository.existsByIdAndRole(request.getPatientId(), Role.ELDERLY)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Patient profile is invalid");
-        }
-
-        if (!pillRepository.existsById(request.getPillId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pill not found");
         }
 
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), request.getPatientId());
@@ -99,9 +93,6 @@ public class MedicationCoreServiceImpl implements MedicationCoreService {
         permissionValidator.verifySchedulePermission(currentProfile.getRole(), currentProfile.getId(), medication.getPatientId());
 
         if (request.getPillId() != null) {
-            if (!pillRepository.existsById(request.getPillId())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pill not found");
-            }
             medication.setPillId(request.getPillId());
         }
 

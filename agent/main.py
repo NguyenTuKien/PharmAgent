@@ -1,102 +1,77 @@
-import logging
+import asyncio
 import base64
-import cv2
-import numpy as np
-import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, APIRouter, Request
+import logging
+
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from typing import List, Optional
 
-# --- CONFIGURATION & LOGGING ---
+from medicalocr.analyze import AnalyzeResponse, AnalyzeTextRequest, analyze_ocr_result, analyze_text
+from medicalocr.database import DEFAULT_DB_PATH, load_catalog_products_from_db
+from medicalocr.ocr import extract_ocr_result
+from medicalocr.pills import router as pills_router
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="PharmAgent AI Service - Real-time")
+app = FastAPI(title="PharmAgent AI Service - MedicalOCR")
+app.state.catalog = load_catalog_products_from_db(DEFAULT_DB_PATH)
+
+def reload_catalog():
+    app.state.catalog = load_catalog_products_from_db(DEFAULT_DB_PATH)
+    logger.info("Catalog reloaded, size: %d", len(app.state.catalog))
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
-    logger.error(f"Validation error on {request.method} {request.url.path}: {errors}")
+    logger.error("Validation error on %s %s: %s", request.method, request.url.path, errors)
     return JSONResponse(status_code=422, content={"detail": errors})
 
-# --- DATA MODELS ---
-class PillScanResponse(BaseModel):
-    pillId: Optional[str] = None
-    name: Optional[str] = None
-    genericName: Optional[str] = None
-    brandName: Optional[str] = None
-    strength: Optional[str] = None
-    confidenceScore: float = 0.0
-    description: Optional[str] = "Kết quả nhận diện từ camera real-time"
-    imageUrl: Optional[str] = None  # URL ảnh đã upload lên Cloudinary
+
+api_router = APIRouter()
 
 
-
-
-# --- ROUTER CONFIG ---
-router = APIRouter(prefix="/ws")
-
-@router.get("/health")
+@api_router.get("/health")
 async def health():
-    return {"status": "UP", "mode": "real-time"}
+    return {
+        "status": "UP",
+        "mode": "medicalocr",
+        "catalog_size": len(app.state.catalog),
+    }
 
-# --- REAL-TIME WEBSOCKET LOGIC ---
-@router.websocket("/agent")
-async def websocket_pill_scan(websocket: WebSocket):
-    """
-    Endpoint phục vụ việc 'lia cam'. Frontend gửi các frame ảnh liên tục (Base64),
-    Backend xử lý và trả về kết quả ngay lập tức.
-    Khi AI nhận diện thành công (confidence >= 0.8), ảnh được upload lên Cloudinary
-    và URL ảnh được đính kèm trong response.
-    """
-    await websocket.accept()
-    logger.info("Client connected for Real-time Scanning")
-    
+
+def _analyze_image(image_bytes: bytes, top_k: int = 4):
+    ocr_result = extract_ocr_result(image_bytes)
+    return analyze_ocr_result(ocr_result, app.state.catalog, top_k=top_k)
+
+
+@api_router.post("/analyze", response_model=AnalyzeResponse)
+async def analyze_image(image: UploadFile = File(...), top_k: int = Form(default=4)):
+    image_bytes = await image.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Image is required.")
+
     try:
-        while True:
-            # 1. Nhận dữ liệu từ Frontend (dạng văn bản chứa chuỗi Base64 của frame ảnh)
-            data = await websocket.receive_text()
-            
-            # 2. Xử lý chuỗi Base64 thành ảnh OpenCV
-            try:
-                # Tách bỏ tiền tố 'data:image/jpeg;base64,' nếu có
-                if "," in data:
-                    data = data.split(",")[1]
-                
-                img_bytes = base64.b64decode(data)
-                nparr = np.frombuffer(img_bytes, np.uint8)
-                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-                if frame is None:
-                    continue
-
-                # 3. MOCK AI LOGIC (Đây là nơi bạn gọi Model YOLO/TensorFlow của mình)
-                # result = your_model.predict(frame)
-                
-                # Giả lập: AI nhận diện được Paracetamol khi nhận được dữ liệu
-                detected_pill_id = "p001"
-                confidence = 0.95
-
-                scan_result = PillScanResponse(
-                    pillId=detected_pill_id,
-                    name="Paracetamol",
-                    genericName="Acetaminophen",
-                    brandName="Hapacol 500",
-                    strength="500mg",
-                    confidenceScore=confidence
-                )
+        return await asyncio.to_thread(_analyze_image, image_bytes, top_k)
+    except Exception as exc:
+        logger.exception("MedicalOCR image analysis failed")
+        raise HTTPException(status_code=503, detail=f"OCR failed: {exc}") from exc
 
 
-                # 5. Trả về kết quả cho Frontend qua WebSocket
-                await websocket.send_text(scan_result.model_dump_json())
+@api_router.post("/search", response_model=AnalyzeResponse)
+async def search_text(payload: AnalyzeTextRequest):
+    if not payload.ocr_text.strip():
+        raise HTTPException(status_code=400, detail="ocr_text is required.")
 
-            except Exception as e:
-                logger.error(f"Error processing frame: {e}")
-                await websocket.send_json({"error": "Frame processing failed"})
+    return await asyncio.to_thread(
+        analyze_text,
+        payload.ocr_text,
+        app.state.catalog,
+        top_k=payload.top_k,
+        request_id=payload.request_id,
+    )
 
-    except WebSocketDisconnect:
-        logger.info("Client disconnected from Real-time Scanning")
 
-app.include_router(router)
+app.include_router(api_router)
+app.include_router(pills_router)
