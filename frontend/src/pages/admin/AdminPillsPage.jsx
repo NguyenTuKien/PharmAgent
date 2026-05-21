@@ -297,6 +297,7 @@ export function AdminPillsPage() {
     }
   }, [page, search])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchPills(page, search) }, [page])
 
   function handleSearchChange(e) {

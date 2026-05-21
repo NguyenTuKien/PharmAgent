@@ -34,6 +34,7 @@ export function CameraCapture({ open, onClose, onCapture }) {
     }
   }, [facingMode, stopCamera])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (open) {
       startCamera()

@@ -185,6 +185,7 @@ export function AdminUsersPage() {
     }
   }, [page])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchUsers(page) }, [page])
 
   async function handleLockToggle(user) {

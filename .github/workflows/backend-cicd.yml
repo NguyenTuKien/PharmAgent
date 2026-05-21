@@ -38,6 +38,15 @@ jobs:
       mongodb:
         image: mongo:latest
         ports: [ 27017:27017 ]
+      redis:
+        image: redis:7-alpine
+        ports: [ 6379:6379 ]
+      rabbitmq:
+        image: rabbitmq:3.11-management
+        ports: [ 5672:5672, 15672:15672 ]
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
     steps:
       - uses: actions/checkout@v4
 

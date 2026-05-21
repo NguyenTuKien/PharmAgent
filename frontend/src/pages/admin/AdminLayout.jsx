@@ -1,10 +1,4 @@
-import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Pill, Users } from 'lucide-react'
-
-const adminNavItems = [
-  { to: '/admin/users', label: 'Tài khoản', icon: Users },
-  { to: '/admin/pills', label: 'Thư viện thuốc', icon: Pill },
-]
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 export function AdminLayout() {
   const location = useLocation()
