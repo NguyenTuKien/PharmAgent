@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Pill,
   ScanSearch,
+  Settings,
   ShieldCheck,
   UserCog,
   UserRound,
