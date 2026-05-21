@@ -59,7 +59,11 @@ export function canAccessRoles(activeRole, requiredRoles = []) {
   return requiredRoles.some((role) => normalizeString(role)?.toUpperCase() === normalizedRole)
 }
 
-export function loadSession(storage = globalThis.sessionStorage) {
+function getDefaultSessionStorage() {
+  return globalThis.localStorage ?? globalThis.sessionStorage
+}
+
+export function loadSession(storage = getDefaultSessionStorage()) {
   try {
     const raw = storage?.getItem(SESSION_STORAGE_KEY)
     return raw ? sanitizeSession(JSON.parse(raw)) : {}
@@ -68,7 +72,7 @@ export function loadSession(storage = globalThis.sessionStorage) {
   }
 }
 
-export function saveSession(session, storage = globalThis.sessionStorage) {
+export function saveSession(session, storage = getDefaultSessionStorage()) {
   const snapshot = sanitizeSession(session)
 
   if (!Object.keys(snapshot).length) {
@@ -80,6 +84,6 @@ export function saveSession(session, storage = globalThis.sessionStorage) {
   return snapshot
 }
 
-export function clearSession(storage = globalThis.sessionStorage) {
+export function clearSession(storage = getDefaultSessionStorage()) {
   storage?.removeItem(SESSION_STORAGE_KEY)
 }

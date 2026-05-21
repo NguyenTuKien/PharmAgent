@@ -47,6 +47,10 @@ export async function resendVerificationRequest(email) {
   return response.data
 }
 
+export async function resendOTP(email) {
+  return resendVerificationRequest(email)
+}
+
 export async function forgotPasswordRequest(email) {
   const response = await apiClient.post(
     '/auth/forgot-password',
@@ -59,12 +63,25 @@ export async function forgotPasswordRequest(email) {
   return response.data
 }
 
+export async function forgotPassword(email) {
+  return forgotPasswordRequest(email)
+}
+
 export async function resetPasswordRequest(payload) {
   const response = await apiClient.post('/auth/reset-password', payload, {
     skipAuthHeader: true,
     skipAuthRefresh: true,
   })
   return response.data
+}
+
+export async function resetPassword(email, token, newPassword, confirmPassword = newPassword) {
+  return resetPasswordRequest({
+    email,
+    token,
+    newPassword,
+    confirmPassword,
+  })
 }
 
 export async function selectProfileRequest(authToken, profileId) {
