@@ -57,8 +57,9 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         return switch (folder == null ? "" : folder.toLowerCase()) {
             case "avatar", "avatars" -> "pharmagent/avatars";
             case "pill",   "pills"   -> "pharmagent/pills";
+            case "chat",   "chats"   -> "pharmagent/chat";
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Folder không hợp lệ. Chỉ chấp nhận: avatar, pill");
+                    "Folder không hợp lệ. Chỉ chấp nhận: avatar, pill, chat");
         };
     }
 }

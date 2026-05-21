@@ -1,5 +1,6 @@
 package ct01.n07.backend.controller;
 
+import ct01.n07.backend.dto.chat.ChatRoomSummaryResponse;
 import ct01.n07.backend.model.ChatMessage;
 import ct01.n07.backend.model.ChatRoom;
 import ct01.n07.backend.service.ChatMessageService;
@@ -26,7 +27,6 @@ public class ChatController {
     private final ChatRoomService chatRoomService;
     private final ChatMessageService chatMessageService;
 
-    /** Lấy profileId từ request attribute (được set bởi JwtAuthenticationFilter từ access token) */
     private String getCurrentProfileId(HttpServletRequest request) {
         String profileId = (String) request.getAttribute(PROFILE_ID_ATTR);
         if (profileId == null || profileId.isBlank()) {
@@ -36,13 +36,13 @@ public class ChatController {
     }
 
     @GetMapping("/rooms")
-    public ResponseEntity<List<ChatRoom>> getMyRooms(HttpServletRequest request) {
+    public ResponseEntity<List<ChatRoomSummaryResponse>> getMyRooms(HttpServletRequest request) {
         String profileId = getCurrentProfileId(request);
-        return ResponseEntity.ok(chatRoomService.getUserRooms(profileId));
+        return ResponseEntity.ok(chatRoomService.getUserRoomSummaries(profileId));
     }
 
     @PostMapping("/rooms/direct/{targetProfileId}")
-    public ResponseEntity<ChatRoom> getOrCreateDirectRoom(
+    public ResponseEntity<ChatRoomSummaryResponse> getOrCreateDirectRoom(
             HttpServletRequest request,
             @PathVariable String targetProfileId) {
 
@@ -53,7 +53,7 @@ public class ChatController {
         }
 
         ChatRoom room = chatRoomService.getOrCreateDirectRoom(profileId, targetProfileId);
-        return ResponseEntity.ok(room);
+        return ResponseEntity.ok(chatRoomService.toRoomSummary(room, profileId));
     }
 
     @GetMapping("/rooms/{roomId}/messages")
@@ -71,5 +71,16 @@ public class ChatController {
 
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(chatMessageService.getRoomMessages(roomId, pageable));
+    }
+
+    @PostMapping("/rooms/{roomId}/read")
+    public ResponseEntity<Void> markRoomAsRead(HttpServletRequest request, @PathVariable String roomId) {
+        String profileId = getCurrentProfileId(request);
+        if (!chatRoomService.isUserInRoom(roomId, profileId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        chatMessageService.markRoomAsRead(roomId, profileId);
+        return ResponseEntity.noContent().build();
     }
 }

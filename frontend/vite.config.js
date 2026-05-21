@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      global: 'globalThis',
+    },
     server: {
       host: '0.0.0.0',
       hmr: {

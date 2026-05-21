@@ -136,6 +136,8 @@ def get_pill_by_id(pill_id: str):
     source_url = f"local://pill/{pill_id}"
     row = conn.execute("SELECT * FROM products WHERE source_url = ?", (source_url,)).fetchone()
     if not row:
+        row = conn.execute("SELECT * FROM products WHERE source_url = ?", (pill_id,)).fetchone()
+    if not row:
         # Fallback to id
         row = conn.execute("SELECT * FROM products WHERE id = ?", (pill_id,)).fetchone()
     conn.close()

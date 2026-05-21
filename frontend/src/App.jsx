@@ -9,6 +9,7 @@ import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.jsx'
 import { AdminLayout } from './pages/admin/AdminLayout.jsx'
 import { AdminPillsPage } from './pages/admin/AdminPillsPage.jsx'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage.jsx'
+import { ChatPage } from './pages/ChatPage.jsx'
 import { DashboardPage } from './pages/DashboardPage.jsx'
 import { MedicationsPage } from './pages/MedicationsPage.jsx'
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.jsx'
@@ -107,15 +108,10 @@ function App() {
               />
             </Route>
 
-            <Route
-              element={
-                <WorkspacePage
-                  description="Khu vực chat giữa elderly, caregiver và đội ngũ quản trị khi cần hỗ trợ."
-                  title="Chat"
-                />
-              }
-              path="/chat"
-            />
+            <Route element={<RoleRoute roles={['ELDERLY', 'CAREGIVER']} />}>
+              <Route element={<ChatPage />} path="/chat" />
+              <Route element={<ChatPage />} path="/chat/:roomId" />
+            </Route>
 
             <Route element={<ProfileSettingsPage />} path="/my-profile" />
 

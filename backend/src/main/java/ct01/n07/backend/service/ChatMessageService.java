@@ -8,4 +8,5 @@ import org.springframework.data.domain.Pageable;
 public interface ChatMessageService {
     ChatMessage saveMessage(ChatPayload payload);
     Page<ChatMessage> getRoomMessages(String roomId, Pageable pageable);
+    void markRoomAsRead(String roomId, String profileId);
 }

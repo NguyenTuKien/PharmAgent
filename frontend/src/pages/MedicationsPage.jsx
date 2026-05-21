@@ -30,11 +30,13 @@ import {
 } from '../modules/profile/profileApi.js'
 import {
   analyzeMedicationImage,
+  analyzeMedicationText,
   asPageContent,
   createCaregiverMedication,
   deleteCaregiverMedication,
   getMedications,
   getPillById,
+  normalizeCatalogPill,
   normalizePillId,
   searchPills,
   updateCaregiverMedication,
@@ -81,8 +83,8 @@ const UNIT_OPTIONS = ['Viên', 'ml', 'mg', 'gói', 'ống', 'giọt', 'lần']
 const ROUTE_OPTIONS = ['Uống', 'Ngậm', 'Bôi', 'Tiêm', 'Nhỏ mắt', 'Xịt']
 
 const fieldClass =
-  'min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-950 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 disabled:bg-slate-50 disabled:text-slate-400'
-const labelClass = 'grid gap-2 text-sm font-black text-slate-600'
+  'min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-100 disabled:bg-slate-50 disabled:text-slate-400'
+const labelClass = 'grid gap-2 text-sm font-black text-slate-700'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(' ')
@@ -126,6 +128,60 @@ function primaryPillImage(pill) {
 
 function pillName(pill, fallback = 'Chưa có tên thuốc') {
   return pill?.name || pill?.display_name || pill?.title || fallback
+}
+
+function pillActiveIngredient(pill) {
+  return pill?.activeIngredient || pill?.active_ingredient || ''
+}
+
+function pillDosage(pill) {
+  return pill?.dosage || pill?.normalized_dosage || ''
+}
+
+function pillManufacturer(pill) {
+  return pill?.manufacturer || pill?.manufacturer_name || pill?.brand_name || ''
+}
+
+function pillIdFromCandidate(candidate) {
+  return normalizePillId(candidate?.id ?? candidate?.product_id ?? candidate?.source_url)
+}
+
+function candidateToPill(candidate) {
+  const id = pillIdFromCandidate(candidate)
+  if (!candidate || !id) {
+    return null
+  }
+
+  return normalizeCatalogPill({
+    id,
+    product_id: candidate.product_id,
+    source_url: candidate.source_url,
+    name: candidate.display_name ?? candidate.title ?? '',
+    activeIngredient: candidate.active_ingredient,
+    dosage: candidate.normalized_dosage,
+    manufacturer: candidate.manufacturer_name ?? candidate.brand_name,
+    primary_image_url: candidate.primary_image_url ?? candidate.image_url,
+    image_url: candidate.image_url,
+  }, id)
+}
+
+function uniquePills(items) {
+  const pillsByKey = new Map()
+  items.filter(Boolean).forEach((pill) => {
+    const key = normalizePillId(pill.id) || pillName(pill, '').toLowerCase()
+    if (key && !pillsByKey.has(key)) {
+      pillsByKey.set(key, pill)
+    }
+  })
+  return [...pillsByKey.values()]
+}
+
+function pillsFromAnalysisResult(result) {
+  return uniquePills([
+    result?.match?.best_match,
+    ...(result?.match?.top_candidates ?? []),
+    ...(result?.ui?.top_candidates ?? []),
+  ].map(candidateToPill))
 }
 
 function medicationDoseTimes(schedule) {
@@ -260,7 +316,9 @@ function buildMedicationPayload(form) {
     totalQuantity: Number.parseInt(form.totalQuantity, 10),
     schedules: form.schedules.map((schedule) => ({
       id: schedule.id,
+      scheduleType: schedule.frequencyType,
       frequencyType: schedule.frequencyType,
+      frequencyInterval: Number.parseInt(schedule.interval, 10) || 1,
       interval: Number.parseInt(schedule.interval, 10) || 1,
       daysOfWeek: schedule.frequencyType === 'WEEKLY' ? schedule.daysOfWeek : [],
       reminderEnabled: Boolean(schedule.reminderEnabled),
@@ -269,9 +327,18 @@ function buildMedicationPayload(form) {
       startDate: schedule.startDate || form.startDate,
       endDate: schedule.endDate || form.endDate || null,
       isActive: true,
+      medDoseRequests: schedule.times.map((dose) => ({
+        id: dose.id,
+        takenTime: toApiTime(dose.timeOfDay),
+        timeOfDay: toApiTime(dose.timeOfDay),
+        quantity: Number(dose.doseAmount || form.dosageAmount || 1),
+        doseAmount: Number(dose.doseAmount || form.dosageAmount || 1),
+      })),
       times: schedule.times.map((dose) => ({
         id: dose.id,
+        takenTime: toApiTime(dose.timeOfDay),
         timeOfDay: toApiTime(dose.timeOfDay),
+        quantity: Number(dose.doseAmount || form.dosageAmount || 1),
         doseAmount: Number(dose.doseAmount || form.dosageAmount || 1),
       })),
     })),
@@ -302,11 +369,17 @@ function validateMedicationForm(form) {
     if (schedule.endDate && schedule.startDate && schedule.endDate < schedule.startDate) {
       return true
     }
-    return schedule.frequencyType !== 'AS_NEEDED' && schedule.times.length === 0
+    if (schedule.frequencyType !== 'AS_NEEDED' && schedule.times.length === 0) {
+      return true
+    }
+    return schedule.times.some((dose) => {
+      const amount = Number(dose.doseAmount || form.dosageAmount)
+      return !dose.timeOfDay || !Number.isFinite(amount) || amount <= 0
+    })
   })
 
   if (invalidSchedule) {
-    return 'Kiểm tra lại ngày và khung giờ trong lịch uống'
+    return 'Kiểm tra lại ngày, khung giờ và liều lượng trong lịch uống'
   }
 
   return ''
@@ -351,7 +424,7 @@ function mergeCaregiverPatients(localProfiles, acceptedRelationships) {
 function PatientAvatar({ profile, size = 'md' }) {
   const sizeClass = size === 'lg' ? 'h-14 w-14 text-base' : 'h-11 w-11 text-sm'
   return (
-    <span className={cx('grid shrink-0 place-items-center overflow-hidden rounded-lg bg-emerald-100 font-black text-emerald-800', sizeClass)}>
+    <span className={cx('grid shrink-0 place-items-center overflow-hidden rounded-lg bg-teal-100 font-black text-teal-800 ring-1 ring-teal-200', sizeClass)}>
       {profile?.avatarUrl ? <img alt="" className="h-full w-full object-cover" src={profile.avatarUrl} /> : patientInitials(profile)}
     </span>
   )
@@ -360,7 +433,7 @@ function PatientAvatar({ profile, size = 'md' }) {
 function PillThumb({ pill }) {
   const imageUrl = primaryPillImage(pill)
   return (
-    <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-emerald-700">
+    <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-teal-700 shadow-sm">
       {imageUrl ? <img alt="" className="h-full w-full object-cover" src={imageUrl} /> : <Pill size={22} />}
     </span>
   )
@@ -368,19 +441,21 @@ function PillThumb({ pill }) {
 
 function SummaryTile({ icon: Icon, label, value, tone = 'emerald' }) {
   const toneClass = {
-    amber: 'bg-amber-50 text-amber-800',
-    blue: 'bg-sky-50 text-sky-800',
-    rose: 'bg-rose-50 text-rose-800',
-    emerald: 'bg-emerald-50 text-emerald-800',
+    amber: 'bg-amber-50 text-amber-800 ring-amber-100',
+    blue: 'bg-sky-50 text-sky-800 ring-sky-100',
+    rose: 'bg-rose-50 text-rose-800 ring-rose-100',
+    emerald: 'bg-teal-50 text-teal-800 ring-teal-100',
   }[tone]
 
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
-      <div className={cx('grid h-10 w-10 place-items-center rounded-lg', toneClass)}>
-        <Icon size={20} />
+    <article className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
+      <div className={cx('grid h-11 w-11 place-items-center rounded-lg ring-1', toneClass)}>
+        <Icon size={21} />
       </div>
-      <span className="mt-4 block text-xs font-black uppercase text-slate-500">{label}</span>
-      <strong className="mt-1 block text-2xl font-black leading-none text-slate-950">{value}</strong>
+      <div className="min-w-0">
+        <span className="block text-xs font-black uppercase text-slate-500">{label}</span>
+        <strong className="mt-1 block text-2xl font-black leading-none text-slate-950">{value}</strong>
+      </div>
     </article>
   )
 }
@@ -406,8 +481,8 @@ function MedicationRow({ medication, pill, active, onClick }) {
   return (
     <button
       className={cx(
-        'caregiver-medication-row grid w-full gap-3 rounded-lg border p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/50',
-        active ? 'border-emerald-300 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white',
+        'caregiver-medication-row grid w-full gap-3 rounded-lg border p-3 text-left transition hover:border-teal-200 hover:bg-teal-50/70',
+        active ? 'border-teal-300 bg-teal-50 shadow-sm ring-1 ring-teal-100' : 'border-slate-200 bg-white',
       )}
       type="button"
       onClick={onClick}
@@ -431,7 +506,7 @@ function MedicationRow({ medication, pill, active, onClick }) {
       <div className="flex flex-wrap gap-2 text-xs font-black text-slate-600">
         <span className="rounded-full bg-slate-100 px-3 py-1">{medication.dosageAmount} {medication.dosageUnit}</span>
         <span className="rounded-full bg-sky-50 px-3 py-1 text-sky-700">{timesCount} khung giờ</span>
-        <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">Còn {medication.totalQuantity ?? 0}</span>
+        <span className="rounded-full bg-teal-50 px-3 py-1 text-teal-700">Còn {medication.totalQuantity ?? 0}</span>
       </div>
     </button>
   )
@@ -440,11 +515,13 @@ function MedicationRow({ medication, pill, active, onClick }) {
 function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
   if (!medication) {
     return (
-      <article className="grid min-h-[420px] content-center justify-items-center rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
-        <Pill className="text-slate-300" size={44} />
-        <h2 className="mt-4 text-xl font-black text-slate-950">Chưa chọn thuốc</h2>
+      <article className="caregiver-medication-detail grid min-h-[420px] content-center justify-items-center rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+        <span className="grid h-14 w-14 place-items-center rounded-lg bg-slate-100 text-slate-400">
+          <Pill size={34} />
+        </span>
+        <h2 className="mt-4 text-xl font-black text-slate-950">Chọn một thuốc để xem chi tiết</h2>
         <p className="mt-2 max-w-md text-sm font-bold text-slate-500">
-          Danh sách bên trái hiển thị thuốc theo từng hồ sơ người thân.
+          Bảng bên trái hiển thị thuốc, lịch nhắc và tồn kho theo hồ sơ đang chọn.
         </p>
       </article>
     )
@@ -455,15 +532,20 @@ function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
 
   return (
     <article className="caregiver-medication-detail rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 lg:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50/80 p-4">
         <div className="flex min-w-0 items-start gap-3">
           <PillThumb pill={pill} />
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase text-emerald-700">{fullName(patient)}</p>
+            <p className="text-xs font-black uppercase text-teal-700">{fullName(patient)}</p>
             <h2 className="mt-1 break-words text-2xl font-black leading-tight text-slate-950">
               {medication.nickname || pillName(pill, 'Thuốc chưa đặt tên')}
             </h2>
             <p className="mt-1 text-sm font-bold text-slate-500">{pillName(pill, medication.pillId)}</p>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs font-black text-slate-600">
+              {pillActiveIngredient(pill) ? <span className="rounded-full bg-white px-3 py-1">{pillActiveIngredient(pill)}</span> : null}
+              {pillDosage(pill) ? <span className="rounded-full bg-white px-3 py-1">{pillDosage(pill)}</span> : null}
+              {pillManufacturer(pill) ? <span className="rounded-full bg-white px-3 py-1">{pillManufacturer(pill)}</span> : null}
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -486,8 +568,8 @@ function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <section className="rounded-lg bg-slate-50 p-4">
-          <h3 className="text-sm font-black uppercase text-slate-500">Kê đơn</h3>
+        <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <h3 className="text-sm font-black uppercase text-slate-500">Thông tin kê đơn</h3>
           <dl className="mt-3 grid gap-3 text-sm">
             <DetailRow label="Mục đích" value={medication.purpose || 'Chưa cập nhật'} />
             <DetailRow label="Người kê đơn" value={medication.prescribedBy || 'Chưa cập nhật'} />
@@ -497,17 +579,17 @@ function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
           </dl>
         </section>
 
-        <section className="rounded-lg bg-emerald-50/70 p-4">
+        <section className="rounded-lg border border-teal-100 bg-teal-50/70 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-black uppercase text-emerald-800">Lịch nhắc</h3>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-emerald-800">
+            <h3 className="text-sm font-black uppercase text-teal-800">Lịch nhắc uống thuốc</h3>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-teal-800">
               {totalTimes} khung giờ
             </span>
           </div>
           <div className="mt-3 grid gap-3">
             {schedules.length ? (
               schedules.map((schedule) => (
-                <div className="rounded-lg border border-emerald-100 bg-white p-3" key={schedule.id ?? scheduleLabel(schedule)}>
+                <div className="rounded-lg border border-teal-100 bg-white p-3" key={schedule.id ?? scheduleLabel(schedule)}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <strong className="text-sm font-black text-slate-950">{scheduleLabel(schedule)}</strong>
                     <span className="text-xs font-black text-slate-500">
@@ -528,7 +610,7 @@ function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
                 </div>
               ))
             ) : (
-              <p className="rounded-lg border border-dashed border-emerald-200 bg-white p-4 text-sm font-bold text-slate-500">
+              <p className="rounded-lg border border-dashed border-teal-200 bg-white p-4 text-sm font-bold text-slate-500">
                 Chưa có lịch nhắc cho thuốc này.
               </p>
             )}
@@ -577,6 +659,8 @@ export function MedicationsPage() {
 
   const requestedProfileId = searchParams.get('profileId')
   const requestedAction = searchParams.get('action')
+  const requestedPillId = normalizePillId(searchParams.get('pillId'))
+  const requestedPillName = searchParams.get('pillName')?.trim() ?? ''
   const searchText = searchParams.get('q')?.trim()?.toLowerCase() ?? ''
 
   const selectedPatient = useMemo(
@@ -691,10 +775,60 @@ export function MedicationsPage() {
     loadMedicationsForPatient()
   }, [loadMedicationsForPatient])
 
-  const openCreateDrawer = useCallback(() => {
-    setForm(emptyMedicationForm(selectedPatient))
+  const openCreateDrawer = useCallback(async (preset = {}) => {
+    let normalizedPillId = normalizePillId(preset.pillId)
+    const presetPillName = preset.pillName?.trim() ?? ''
+    let selectedPill = null
+
+    if (normalizedPillId) {
+      try {
+        selectedPill = await getPillById(normalizedPillId)
+        setPillMap((current) => ({ ...current, [normalizedPillId]: selectedPill }))
+      } catch {
+        selectedPill = null
+      }
+    }
+
+    if (!selectedPill && !normalizedPillId && presetPillName) {
+      try {
+        selectedPill = (await searchPills(presetPillName, { limit: 1 }))[0] ?? null
+        normalizedPillId = normalizePillId(selectedPill?.id)
+        if (selectedPill?.id) {
+          setPillMap((current) => ({ ...current, [normalizedPillId]: selectedPill }))
+        }
+      } catch {
+        selectedPill = null
+      }
+    }
+
+    if (!selectedPill && normalizedPillId) {
+      selectedPill = normalizeCatalogPill({
+        id: normalizedPillId,
+        name: presetPillName || `Mã thuốc ${normalizedPillId}`,
+      }, normalizedPillId)
+      setPillMap((current) => ({ ...current, [normalizedPillId]: selectedPill }))
+    }
+
+    setForm({
+      ...emptyMedicationForm(selectedPatient),
+      pillId: normalizedPillId,
+      selectedPill,
+      pillQuery: selectedPill ? pillName(selectedPill, presetPillName) : presetPillName,
+    })
     setDrawerMode('create')
   }, [selectedPatient])
+
+  useEffect(() => {
+    if (!drawerMode) {
+      return undefined
+    }
+
+    document.body.classList.add('caregiver-medication-lock-scroll')
+
+    return () => {
+      document.body.classList.remove('caregiver-medication-lock-scroll')
+    }
+  }, [drawerMode])
 
   const openEditDrawer = useCallback(async (medication) => {
     const normalizedPillId = normalizePillId(medication.pillId)
@@ -714,12 +848,12 @@ export function MedicationsPage() {
   }, [pillMap, selectedPatient])
 
   useEffect(() => {
-    const actionKey = `${requestedProfileId ?? ''}:${requestedAction ?? ''}:${selectedPatientId}`
+    const actionKey = `${requestedProfileId ?? ''}:${requestedAction ?? ''}:${selectedPatientId}:${requestedPillId}:${requestedPillName}`
     if (requestedAction === 'add' && selectedPatientId && actionHandledRef.current !== actionKey) {
       actionHandledRef.current = actionKey
-      openCreateDrawer()
+      openCreateDrawer({ pillId: requestedPillId, pillName: requestedPillName })
     }
-  }, [openCreateDrawer, requestedAction, requestedProfileId, selectedPatientId])
+  }, [openCreateDrawer, requestedAction, requestedPillId, requestedPillName, requestedProfileId, selectedPatientId])
 
   const filteredMedications = useMemo(() => {
     if (!searchText) {
@@ -733,7 +867,8 @@ export function MedicationsPage() {
         medication.purpose,
         medication.prescribedBy,
         pillName(pill, ''),
-        pill?.activeIngredient,
+        pillActiveIngredient(pill),
+        pillManufacturer(pill),
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(searchText))
@@ -804,20 +939,23 @@ export function MedicationsPage() {
   const selectedPill = selectedMedication ? pillMap[normalizePillId(selectedMedication.pillId)] : null
 
   return (
-    <div className="caregiver-medications-page mx-auto grid w-full max-w-[1480px] gap-4 sm:gap-5">
-      <section className="caregiver-medication-hero rounded-lg border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-sky-50 p-4 shadow-lg shadow-slate-200/60 sm:p-5 lg:p-7">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.34fr)] lg:items-end">
-          <div>
-            <p className="text-xs font-black uppercase text-emerald-700">
-              {activeRole === 'CAREGIVER' ? 'Quản lý thuốc người thân' : 'Thuốc của tôi'}
+    <div className="caregiver-medications-page mx-auto grid w-full max-w-[1500px] gap-4 pb-4 text-slate-950 sm:gap-5 lg:pb-6 xl:gap-6">
+      <section className="caregiver-medication-hero rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/70 sm:p-5 lg:p-7">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(260px,auto)] xl:items-end">
+          <div className="max-w-4xl">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-teal-700">
+              {activeRole === 'CAREGIVER' ? 'Bảng điều phối chăm sóc' : 'Bảng thuốc cá nhân'}
             </p>
-            <h1 className="mt-2 max-w-4xl text-3xl font-black leading-tight tracking-normal text-slate-950 sm:text-4xl">
-              Hồ sơ thuốc theo từng bệnh nhân
+            <h1 className="mt-2 text-3xl font-black leading-tight tracking-normal text-slate-950 sm:text-4xl lg:text-5xl">
+              Trung tâm quản lý thuốc
             </h1>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <PatientAvatar profile={selectedPatient} />
-              <label className="min-w-[260px] flex-1 text-sm font-black text-slate-600">
-                <span className="sr-only">Chọn hồ sơ</span>
+            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600 sm:text-base">
+              Theo dõi đơn thuốc, lịch nhắc uống, tồn kho và kết quả nhận diện từ Pill Catalog cho từng hồ sơ chăm sóc.
+            </p>
+            <div className="mt-5 grid gap-3 rounded-lg border border-slate-200 bg-white/85 p-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+              <PatientAvatar profile={selectedPatient} size="lg" />
+              <label className="grid gap-2 text-sm font-black text-slate-700">
+                Hồ sơ đang theo dõi
                 <select
                   className={fieldClass}
                   disabled={patientsLoading || !patients.length}
@@ -838,12 +976,12 @@ export function MedicationsPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-start xl:justify-end">
             <Button disabled={!selectedPatientId} variant="ghost" onClick={loadMedicationsForPatient}>
               <RefreshCcw size={17} />
               Làm mới
             </Button>
-            <Button disabled={!selectedPatientId} variant="primary" onClick={openCreateDrawer}>
+            <Button disabled={!selectedPatientId} variant="primary" onClick={() => openCreateDrawer()}>
               <Plus size={17} />
               Thêm thuốc
             </Button>
@@ -851,17 +989,20 @@ export function MedicationsPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <SummaryTile icon={Pill} label="Thuốc đang dùng" value={summary.activeCount} />
         <SummaryTile icon={CalendarClock} label="Khung giờ nhắc" tone="blue" value={summary.scheduleTimes} />
         <SummaryTile icon={PackageCheck} label="Sắp hết thuốc" tone={summary.lowStock ? 'amber' : 'emerald'} value={summary.lowStock} />
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(340px,0.36fr)_minmax(0,1fr)]">
-        <aside className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm shadow-slate-100 sm:p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-black text-slate-950">Danh sách thuốc</h2>
-            <div className="flex rounded-lg bg-slate-100 p-1">
+      <section className="grid items-start gap-4 xl:grid-cols-[minmax(320px,430px)_minmax(0,1fr)]">
+        <aside className="caregiver-medication-directory rounded-lg border border-slate-200 bg-white p-3 shadow-sm shadow-slate-100 sm:p-4 xl:sticky xl:top-5">
+          <div className="grid gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Danh mục theo hồ sơ</p>
+              <h2 className="mt-1 text-xl font-black text-slate-950">Thuốc đang quản lý</h2>
+            </div>
+            <div className="grid grid-cols-3 rounded-lg bg-slate-100 p-1">
               {[
                 { value: 'active', label: 'Đang dùng' },
                 { value: 'inactive', label: 'Ngưng' },
@@ -869,8 +1010,8 @@ export function MedicationsPage() {
               ].map((filter) => (
                 <button
                   className={cx(
-                    'rounded-md px-3 py-2 text-xs font-black transition',
-                    activeFilter === filter.value ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500 hover:text-slate-900',
+                    'rounded-md px-2 py-2 text-xs font-black transition sm:px-3',
+                    activeFilter === filter.value ? 'bg-white text-teal-800 shadow-sm' : 'text-slate-500 hover:text-slate-900',
                   )}
                   key={filter.value}
                   type="button"
@@ -883,14 +1024,14 @@ export function MedicationsPage() {
           </div>
 
           {searchText ? (
-            <p className="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-sm font-bold text-sky-800">
+            <p className="mt-3 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm font-bold text-sky-800">
               Đang lọc theo “{searchParams.get('q')}”
             </p>
           ) : null}
 
-          <div className="caregiver-medication-list mt-4 grid max-h-[660px] gap-3 overflow-y-auto pr-1">
+          <div className="caregiver-medication-list mt-4 grid max-h-[620px] gap-3 overflow-y-auto pr-1">
             {medicationsLoading ? (
-              <div className="grid min-h-[220px] place-items-center rounded-lg border border-dashed border-slate-200 text-sm font-black text-slate-500">
+              <div className="grid min-h-[220px] place-items-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm font-black text-slate-500">
                 <Loader2 className="animate-spin" size={24} />
               </div>
             ) : filteredMedications.length ? (
@@ -905,9 +1046,11 @@ export function MedicationsPage() {
               ))
             ) : (
               <div className="grid min-h-[260px] content-center justify-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-                <Pill className="text-slate-300" size={40} />
+                <span className="grid h-12 w-12 place-items-center rounded-lg bg-white text-slate-300 shadow-sm">
+                  <Pill size={32} />
+                </span>
                 <h3 className="mt-3 text-lg font-black text-slate-950">Chưa có thuốc</h3>
-                <p className="mt-1 text-sm font-bold text-slate-500">Thêm thuốc đầu tiên cho hồ sơ đang chọn.</p>
+                <p className="mt-1 text-sm font-bold text-slate-500">Thêm thuốc đầu tiên hoặc quét ảnh bao bì để chọn từ Pill Catalog.</p>
               </div>
             )}
           </div>
@@ -999,8 +1142,16 @@ function MedicationFormDrawer({
 
     setPillSearching(true)
     try {
-      const results = await searchPills(text, { limit: 8 })
+      let results = await searchPills(text, { limit: 8 })
+      if (!results.length) {
+        const fallback = await analyzeMedicationText(text, { topK: 8 })
+        results = pillsFromAnalysisResult(fallback)
+      }
       setPillResults(results)
+      const exactMatch = results.find((pill) => pillName(pill, '').toLowerCase() === text.toLowerCase())
+      if (exactMatch || results.length === 1) {
+        selectPill(exactMatch ?? results[0])
+      }
       if (!results.length) {
         notify.info('Không tìm thấy thuốc phù hợp trong danh mục')
       }
@@ -1019,9 +1170,10 @@ function MedicationFormDrawer({
     setScanLoading(true)
     try {
       const result = await analyzeMedicationImage(file)
-      const candidate = result?.match?.best_match ?? result?.ui?.top_candidates?.[0]
-      const candidateName = candidate?.display_name ?? candidate?.title ?? ''
-      const candidatePillId = normalizePillId(candidate?.product_id)
+      const detectedPills = pillsFromAnalysisResult(result)
+      const candidate = detectedPills[0]
+      const candidateName = pillName(candidate, '')
+      const candidatePillId = normalizePillId(candidate?.id)
 
       if (!candidateName && !candidatePillId) {
         notify.info('Chưa nhận diện được tên thuốc rõ ràng')
@@ -1029,7 +1181,13 @@ function MedicationFormDrawer({
       }
 
       setForm((current) => ({ ...current, pillQuery: candidateName || current.pillQuery }))
-      const results = await searchPills(candidateName || candidatePillId, { limit: 8 })
+      let results = []
+      try {
+        results = await searchPills(candidateName || candidatePillId, { limit: 8 })
+      } catch {
+        results = []
+      }
+      results = uniquePills([...detectedPills, ...results])
       setPillResults(results)
       const autoMatch =
         results.find((pill) => normalizePillId(pill.id) === candidatePillId) ||
@@ -1124,21 +1282,31 @@ function MedicationFormDrawer({
     }))
   }
 
+  const formPatient = patients.find((profile) => patientId(profile) === form.patientId)
+  const scheduleCount = form.schedules.length
+  const doseCount = form.schedules.reduce((count, schedule) => count + schedule.times.length, 0)
+  const selectedPillName = form.selectedPill ? pillName(form.selectedPill) : form.pillQuery || 'Chưa chọn thuốc'
+
   return (
     <>
       <div className="caregiver-medication-overlay fixed inset-0 z-[80] bg-slate-950/35 backdrop-blur-sm" onClick={onClose} />
       <form
-        className="caregiver-medication-drawer fixed right-0 top-0 z-[90] grid h-dvh w-[min(920px,100vw)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-l border-slate-200 bg-slate-50 shadow-2xl shadow-slate-950/20"
+        aria-modal="true"
+        className="caregiver-medication-drawer fixed right-0 top-0 z-[90] grid h-dvh w-[min(1080px,100vw)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-l border-slate-200 bg-slate-50 shadow-2xl shadow-slate-950/20"
+        role="dialog"
         onSubmit={onSubmit}
       >
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 bg-white p-4 sm:p-5">
-          <div>
-            <p className="text-xs font-black uppercase text-emerald-700">
-              {mode === 'edit' ? 'Cập nhật medication' : 'Tạo medication'}
+        <header className="caregiver-drawer-header flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 bg-white p-4 sm:p-5">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-teal-700">
+              {mode === 'edit' ? 'Cập nhật thuốc' : 'Thêm thuốc mới'}
             </p>
             <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
-              {mode === 'edit' ? selectedMedication?.nickname || 'Cập nhật thuốc' : 'Thêm thuốc cho hồ sơ'}
+              {mode === 'edit' ? selectedMedication?.nickname || 'Cập nhật thuốc' : 'Tạo hồ sơ thuốc'}
             </h2>
+            <p className="mt-1 max-w-xl text-sm font-semibold text-slate-500">
+              Chọn thuốc từ Pill Catalog, đặt liều dùng và lịch nhắc để theo dõi tồn kho chính xác.
+            </p>
           </div>
           <button
             aria-label="Đóng"
@@ -1150,9 +1318,60 @@ function MedicationFormDrawer({
           </button>
         </header>
 
-        <div className="overflow-y-auto p-4 sm:p-5">
-          <div className="grid gap-5">
-            <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
+        <div className="caregiver-drawer-scroll overflow-y-auto p-4 sm:p-5">
+          <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="caregiver-compose-rail grid content-start gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 xl:sticky xl:top-0">
+              <div className="flex items-center gap-3">
+                <PatientAvatar profile={formPatient} />
+                <div className="min-w-0">
+                  <span className="block text-xs font-black uppercase tracking-[0.12em] text-slate-500">Hồ sơ</span>
+                  <strong className="block truncate text-sm font-black text-slate-950">{fullName(formPatient)}</strong>
+                </div>
+              </div>
+              <div className="rounded-lg bg-teal-50 p-3 text-teal-950 ring-1 ring-teal-100">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">Thuốc</span>
+                <strong className="mt-1 block break-words text-base font-black">{selectedPillName}</strong>
+                <p className="mt-1 text-xs font-bold text-teal-700">
+                  {form.selectedPill
+                    ? pillActiveIngredient(form.selectedPill) || pillManufacturer(form.selectedPill) || 'Đã khớp Pill Catalog'
+                    : 'Tìm trong Pill Catalog hoặc quét ảnh'}
+                </p>
+              </div>
+              <dl className="grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <dt className="text-xs font-black uppercase text-slate-500">Liều</dt>
+                  <dd className="mt-1 font-black text-slate-950">{form.dosageAmount || '-'} {form.dosageUnit}</dd>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <dt className="text-xs font-black uppercase text-slate-500">Tồn</dt>
+                  <dd className="mt-1 font-black text-slate-950">{form.totalQuantity || '-'} đơn vị</dd>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <dt className="text-xs font-black uppercase text-slate-500">Lịch</dt>
+                  <dd className="mt-1 font-black text-slate-950">{scheduleCount}</dd>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <dt className="text-xs font-black uppercase text-slate-500">Giờ</dt>
+                  <dd className="mt-1 font-black text-slate-950">{doseCount}</dd>
+                </div>
+              </dl>
+              <div className="grid gap-2 rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
+                <span className="font-black uppercase tracking-[0.12em] text-amber-800">Luồng nhập</span>
+                <span>1. Chọn người thân</span>
+                <span>2. Chọn thuốc từ catalog</span>
+                <span>3. Lưu liều và lịch nhắc</span>
+              </div>
+            </aside>
+
+            <div className="grid min-w-0 gap-5">
+            <section className="caregiver-form-section rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 sm:p-5">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bước 1</p>
+                  <h3 className="text-lg font-black text-slate-950">Chọn hồ sơ và thuốc</h3>
+                </div>
+                <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-black text-teal-800">Pill Catalog</span>
+              </div>
               <div className="grid gap-4 lg:grid-cols-[minmax(0,0.42fr)_minmax(0,1fr)]">
                 <label className={labelClass}>
                   Hồ sơ bệnh nhân
@@ -1171,8 +1390,8 @@ function MedicationFormDrawer({
                 </label>
 
                 <div className="grid gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    <div className="caregiver-pill-search flex min-w-[260px] flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3">
+                  <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
+                    <div className="caregiver-pill-search flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3">
                       <Search className="text-slate-400" size={18} />
                       <input
                         className="min-h-11 flex-1 border-0 bg-transparent text-sm font-bold text-slate-950 outline-none"
@@ -1213,17 +1432,18 @@ function MedicationFormDrawer({
                   </div>
 
                   {form.selectedPill ? (
-                    <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                    <div className="flex items-center gap-3 rounded-lg border border-teal-200 bg-teal-50 p-3">
                       <PillThumb pill={form.selectedPill} />
                       <div className="min-w-0 flex-1">
-                        <strong className="block truncate text-sm font-black text-emerald-950">
+                        <span className="text-xs font-black uppercase text-teal-700">Thuốc đã chọn</span>
+                        <strong className="block truncate text-sm font-black text-teal-950">
                           {pillName(form.selectedPill)}
                         </strong>
-                        <span className="text-xs font-bold text-emerald-700">
-                          {form.selectedPill.activeIngredient || form.selectedPill.manufacturer || 'Đã chọn từ Pill Catalog'}
+                        <span className="text-xs font-bold text-teal-700">
+                          {pillActiveIngredient(form.selectedPill) || pillManufacturer(form.selectedPill) || 'Đã chọn từ Pill Catalog'}
                         </span>
                       </div>
-                      <CheckCircle2 className="text-emerald-700" size={20} />
+                      <CheckCircle2 className="text-teal-700" size={20} />
                     </div>
                   ) : null}
 
@@ -1232,9 +1452,9 @@ function MedicationFormDrawer({
                       {pillResults.map((pill) => (
                         <button
                           className={cx(
-                            'caregiver-pill-result flex min-w-0 items-center gap-3 rounded-lg border p-3 text-left transition hover:border-emerald-300 hover:bg-emerald-50',
+                            'caregiver-pill-result flex min-w-0 items-center gap-3 rounded-lg border p-3 text-left transition hover:border-teal-300 hover:bg-teal-50',
                             normalizePillId(form.pillId) === normalizePillId(pill.id)
-                              ? 'border-emerald-300 bg-emerald-50'
+                              ? 'border-teal-300 bg-teal-50'
                               : 'border-slate-200 bg-white',
                           )}
                           key={pill.id}
@@ -1245,7 +1465,7 @@ function MedicationFormDrawer({
                           <span className="min-w-0">
                             <strong className="block truncate text-sm font-black text-slate-950">{pillName(pill)}</strong>
                             <small className="block truncate text-xs font-bold text-slate-500">
-                              {pill.activeIngredient || pill.dosage || pill.manufacturer || 'Pill Catalog'}
+                              {pillActiveIngredient(pill) || pillDosage(pill) || pillManufacturer(pill) || 'Pill Catalog'}
                             </small>
                           </span>
                         </button>
@@ -1256,8 +1476,14 @@ function MedicationFormDrawer({
               </div>
             </section>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
-              <h3 className="text-sm font-black uppercase text-slate-500">Thông tin kê đơn</h3>
+            <section className="caregiver-form-section rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bước 2</p>
+                  <h3 className="text-lg font-black text-slate-950">Thông tin kê đơn</h3>
+                </div>
+                <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-black text-sky-800">Liều dùng</span>
+              </div>
               <div className="mt-4 grid gap-4 lg:grid-cols-3">
                 <label className={labelClass}>
                   Tên gợi nhớ
@@ -1344,9 +1570,12 @@ function MedicationFormDrawer({
               </datalist>
             </section>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
+            <section className="caregiver-form-section rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-sm font-black uppercase text-slate-500">Lịch uống</h3>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bước 3</p>
+                  <h3 className="text-lg font-black text-slate-950">Lịch uống và nhắc nhở</h3>
+                </div>
                 <Button size="sm" variant="secondary" onClick={addSchedule}>
                   <Plus size={15} />
                   Thêm lịch
@@ -1420,8 +1649,8 @@ function MedicationFormDrawer({
                             className={cx(
                               'caregiver-weekday-button h-9 rounded-lg border px-3 text-xs font-black transition',
                               schedule.daysOfWeek.includes(day.value)
-                                ? 'border-emerald-300 bg-emerald-100 text-emerald-900'
-                                : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-200',
+                                ? 'border-teal-300 bg-teal-100 text-teal-900'
+                                : 'border-slate-200 bg-white text-slate-500 hover:border-teal-200',
                             )}
                             key={day.value}
                             type="button"
@@ -1500,9 +1729,10 @@ function MedicationFormDrawer({
               </div>
             </section>
           </div>
+          </div>
         </div>
 
-        <footer className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-white p-4 sm:p-5">
+        <footer className="grid gap-2 border-t border-slate-200 bg-white p-4 sm:flex sm:justify-end sm:p-5">
           <Button disabled={saving} variant="ghost" onClick={onClose}>
             Hủy
           </Button>

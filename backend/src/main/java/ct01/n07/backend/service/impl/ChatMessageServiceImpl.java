@@ -11,7 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +29,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .content(payload.getContent())
                 .type(payload.getType() != null ? payload.getType().name() : "TEXT")
                 .sentAt(Instant.now())
-                .readBy(Collections.singletonList(payload.getSenderId()))
+                .readBy(new ArrayList<>(List.of(payload.getSenderId())))
                 .build();
 
         ChatMessage saved = chatMessageRepository.save(message);
@@ -40,6 +41,20 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Override
     public Page<ChatMessage> getRoomMessages(String roomId, Pageable pageable) {
         return chatMessageRepository.findByRoomIdOrderBySentAtDesc(roomId, pageable);
+    }
+
+    @Override
+    public void markRoomAsRead(String roomId, String profileId) {
+        List<ChatMessage> unreadMessages = chatMessageRepository.findUnreadMessages(roomId, profileId, profileId);
+        unreadMessages.forEach(message -> {
+            if (message.getReadBy() == null) {
+                message.setReadBy(new ArrayList<>());
+            }
+            if (!message.getReadBy().contains(profileId)) {
+                message.getReadBy().add(profileId);
+            }
+        });
+        chatMessageRepository.saveAll(unreadMessages);
     }
 }
 

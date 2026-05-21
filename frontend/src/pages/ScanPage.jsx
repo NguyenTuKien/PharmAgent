@@ -1,10 +1,13 @@
 import { CameraCapture } from '../components/ui/CameraCapture.jsx'
-import { Camera, ExternalLink, ImagePlus, Loader2, Search, UploadCloud } from 'lucide-react'
+import { Camera, ExternalLink, ImagePlus, Loader2, Plus, Search, UploadCloud } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { Button } from '../components/ui/Button.jsx'
 import { apiClient, getApiErrorMessage } from '../lib/apiClient.js'
+import { useAuthStore } from '../modules/auth/authStore.js'
 import { notify } from '../lib/toast.js'
+import { normalizePillId } from '../modules/medication/medicationApi.js'
 
 function percent(score) {
   if (typeof score !== 'number') {
@@ -40,6 +43,8 @@ function decisionLabel(decision) {
 }
 
 export function ScanPage() {
+  const navigate = useNavigate()
+  const activeRole = useAuthStore((state) => state.activeProfile?.role)
   const fileInputRef = useRef(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [loadingMode, setLoadingMode] = useState('')
@@ -152,6 +157,27 @@ export function ScanPage() {
     primaryCandidate?.brand_name,
     primaryCandidate?.manufacturer_name,
   ])
+  const canAddMedication = activeRole === 'CAREGIVER' && Boolean(primaryCandidate)
+
+  const addScannedMedication = () => {
+    if (!primaryCandidate) {
+      return
+    }
+
+    const params = new URLSearchParams({ action: 'add' })
+    const pillId = normalizePillId(primaryCandidate?.product_id ?? primaryCandidate?.id ?? primaryCandidate?.source_url ?? '')
+    const title = candidateTitle(primaryCandidate)
+
+    if (pillId) {
+      params.set('pillId', pillId)
+    }
+    if (title) {
+      params.set('pillName', title)
+      params.set('q', title)
+    }
+
+    navigate(`/medications?${params.toString()}`)
+  }
 
   return (
     <div className="medicalocr-scan">
@@ -159,8 +185,8 @@ export function ScanPage() {
         <div className="medicalocr-panel-heading">
           <div>
             <p className="eyebrow">MedicalOCR</p>
-            <h2>Quét thuốc từ ảnh</h2>
-            <p>Chọn ảnh bao bì/vỉ thuốc, hệ thống sẽ OCR và so khớp với database thuốc.</p>
+            <h2>Tìm thuốc từ ảnh</h2>
+            <p>Chọn ảnh bao bì/vỉ thuốc, hệ thống sẽ tìm kiếm thuốc phù hợp nhất.</p>
           </div>
         </div>
 
@@ -233,7 +259,7 @@ export function ScanPage() {
         {loading ? (
           <div className="medicalocr-loading">
             <Loader2 className="spin-icon" size={32} />
-            <p>{loadingMode === 'text' ? 'Đang tìm trong database...' : 'Đang OCR và so khớp database...'}</p>
+            <p>{loadingMode === 'text' ? 'Đang tìm kiếm thuốc cho bạn...' : 'Đang tìm kiếm thuốc cho bạn...'}</p>
           </div>
         ) : primaryCandidate ? (
           <div className="medicalocr-results">
@@ -250,7 +276,7 @@ export function ScanPage() {
                 {primaryCandidate?.source_url ? (
                   <a className="source-link" href={primaryCandidate.source_url} rel="noreferrer" target="_blank">
                     <ExternalLink size={16} />
-                    Xem trên Pharmacity
+                    Xem thông tin chi tiết
                   </a>
                 ) : null}
                 {chips.length ? (
@@ -267,13 +293,21 @@ export function ScanPage() {
                     {primaryCandidate?.indication ?? result.ui.indication}
                   </p>
                 ) : null}
+                {canAddMedication ? (
+                  <div className="scan-caregiver-action">
+                    <Button variant="primary" onClick={addScannedMedication}>
+                      <Plus size={18} />
+                      Thêm thuốc vào quản lý
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </article>
 
             <div className="medicalocr-grid">
               <div className="candidate-panel">
                 <div className="medicalocr-section-heading">
-                  <h3>Top 4</h3>
+                  <h3>Top 4 kết quả gần nhất</h3>
                 </div>
                 <div className="candidate-list">
                   {candidates.slice(0, 4).map((candidate) => {
@@ -303,7 +337,7 @@ export function ScanPage() {
 
               <div className="ocr-panel">
                 <div className="medicalocr-section-heading">
-                  <h3>Text đầu vào</h3>
+                  <h3>Dữ liệu đầu vào</h3>
                   {percent(result?.ocr?.confidence) ? <span>{percent(result.ocr.confidence)}</span> : null}
                 </div>
                 <p>{ocrText || 'Chưa có text đầu vào.'}</p>
