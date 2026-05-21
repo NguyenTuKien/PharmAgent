@@ -5,6 +5,7 @@ import ct01.n07.backend.facade.AuthFacade;
 import ct01.n07.backend.facade.GoogleOAuthFacade;
 import ct01.n07.backend.facade.PasswordFacade;
 import ct01.n07.backend.facade.RegistrationFacade;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.Map;
@@ -62,8 +63,9 @@ public class AuthController {
     @PostMapping("/profiles/{profileId}/select")
     public ResponseEntity<Map<String, String>> selectProfile(
             @RequestHeader("Authorization") String authorization,
-            @PathVariable("profileId") String profileId) { // Dùng PathVariable
-        String accessToken = authFacade.selectProfile(authorization, profileId);
+            @PathVariable("profileId") String profileId,
+            HttpServletRequest request) {
+        String accessToken = authFacade.selectProfile(authorization, profileId, request);
         return ResponseEntity.ok(Map.of("accessToken", accessToken));
     }
 

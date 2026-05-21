@@ -12,6 +12,7 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Component
@@ -40,8 +41,16 @@ public class JwtUtil {
         return extractClaim(token, Claims::getExpiration);
     }
 
+    public Date extractIssuedAt(String token) {
+        return extractClaim(token, Claims::getIssuedAt);
+    }
+
     public String extractTokenType(String token) {
         return extractClaim(token, claims -> claims.get("type", String.class));
+    }
+
+    public String extractTokenId(String token) {
+        return extractClaim(token, Claims::getId);
     }
 
     // ==========================================
@@ -115,9 +124,11 @@ public class JwtUtil {
     private String buildToken(Map<String, Object> extraClaims, String subject, long ttlMs) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + ttlMs);
+        String jti = UUID.randomUUID().toString(); // Generate unique token ID
         return Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(subject) // Subject chính là userId
+                .setId(jti) // Set JTI (JWT ID)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)

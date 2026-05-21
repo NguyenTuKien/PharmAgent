@@ -6,7 +6,10 @@ import ct01.n07.backend.model.User;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.security.JwtService;
 import ct01.n07.backend.service.UserProfileService;
+import ct01.n07.backend.service.UserPresenceService;
 import ct01.n07.backend.service.UserService;
+import ct01.n07.backend.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -16,6 +19,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -28,7 +34,9 @@ public class AuthFacade {
     private final UserService userService;
     private final UserProfileService userProfileService;
     private final JwtService jwtService;
+    private final JwtUtil jwtUtil;
     private final UserProfileMapper userProfileMapper;
+    private final UserPresenceService userPresenceService;
 
     // ==========================================
     // API 1: XỬ LÝ ĐĂNG NHẬP
@@ -58,7 +66,7 @@ public class AuthFacade {
     // ==========================================
     // API 2: CHỌN HỒ SƠ (CẤP QUYỀN)
     // ==========================================
-    public String selectProfile(String authorizationHeader, String profileId) {
+    public String selectProfile(String authorizationHeader, String profileId, HttpServletRequest request) {
         String authToken = normalizeToken(extractBearerToken(authorizationHeader));
         String currentUserId;
         try {
@@ -85,6 +93,30 @@ public class AuthFacade {
                 currentUserId,
                 profileId,
                 profile.getRole().name());
+
+        // 4. Track session
+        try {
+            String tokenId = jwtUtil.extractTokenId(accessToken);
+            LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochMilli(jwtUtil.extractExpiration(accessToken).getTime()),
+                    ZoneId.of("Asia/Ho_Chi_Minh")
+            );
+            String ipAddress = getClientIp(request);
+            String userAgent = request.getHeader("User-Agent");
+            
+            userPresenceService.trackSession(
+                    accessToken,
+                    tokenId, 
+                    currentUserId, 
+                    profileId, 
+                    profile.getRole().name(),
+                    ipAddress, 
+                    userAgent, 
+                    expiresAt
+            );
+        } catch (Exception e) {
+            log.warn("Failed to track session: {}", e.getMessage());
+        }
 
         return accessToken;
     }
@@ -140,6 +172,16 @@ public class AuthFacade {
 
         if (!tokensToRevoke.isEmpty()) {
             jwtService.blacklistTokens(tokensToRevoke);
+            
+            // Remove sessions
+            for (String token : tokensToRevoke) {
+                try {
+                    String tokenId = jwtUtil.extractTokenId(token);
+                    userPresenceService.removeSession(tokenId);
+                } catch (Exception e) {
+                    log.warn("Failed to remove session for token: {}", e.getMessage());
+                }
+            }
         }
 
         log.info("Đã xử lý đưa {} token vào blacklist.", tokensToRevoke.size());
@@ -161,6 +203,21 @@ public class AuthFacade {
             return token.substring(BEARER_PREFIX.length()).trim();
         }
         return token;
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // Handle multiple IPs in X-Forwarded-For
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 
 }

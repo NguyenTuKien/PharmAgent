@@ -60,3 +60,45 @@ export async function addPillImage(pillId, data) {
 export async function deletePillImage(pillId, imageId) {
   await apiClient.delete(`/admin/pills/${pillId}/images/${imageId}`)
 }
+
+export async function getPillById(id) {
+  const response = await apiClient.get(`/pills/${id}`)
+  return response.data
+}
+
+// ─── Health ───────────────────────────────────────────────────────────────────
+
+export async function getAgentHealth() {
+  const response = await apiClient.get('/agent', { skipAuthRefresh: true, timeout: 5000 })
+  return response.data
+}
+
+export async function getActuatorHealth() {
+  const response = await apiClient.get('/actuator/health', {
+    skipAuthRefresh: true,
+    timeout: 5000,
+  })
+  return response.data
+}
+
+export async function getSystemHealth() {
+  const response = await apiClient.get('/admin/system/health', { timeout: 5000 })
+  return response.data
+}
+
+// ─── Sessions ─────────────────────────────────────────────────────────────────
+
+export async function getActiveSessions() {
+  const response = await apiClient.get('/admin/sessions')
+  return response.data
+}
+
+export async function revokeSession(tokenId) {
+  const response = await apiClient.delete(`/admin/sessions/${tokenId}`)
+  return response.data
+}
+
+export async function revokeAllUserSessions(userId) {
+  const response = await apiClient.delete(`/admin/sessions/user/${userId}`)
+  return response.data
+}

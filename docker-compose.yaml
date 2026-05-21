@@ -116,17 +116,6 @@ services:
     networks:
       - pharmagent-network
 
-#  cloudflare:
-#    image: cloudflare/cloudflared:2024.6.0
-#    restart: always
-#    env_file: .env
-#    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
-#    depends_on:
-#      frontend:
-#        condition: service_started
-#    networks:
-#      - pharmagent-network
-
 volumes:
   mongo_data:
   redis_data:

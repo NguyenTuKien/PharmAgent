@@ -86,8 +86,6 @@ env:
     value: "smtp.gmail.com"
   - name: SPRING_MAIL_PORT
     value: "587"
-  - name: JWT_SECRET
-    value: "VGhpc0lzQURldlNlY3JldEtleUZvckpXVFNpZ25pbmdPbmx5ISE="
   - name: BACKEND_URL
     value: "http://backend:8080"
   - name: AGENT_URL
@@ -98,11 +96,26 @@ env:
     # Public frontend origin used for account verification/reset links in email.
     # Override this in production values, e.g. https://app.your-domain.com
     value: "http://localhost:5173"
+  - name: SPRING_MAIL_USERNAME
+    value: ""
+  - name: SPRING_MAIL_PASSWORD
+    value: ""
   - name: CLOUDINARY_CLOUD_NAME
-    value: "dlvhrlfyt"
+    value: ""
   - name: CLOUDINARY_API_KEY
-    value: "427346841434611"
-  # Sensitive/Secret variables like passwords can be configured here or via secrets:
+    value: ""
+  - name: CLOUDINARY_API_SECRET
+    value: ""
+  - name: GOOGLE_CLIENT_ID
+    value: ""
+  - name: GOOGLE_CLIENT_SECRET
+    value: ""
+  - name: JWT_SECRET
+    value: ""
+
+  # Sensitive variables should be overridden in a separate GitOps repo 
+  # or injected via Kubernetes Secrets.
+  # Example for injecting via Secret:
   # - name: SPRING_MONGODB_PASSWORD
   #   valueFrom:
   #     secretKeyRef:

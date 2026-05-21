@@ -19,6 +19,10 @@ export default defineConfig(({ mode }) => {
         usePolling: env.CHOKIDAR_USEPOLLING === 'true',
       },
       proxy: {
+        '/actuator': {
+          target: gatewayTarget,
+          changeOrigin: true,
+        },
         '/api': {
           target: gatewayTarget,
           changeOrigin: true,
