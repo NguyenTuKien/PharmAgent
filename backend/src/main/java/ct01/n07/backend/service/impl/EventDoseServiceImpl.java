@@ -43,6 +43,17 @@ public class EventDoseServiceImpl implements EventDoseService {
     }
 
     @Override
+    public List<EventDose> getDoseEventsByMedicationIdsAndScheduledAtBetween(
+            List<String> medicationIds,
+            LocalDateTime startTime,
+            LocalDateTime endTime
+    ) {
+        return eventDoseRepository.findByMedicationIdInAndScheduledAtBetweenOrderByScheduledAtAsc(
+                medicationIds, startTime, endTime);
+    }
+
+
+    @Override
     public EventDose getEventDoseById(String id) {
         return eventDoseRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(

@@ -53,6 +53,7 @@ function isUnauthorized(error) {
 
 export const useAuthStore = create((set, get) => ({
   ...initialAuthState,
+  preventAutoSelect: false,
 
   login: async (credentials) => {
     set({ status: 'authenticating', error: null })
@@ -182,6 +183,7 @@ export const useAuthStore = create((set, get) => ({
       activeProfile: snapshot.activeProfile,
       status: 'authenticated',
       error: null,
+      preventAutoSelect: false,
     })
 
     return snapshot.activeProfile
@@ -296,6 +298,23 @@ export const useAuthStore = create((set, get) => ({
     return snapshot.profiles ?? []
   },
 
+  deselectProfile: () => {
+    const { authToken, refreshToken, profiles } = get()
+    const snapshot = buildSessionSnapshot({
+      authToken,
+      refreshToken,
+      profiles,
+    })
+    saveSession(snapshot)
+    set({
+      accessToken: null,
+      activeProfile: null,
+      status: 'profile_required',
+      error: null,
+      preventAutoSelect: true,
+    })
+  },
+
   clearLocalSession: () => {
     clearSession()
     set({
@@ -306,6 +325,7 @@ export const useAuthStore = create((set, get) => ({
       activeProfile: null,
       status: 'anonymous',
       error: null,
+      preventAutoSelect: false,
     })
   },
 

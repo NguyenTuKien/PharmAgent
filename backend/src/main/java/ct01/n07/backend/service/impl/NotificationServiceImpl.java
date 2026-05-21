@@ -57,6 +57,16 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public Page<NotificationResponse> getSentNotifications(Pageable pageable) {
+        UserProfile currentUser = profileAccessContext.getCurrentUserProfile();
+        
+        Page<Notification> notifications = notificationRepository.findBySenderIdAndStatus(
+                currentUser.getId(), NotificationStatus.SUCCESS, pageable);
+        
+        return notifications.map(notificationMapper::toResponse);
+    }
+
+    @Override
     public void saveAllNotifications(java.util.List<Notification> notifications) {
         notificationRepository.saveAll(notifications);
     }

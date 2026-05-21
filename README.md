@@ -248,19 +248,25 @@ Luồng đăng ký được sử dụng khi người dùng mới tạo tài kho�
 **Quy trình xử lý:**
 
 1. Người dùng nhập thông tin đăng ký trên frontend.
-2. Frontend gửi request đến API:
+2. Frontend gửi request đến API (`POST /api/auth/signup`):
 
-```http
-POST /api/auth/register
+```json
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "confirmPassword": "password123",
+  "caregiver": {
+    "firstName": "Tu", "lastName": "Kien", "phone": "0912345678",
+    "dateOfBirth": "1990-01-01", "gender": "MALE"
+  }
+}
 ```
 
 3. API Gateway nhận request và forward xuống Backend Spring Boot.
-4. `AuthController.register()` tiếp nhận dữ liệu.
-5. `RegistrationFacade` kiểm tra tính hợp lệ của email, mật khẩu và thông tin đăng ký.
-6. Hệ thống mã hóa mật khẩu bằng `BCryptPasswordEncoder`.
-7. Backend tạo bản ghi `User`.
-8. Backend tạo hồ sơ mặc định tương ứng với vai trò người dùng.
-9. Trả về thông tin đăng ký thành công cho frontend.
+4. `AuthController.signup()` tiếp nhận dữ liệu.
+5. `RegistrationFacade` kiểm tra tính hợp lệ.
+6. Backend tạo bản ghi `User` và hồ sơ mặc định.
+7. Trả về `authToken` và `refreshToken` tương tự luồng login.
 
 **Ý nghĩa nghiệp vụ:**
 
@@ -406,15 +412,18 @@ README nêu các entity/schema chính gồm `User`, `UserProfile`, `Relationship
 ### 2.2. Luồng caregiver gửi lời mời kết nối
 
 1. Caregiver đăng nhập và chọn profile `CAREGIVER`.
-2. Frontend gọi API tạo lời mời kết nối người thân.
-3. Backend kiểm tra:
+2. Frontend gọi API tạo lời mời kết nối người thân (`POST /api/caregiver/relationship/invite`):
 
-   * caregiver đã đăng nhập hợp lệ chưa;
-   * người được mời có tồn tại không;
-   * quan hệ này đã tồn tại chưa.
-4. Backend tạo bản ghi `Relationship` với trạng thái chờ xác nhận.
-5. Backend tạo `Notification` gửi đến người cao tuổi.
-6. Người cao tuổi nhìn thấy lời mời trong giao diện thông báo.
+```json
+{
+  "targetElderlyId": "65c123...",
+  "caregiverTitle": "Con trai",
+  "permissionLevel": "FULL_ACCESS"
+}
+```
+
+3. Backend kiểm tra tính hợp lệ và tạo bản ghi `Relationship` (PENDING).
+4. Backend tạo `Notification` gửi đến người cao tuổi.
 
 **Ý nghĩa nghiệp vụ:**
 
@@ -424,8 +433,8 @@ Luồng này đảm bảo caregiver không thể tự ý truy cập dữ liệu 
 
 ### 2.3. Luồng người cao tuổi chấp nhận hoặc từ chối kết nối
 
-1. Người cao tuổi mở danh sách lời mời.
-2. Frontend gọi API chấp nhận hoặc từ chối.
+1. Người cao tuổi mở danh sách lời mời (`GET /api/elderly/relationship/pending`).
+2. Frontend gọi API chấp nhận (`PUT /api/elderly/relationship/{id}/accept`) hoặc từ chối (`PUT /api/elderly/relationship/{id}/refuse`).
 3. Backend kiểm tra lời mời còn hiệu lực không.
 4. Nếu chấp nhận:
 
@@ -445,7 +454,7 @@ Luồng này đảm bảo caregiver không thể tự ý truy cập dữ liệu 
 ### 2.4. Luồng caregiver xem dữ liệu người thân
 
 1. Caregiver truy cập dashboard người thân.
-2. Frontend gửi request kèm access token.
+2. Frontend gửi request lấy danh sách thuốc (`GET /api/medications?patientId=...`) và lịch uống hôm nay (`GET /api/events/today?patientId=...`) kèm access token.
 3. Backend lấy `profileId` caregiver từ JWT.
 4. Backend kiểm tra caregiver có quan hệ hợp lệ với elderly profile không.
 5. Nếu hợp lệ, backend trả về:
@@ -484,23 +493,25 @@ Các model chính:
 ### 3.2. Luồng thêm thuốc cho người cao tuổi
 
 1. Người dùng hoặc caregiver chọn chức năng thêm thuốc.
-2. Frontend gửi thông tin thuốc:
+2. Frontend gửi thông tin thuốc (`POST /api/caregiver/medications`):
 
-   * tên thuốc;
-   * liều lượng;
-   * thời điểm uống;
-   * ngày bắt đầu/kết thúc;
-   * ghi chú;
-   * ảnh thuốc nếu có.
-3. Backend kiểm tra quyền thao tác:
+```json
+{
+  "patientId": "65c...",
+  "pillId": "p001",
+  "nickname": "Thuốc huyết áp sáng",
+  "dosageAmount": 1,
+  "dosageUnit": "viên",
+  "mealRelation": "AFTER_MEAL",
+  "startDate": "2024-05-13",
+  "totalQuantity": 30,
+  "schedules": [
+    { "dayOfWeek": "MONDAY", "times": [{ "time": "08:00", "doseAmount": 1 }] }
+  ]
+}
+```
 
-   * elderly được thêm thuốc cho chính mình;
-   * caregiver chỉ được thêm thuốc nếu có quan hệ hợp lệ.
-4. Backend kiểm tra dữ liệu đầu vào.
-5. Backend tạo `Medication`.
-6. Backend tạo lịch uống `MedSchedule`.
-7. Backend tạo thông tin liều `MedDose`.
-8. Backend trả dữ liệu thuốc mới cho frontend.
+3. Backend kiểm tra quyền và lưu `Medication`, `MedSchedule`, `MedDose`.
 
 **Ý nghĩa nghiệp vụ:**
 
@@ -511,7 +522,7 @@ Một thuốc không chỉ là tên thuốc, mà phải đi kèm lịch uống v
 ### 3.3. Luồng sinh danh sách liều uống trong ngày
 
 1. Người dùng mở màn hình “Hôm nay”.
-2. Frontend gọi API lấy danh sách liều uống hôm nay.
+2. Frontend gọi API lấy danh sách liều uống hôm nay (`GET /api/events/today?patientId=...`).
 3. Backend xác định profile hiện tại từ access token.
 4. Backend tìm các thuốc đang còn hiệu lực.
 5. Backend dựa trên `MedSchedule` để xác định hôm nay có cần uống thuốc không.
@@ -533,7 +544,7 @@ Một thuốc không chỉ là tên thuốc, mà phải đi kèm lịch uống v
 
 1. Đến giờ uống thuốc, người dùng nhận thông báo.
 2. Người dùng bấm “Đã uống”.
-3. Frontend gọi API xác nhận liều uống.
+3. Frontend gọi API xác nhận liều uống (`POST /api/elderly/events/{id}/confirm`).
 4. Backend kiểm tra:
 
    * liều uống có tồn tại không;
@@ -667,11 +678,19 @@ Các loại kênh chính:
 ```
 
 4. Người dùng nhập tin nhắn.
-5. Frontend gửi message đến backend qua STOMP destination.
-6. Backend kiểm tra người gửi có thuộc phòng chat không.
-7. Backend lưu `ChatMessage` vào MongoDB.
-8. Backend publish tin nhắn đến topic phòng.
-9. Các client đang subscribe nhận message và render ngay.
+5. Frontend gửi message qua STOMP destination (`/app/chat.send`):
+
+```json
+{
+  "roomId": "room123",
+  "senderId": "profile456",
+  "content": "Chào ông, ông đã uống thuốc chưa?",
+  "type": "TEXT"
+}
+```
+
+6. Backend lưu vào MongoDB và broadcast tới topic `/topic/room.room123`.
+7. Các client đang subscribe nhận message và render ngay.
 
 README mô tả luồng realtime gồm tiếp nhận payload, lưu tin nhắn vào MongoDB, rồi broadcast tới topic `/topic/room.{roomId}`. ([GitHub][1])
 
@@ -742,14 +761,18 @@ Trong code hiện tại, agent có endpoint health `/ws/health`, WebSocket `/ws/
 2. Frontend bật camera.
 3. Frontend lấy frame ảnh từ camera.
 4. Frame được encode sang Base64.
-5. Frontend gửi frame qua WebSocket:
+5. Frontend gửi frame qua WebSocket (`WS /ws/agent`). Dữ liệu gửi đi là chuỗi Base64 (có thể kèm prefix `data:image/jpeg;base64,`).
+6. AI Agent nhận dữ liệu frame, decode và xử lý.
+7. Agent trả về kết quả JSON:
 
-```text
-WS /ws/agent
+```json
+{
+  "pillId": "p001",
+  "name": "Paracetamol",
+  "confidenceScore": 0.95,
+  "imageUrl": "https://cloudinary.../scan.jpg"
+}
 ```
-
-6. AI Agent nhận dữ liệu frame.
-7. Agent decode Base64 thành ảnh OpenCV.
 8. Agent tiền xử lý ảnh.
 9. Agent gọi model nhận diện thuốc.
 10. Model trả về:
@@ -875,12 +898,12 @@ Security config phân quyền route `/api/admin/**` cho role `ADMIN`, `/api/care
 ### 8.2. Luồng admin thêm thuốc vào danh mục chuẩn
 
 1. Admin đăng nhập và chọn profile `ADMIN`.
-2. Frontend gọi API tạo thuốc chuẩn.
+2. Frontend gọi API tạo thuốc chuẩn (`POST /api/admin/pills`).
 3. Backend kiểm tra role trong JWT.
 4. Nếu role không phải `ADMIN`, request bị từ chối.
 5. Nếu hợp lệ, backend lưu thông tin `Pill`.
-6. Nếu có ảnh thuốc, backend xử lý upload qua Cloudinary.
-7. Backend tạo `PillImage`.
+6. Nếu có ảnh thuốc, Frontend gọi API thêm ảnh thuốc (`POST /api/admin/pills/{pillId}/images`).
+7. Backend xử lý upload qua Cloudinary và tạo `PillImage`.
 8. Frontend cập nhật danh sách thuốc chuẩn.
 
 **Ý nghĩa nghiệp vụ:**
@@ -891,9 +914,9 @@ Danh mục thuốc chuẩn giúp AI Agent và người dùng cùng tham chiếu 
 
 ### 8.3. Luồng admin khóa tài khoản
 
-1. Admin mở danh sách user.
+1. Admin mở danh sách user (`GET /api/admin/users`).
 2. Admin chọn tài khoản cần khóa.
-3. Frontend gọi API admin.
+3. Frontend gọi API khóa tài khoản (`PATCH /api/admin/users/{id}/lock`).
 4. Backend kiểm tra quyền `ADMIN`.
 5. Backend cập nhật trạng thái tài khoản.
 6. Nếu cần, backend thu hồi token đang hoạt động bằng Redis blacklist.

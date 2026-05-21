@@ -30,4 +30,11 @@ public class NotificationController {
     ) {
         return ResponseEntity.ok(notificationService.getMyNotifications(pageable));
     }
+
+    @GetMapping("/sent")
+    public ResponseEntity<Page<NotificationResponse>> getSentNotifications(
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ResponseEntity.ok(notificationService.getSentNotifications(pageable));
+    }
 }

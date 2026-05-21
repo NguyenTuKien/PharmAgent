@@ -654,6 +654,24 @@ function CallScreen({
   hasLocalStream,
   hasRemoteStream,
 }) {
+  const [duration, setDuration] = useState(() => {
+    if (!callState.startedAt) return 0
+    return Math.max(0, Math.floor((Date.now() - new Date(callState.startedAt).getTime()) / 1000))
+  })
+
+  useEffect(() => {
+    if (callState.status !== 'connected' || !callState.startedAt) {
+      return undefined
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - new Date(callState.startedAt).getTime()) / 1000)
+      setDuration(Math.max(0, elapsed))
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [callState.status, callState.startedAt])
+
   if (callState.status === 'idle') return null
 
   const peer = callState.peerProfile
@@ -684,9 +702,7 @@ function CallScreen({
           {callStatusLabels[callState.status] ?? 'Cuộc gọi'}
         </div>
         <div className="rounded-full bg-slate-950/50 px-4 py-2 text-sm font-medium backdrop-blur">
-          {formatDuration(
-            callState.startedAt ? Math.floor((Date.now() - new Date(callState.startedAt).getTime()) / 1000) : 0,
-          )}
+          {formatDuration(duration)}
         </div>
       </div>
 

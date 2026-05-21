@@ -11,5 +11,6 @@ import ct01.n07.backend.model.Notification;
 public interface NotificationService {
     NotificationResponse sendNotification(NotificationCreateRequest request);
     Page<NotificationResponse> getMyNotifications(Pageable pageable);
+    Page<NotificationResponse> getSentNotifications(Pageable pageable);
     void saveAllNotifications(List<Notification> notifications);
 }
