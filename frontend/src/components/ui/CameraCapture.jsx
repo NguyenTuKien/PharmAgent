@@ -17,7 +17,9 @@ export function CameraCapture({ open, onClose, onCapture }) {
 
   const startCamera = useCallback(async () => {
     stopCamera()
-    setError('')
+    setTimeout(() => {
+      setError('')
+    }, 0)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -30,11 +32,12 @@ export function CameraCapture({ open, onClose, onCapture }) {
       }
     } catch (err) {
       console.error('Camera error:', err)
-      setError('Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập.')
+      setTimeout(() => {
+        setError('Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập.')
+      }, 0)
     }
   }, [facingMode, stopCamera])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (open) {
       startCamera()
@@ -43,6 +46,7 @@ export function CameraCapture({ open, onClose, onCapture }) {
     }
     return () => stopCamera()
   }, [open, startCamera, stopCamera])
+
 
   const handleCapture = () => {
     if (!videoRef.current) return

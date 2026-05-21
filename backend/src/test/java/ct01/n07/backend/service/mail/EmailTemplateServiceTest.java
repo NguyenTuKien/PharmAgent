@@ -28,7 +28,7 @@ class EmailTemplateServiceTest {
                 .contains("cid:pharmagentLogo")
                 .contains("cid:pharmagentTitle")
                 .contains("text-align:center")
-                .contains("Xin chào An Nguyen")
+                .contains("Xin chào <strong>An Nguyen</strong>")
                 .contains("Kích hoạt tài khoản")
                 .contains("123456")
                 .contains("mailto:pharmagent.team@gmail.com")
@@ -52,7 +52,7 @@ class EmailTemplateServiceTest {
         assertThat(email.subject()).isEqualTo("Đặt lại mật khẩu PharmAgent");
         assertThat(email.html())
                 .contains("Đặt lại mật khẩu")
-                .contains("Xin chào Binh Tran")
+                .contains("Xin chào <strong>Binh Tran</strong>")
                 .contains("https://app.pharmagent.example/reset-password?email=patient%40example.com&amp;token=reset-token-abc")
                 .contains("12 giờ")
                 .doesNotContain("Mã OTP")
