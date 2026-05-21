@@ -16,8 +16,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,9 +38,9 @@ class AuthFacadeTest {
     private AuthFacade authFacade;
 
     @Test
-    void refreshKeepsServerManagedRefreshTokenUntilLogout() {
+    void refreshRotatesServerManagedRefreshToken() {
         TokenRefreshRequest request = TokenRefreshRequest.builder()
-                .refreshToken("persistent-refresh-token")
+                .refreshToken("old-refresh-token")
                 .profileId("profile-1")
                 .build();
         UserProfile profile = UserProfile.builder()
@@ -51,19 +49,18 @@ class AuthFacadeTest {
                 .role(Role.CAREGIVER)
                 .build();
 
-        when(jwtService.resolveRefreshTokenUserId("persistent-refresh-token")).thenReturn(Optional.of("user-1"));
-        when(jwtService.isServerManagedRefreshToken("persistent-refresh-token")).thenReturn(true);
+        when(jwtService.resolveRefreshTokenUserId("old-refresh-token")).thenReturn(Optional.of("user-1"));
         when(userProfileService.findById("profile-1")).thenReturn(profile);
         when(jwtService.generateAuthToken("user-1")).thenReturn("auth-token");
         when(jwtService.generateAccessToken("user-1", "profile-1", "CAREGIVER")).thenReturn("access-token");
+        when(jwtService.generateRefreshToken("user-1")).thenReturn("new-refresh-token");
 
         var response = authFacade.refresh(request);
 
         assertThat(response.getAuthToken()).isEqualTo("auth-token");
         assertThat(response.getAccessToken()).isEqualTo("access-token");
-        assertThat(response.getRefreshToken()).isEqualTo("persistent-refresh-token");
-        verify(jwtService, never()).generateRefreshToken("user-1");
-        verify(jwtService, never()).blacklistTokens(anyList());
+        assertThat(response.getRefreshToken()).isEqualTo("new-refresh-token");
+        verify(jwtService).blacklistTokens(List.of("old-refresh-token"));
     }
 
     @Test
@@ -79,7 +76,6 @@ class AuthFacadeTest {
                 .build();
 
         when(jwtService.resolveRefreshTokenUserId("legacy-jwt-refresh-token")).thenReturn(Optional.of("user-1"));
-        when(jwtService.isServerManagedRefreshToken("legacy-jwt-refresh-token")).thenReturn(false);
         when(userProfileService.findById("profile-1")).thenReturn(profile);
         when(jwtService.generateAuthToken("user-1")).thenReturn("auth-token");
         when(jwtService.generateAccessToken("user-1", "profile-1", "CAREGIVER")).thenReturn("access-token");
@@ -89,5 +85,23 @@ class AuthFacadeTest {
 
         assertThat(response.getRefreshToken()).isEqualTo("persistent-refresh-token");
         verify(jwtService).blacklistTokens(List.of("legacy-jwt-refresh-token"));
+    }
+
+    @Test
+    void refreshWithoutProfileReturnsOnlyAuthAndRefreshTokens() {
+        TokenRefreshRequest request = TokenRefreshRequest.builder()
+                .refreshToken("old-refresh-token")
+                .build();
+
+        when(jwtService.resolveRefreshTokenUserId("old-refresh-token")).thenReturn(Optional.of("user-1"));
+        when(jwtService.generateAuthToken("user-1")).thenReturn("auth-token");
+        when(jwtService.generateRefreshToken("user-1")).thenReturn("new-refresh-token");
+
+        var response = authFacade.refresh(request);
+
+        assertThat(response.getAuthToken()).isEqualTo("auth-token");
+        assertThat(response.getAccessToken()).isNull();
+        assertThat(response.getRefreshToken()).isEqualTo("new-refresh-token");
+        verify(jwtService).blacklistTokens(List.of("old-refresh-token"));
     }
 }

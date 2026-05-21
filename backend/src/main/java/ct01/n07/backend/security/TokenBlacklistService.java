@@ -1,6 +1,7 @@
 package ct01.n07.backend.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,9 @@ public class TokenBlacklistService {
     private static final String BLACKLIST_PREFIX = "blacklist:";
 
     private final StringRedisTemplate redisTemplate;
+
+    @Value("${jwt.refresh-expiration-ms:604800000}") // 7 days
+    private long userBlacklistTtlMs = Duration.ofDays(7).toMillis();
 
     public void blacklist(String token, Date expiresAt) {
         if (token == null || expiresAt == null) {
@@ -42,7 +46,11 @@ public class TokenBlacklistService {
         if (userId == null) return;
         // Set blacklist timestamp for the user (Valid for 7 days, max refresh token lifetime)
         redisTemplate.opsForValue()
-                .set("blacklist_user:" + userId, String.valueOf(System.currentTimeMillis()), Duration.ofDays(7));
+                .set(
+                        "blacklist_user:" + userId,
+                        String.valueOf(System.currentTimeMillis()),
+                        Duration.ofMillis(userBlacklistTtlMs)
+                );
     }
 
     public boolean isUserBlacklisted(String userId, Date issuedAt) {

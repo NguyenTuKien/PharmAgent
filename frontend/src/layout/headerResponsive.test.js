@@ -25,7 +25,7 @@ test("header stylesheet defines balanced desktop, tablet, and mobile layouts", (
   assert.match(cssSource, /\.role-nav-wrap--desktop\s*\{[\s\S]*overflow:\s*visible/);
   assert.match(cssSource, /\.header-gooey-search \.gooey-search-tabs-bar\s*\{[\s\S]*border:\s*1px solid rgb\(184 216 207 \/ 70%\)[\s\S]*border-radius:\s*999px/);
   assert.match(cssSource, /\.header-gooey-search \.gooey-search-tabs-tabs-content\.role-nav\s*\{[\s\S]*gap:\s*0[\s\S]*padding:\s*0/);
-  assert.match(cssSource, /\.header-gooey-search \.gooey-search-tabs-tab-indicator\s*\{[\s\S]*inset:\s*0[\s\S]*border-radius:\s*999px/);
+  assert.match(cssSource, /\.header-gooey-search \.gooey-search-tabs-tabs-content\.role-nav::before\s*\{[\s\S]*width:\s*var\(--role-nav-indicator-width\)[\s\S]*border-radius:\s*999px/);
   assert.match(cssSource, /\.header-gooey-search \.gooey-search-tabs-tab\.role-nav-link\s*\{[\s\S]*height:\s*60px[\s\S]*font-size:\s*0\.7rem/);
   assert.match(cssSource, /\.role-nav-link\s*\{[\s\S]*height:\s*60px[\s\S]*overflow:\s*hidden[\s\S]*border-radius:\s*999px/);
   assert.match(cssSource, /\.role-nav-link \.gooey-search-tabs-tab-icon svg\s*\{[\s\S]*width:\s*20px[\s\S]*height:\s*20px/);

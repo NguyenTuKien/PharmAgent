@@ -95,10 +95,19 @@ export async function selectProfileRequest(authToken, profileId) {
   return response.data
 }
 
+export function buildRefreshTokensPayload(refreshToken, profileId) {
+  const payload = { refreshToken }
+  const normalizedProfileId = typeof profileId === 'string' ? profileId.trim() : profileId
+  if (normalizedProfileId) {
+    payload.profileId = normalizedProfileId
+  }
+  return payload
+}
+
 export async function refreshTokensRequest(refreshToken, profileId) {
   const response = await apiClient.post(
     '/auth/refresh',
-    { refreshToken, profileId },
+    buildRefreshTokensPayload(refreshToken, profileId),
     {
       skipAuthHeader: true,
       skipAuthRefresh: true,

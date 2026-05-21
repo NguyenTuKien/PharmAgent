@@ -21,7 +21,7 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.auth-expiration-ms:300000}") // Token bước 1: 5 phút
+    @Value("${jwt.auth-expiration-ms:900000}") // Token bước 1: 15 phút
     private long authExpirationMs;
 
     @Value("${jwt.access-expiration-ms:900000}") // Token bước 2 (gọi API): 15 phút

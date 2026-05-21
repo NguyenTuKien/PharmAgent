@@ -2,7 +2,7 @@
 Authentication & Authorization dependencies – dùng trong FastAPI Depends().
 
 Cung cấp:
-  - get_current_user   : yêu cầu JWT hợp lệ
+  - get_current_user   : yêu cầu access JWT hợp lệ
   - require_roles(...)  : yêu cầu có ít nhất 1 trong các role được chỉ định
   - optional_user      : lấy user nếu có token, không bắt buộc
 """
@@ -24,6 +24,22 @@ class TokenUser(BaseModel):
     user_id: str
     roles: list[str]
     raw_payload: dict
+
+
+def _require_access_token_payload(payload: dict) -> None:
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Access token required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not get_subject(payload):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token subject is missing",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 # ── Blacklist Verification ────────────────────────────────────────────────────
@@ -58,11 +74,15 @@ async def check_token_blacklist(token: str, payload: dict) -> None:
         raise
     except Exception as exc:
         logger.error("Lỗi khi kiểm tra token blacklist từ Redis: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Không thể xác minh trạng thái phiên",
+        ) from exc
 
 
 # ── Core dependency ───────────────────────────────────────────────────────────
 
-async def require_access_payload(authorization: Optional[str]) -> dict:
+async def require_access_payload(authorization: Optional[str]) -> TokenUser:
     token = extract_bearer_token(authorization)
     if not token:
         raise HTTPException(
@@ -72,12 +92,19 @@ async def require_access_payload(authorization: Optional[str]) -> dict:
         )
 
     payload = decode_token(token)
+    _require_access_token_payload(payload)
     await check_token_blacklist(token, payload)
     return TokenUser(
         user_id=get_subject(payload),
         roles=get_roles(payload),
         raw_payload=payload,
     )
+
+
+async def get_current_user(
+    authorization: Annotated[Optional[str], Header()] = None,
+) -> TokenUser:
+    return await require_access_payload(authorization)
 
 
 async def optional_user(
@@ -91,6 +118,7 @@ async def optional_user(
         return None
     try:
         payload = decode_token(token)
+        _require_access_token_payload(payload)
         await check_token_blacklist(token, payload)
         return TokenUser(
             user_id=get_subject(payload),

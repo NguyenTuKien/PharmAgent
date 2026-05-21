@@ -1,5 +1,6 @@
 package ct01.n07.backend.security;
 
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -31,10 +32,12 @@ class RefreshTokenServiceTest {
         String token = service.createToken("user-1");
 
         ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
-        verify(valueOperations).set(keyCaptor.capture(), eq("user-1"));
+        ArgumentCaptor<Duration> ttlCaptor = ArgumentCaptor.forClass(Duration.class);
+        verify(valueOperations).set(keyCaptor.capture(), eq("user-1"), ttlCaptor.capture());
         assertThat(token).hasSizeGreaterThanOrEqualTo(43);
         assertThat(keyCaptor.getValue()).startsWith("refresh-session:");
         assertThat(keyCaptor.getValue()).doesNotContain(token);
+        assertThat(ttlCaptor.getValue()).isEqualTo(Duration.ofDays(7));
     }
 
     @Test
