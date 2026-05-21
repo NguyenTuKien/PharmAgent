@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom'
 
+import logo from '../assets/logo.svg'
+import title from '../assets/title.svg'
 import { useAuthStore } from '../modules/auth/authStore.js'
 import { canAccessRoles } from '../modules/auth/session.js'
 import { navigationItems } from './navigation.js'
@@ -10,12 +12,9 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="brand">
-        <span className="brand-mark">P</span>
-        <div>
-          <strong>PharmAgent</strong>
-          <span>Medication care</span>
-        </div>
+      <div className="brand brand--lockup">
+        <img className="brand-logo" src={logo} alt="" />
+        <img className="brand-title" src={title} alt="PharmAgent" />
       </div>
       <nav aria-label="Dieu huong chinh" className="side-nav">
         {visibleItems.map((item) => {

@@ -1,11 +1,11 @@
 import { LogOut, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { gooeyToast } from 'goey-toast'
 
 import { Button } from '../components/ui/Button.jsx'
 import { GooeySearchTabs } from '../components/ui/GooeySearchTabs.jsx'
 import { ConfirmDialog } from '../components/ui/Modal.jsx'
+import { notify } from '../lib/toast.js'
 import { useAuthStore } from '../modules/auth/authStore.js'
 import { canAccessRoles } from '../modules/auth/session.js'
 import { navigationItems } from './navigation.js'
@@ -37,7 +37,9 @@ export function Topbar() {
 
   const handleLogout = async () => {
     await logout()
-    gooeyToast.success('Da dang xuat')
+    notify.success('Đã đăng xuất', {
+      description: 'Phiên đăng nhập đã được xóa khỏi trình duyệt này.',
+    })
     navigate('/login', { replace: true })
   }
 

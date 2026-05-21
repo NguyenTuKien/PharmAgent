@@ -7,12 +7,30 @@ function optionalText(value) {
   return normalized || undefined
 }
 
-function profilePayload(values, prefix = '') {
-  const field = (name) => values[`${prefix}${name}`]
+function splitDisplayName(value) {
+  const normalized = optionalText(value) || ''
+  const parts = normalized.split(/\s+/).filter(Boolean)
+
+  if (parts.length <= 1) {
+    return {
+      firstName: parts[0] || 'Nguoi dung',
+      lastName: undefined,
+    }
+  }
 
   return {
-    firstName: optionalText(field('FirstName')) ?? optionalText(values.firstName),
-    lastName: optionalText(field('LastName')) ?? optionalText(values.lastName),
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts.at(-1),
+  }
+}
+
+function profilePayload(values, prefix = '') {
+  const field = (name) => values[`${prefix}${name}`]
+  const fallbackName = prefix ? {} : splitDisplayName(values.username || values.fullName)
+
+  return {
+    firstName: optionalText(field('FirstName')) ?? optionalText(values.firstName) ?? fallbackName.firstName,
+    lastName: optionalText(field('LastName')) ?? optionalText(values.lastName) ?? fallbackName.lastName,
     phone: optionalText(field('Phone')) ?? optionalText(values.phone),
     dateOfBirth: optionalText(field('DateOfBirth')) ?? optionalText(values.dateOfBirth),
     gender: optionalText(field('Gender')) ?? optionalText(values.gender),

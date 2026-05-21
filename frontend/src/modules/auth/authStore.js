@@ -2,9 +2,11 @@ import { create } from 'zustand'
 
 import { setApiAuthHandlers } from '../../lib/apiClient.js'
 import {
+  completeGoogleOAuthRequest,
   forgotPasswordRequest,
   loginRequest,
   logoutRequest,
+  registerElderlyRequest,
   registerRequest,
   resendVerificationRequest,
   resetPasswordRequest,
@@ -38,30 +40,54 @@ const initialAuthState = {
   error: null,
 }
 
+function applyLoginResponse(response, set) {
+  const profiles = normalizeProfilesPage(response.profiles)
+
+  saveSession({
+    authToken: response.authToken,
+    refreshToken: response.refreshToken,
+  })
+
+  set({
+    authToken: response.authToken,
+    refreshToken: response.refreshToken,
+    accessToken: null,
+    profiles,
+    activeProfile: null,
+    status: 'profile_required',
+    error: null,
+  })
+
+  return profiles
+}
+
 export const useAuthStore = create((set, get) => ({
   ...initialAuthState,
 
   login: async (credentials) => {
     set({ status: 'authenticating', error: null })
     const response = await loginRequest(credentials)
-    const profiles = normalizeProfilesPage(response.profiles)
+    return applyLoginResponse(response, set)
+  },
 
-    saveSession({
-      authToken: response.authToken,
-      refreshToken: response.refreshToken,
-    })
-
-    set({
-      authToken: response.authToken,
-      refreshToken: response.refreshToken,
-      accessToken: null,
-      profiles,
-      activeProfile: null,
-      status: 'profile_required',
-      error: null,
-    })
-
-    return profiles
+  loginWithGoogleHandoffCode: async (code) => {
+    set({ status: 'authenticating', error: null })
+    try {
+      const response = await completeGoogleOAuthRequest(code)
+      return applyLoginResponse(response, set)
+    } catch (error) {
+      clearSession()
+      set({
+        authToken: null,
+        refreshToken: null,
+        accessToken: null,
+        profiles: [],
+        activeProfile: null,
+        status: 'anonymous',
+        error,
+      })
+      throw error
+    }
   },
 
   registerAccount: async (payload) => {
@@ -74,6 +100,12 @@ export const useAuthStore = create((set, get) => ({
       set({ status: 'anonymous', error })
       throw error
     }
+  },
+
+  registerElderlyProfile: async (onboardingToken, payload) => {
+    const response = await registerElderlyRequest(onboardingToken, payload)
+    set({ status: 'verification_required', error: null })
+    return response
   },
 
   verifyEmail: async (payload) => {

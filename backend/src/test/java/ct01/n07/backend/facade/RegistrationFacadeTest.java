@@ -11,6 +11,7 @@ import ct01.n07.backend.model.enums.Gender;
 import ct01.n07.backend.model.enums.Role;
 import ct01.n07.backend.model.enums.UserStatus;
 import ct01.n07.backend.producer.MailProducerService;
+import ct01.n07.backend.security.JwtService;
 import ct01.n07.backend.service.RelationshipService;
 import ct01.n07.backend.service.UserProfileService;
 import ct01.n07.backend.service.UserService;
@@ -51,6 +52,9 @@ class RegistrationFacadeTest {
     private UserProfileMapper userProfileMapper;
 
     @Mock
+    private JwtService jwtService;
+
+    @Mock
     private OtpUtil otpUtil;
 
     @Mock
@@ -81,17 +85,21 @@ class RegistrationFacadeTest {
         UserProfile caregiverProfile = UserProfile.builder()
                 .id("profile-1")
                 .userId("user-1")
+                .firstName("An")
+                .lastName("Nguyen")
                 .role(Role.CAREGIVER)
                 .build();
 
         when(userService.createUser(any(LoginRequest.class), eq(UserStatus.INACTIVE))).thenReturn(user);
         when(userProfileMapper.toCaregiverProfile(request, "user-1")).thenReturn(caregiverProfile);
+        when(jwtService.generateAuthToken("user-1")).thenReturn("onboarding-token");
         when(otpUtil.generateOtp()).thenReturn("123456");
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         AuthMessageResponse response = registrationFacade.register(request);
 
         assertThat(response.getEmail()).isEqualTo("caregiver@example.com");
+        assertThat(response.getOnboardingToken()).isEqualTo("onboarding-token");
         assertThat(response.getMessage()).contains("xác minh");
         verify(userProfileService).saveUserProfile(caregiverProfile);
         verify(valueOperations).set(
@@ -102,7 +110,8 @@ class RegistrationFacadeTest {
                 eq("caregiver@example.com"),
                 eq("123456"),
                 eq("EMAIL_VERIFICATION"),
-                eq("http://localhost:5173/verify-email?email=caregiver%40example.com&otp=123456"));
+                eq("http://localhost:5173/verify-email?email=caregiver%40example.com&otp=123456"),
+                eq("An Nguyen"));
     }
 
     @Test
@@ -146,6 +155,7 @@ class RegistrationFacadeTest {
 
         when(userService.createUser(loginCaptor.capture(), eq(UserStatus.INACTIVE))).thenReturn(user);
         when(userProfileMapper.toCaregiverProfile(request, "user-1")).thenReturn(caregiverProfile);
+        when(jwtService.generateAuthToken("user-1")).thenReturn("onboarding-token");
         when(otpUtil.generateOtp()).thenReturn("123456");
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 

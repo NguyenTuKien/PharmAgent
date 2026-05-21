@@ -37,8 +37,8 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final UserProfileMapper userProfileMapper;
 
     @Override
-    public void saveUserProfile(UserProfile userProfile) {
-        userProfileRepository.save(userProfile);
+    public UserProfile saveUserProfile(UserProfile userProfile) {
+        return userProfileRepository.save(userProfile);
     }
 
     @Override

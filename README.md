@@ -70,15 +70,17 @@ quán.
 | `pharmagent-agent` | Build từ `./agent/` | 8000 | Dịch vụ AI nhận diện thuốc |
 | `pharmagent-backend` | Build từ `./backend/` | 8080 | Dịch vụ backend chính xử lý logic nghiệp vụ |
 | `pharmagent-gateway` | Build từ `./gateway/` | 9000 | API Gateway xử lý xác thực và định tuyến |
-| `pharmagent-frontend` | Build từ `./frontend/` | 5173 | Giao diện người dùng React |
+| `pharmagent-frontend` | Chạy Vite từ `./frontend/` qua bind mount | 5173 | Giao diện người dùng React, tự bám theo source hiện tại |
 | `cloudflare` | `cloudflare/cloudflared:2024.6.0` | - | Dịch vụ tunneling để expose local server ra Internet |
 
 Để đảm bảo tính bảo mật, chúng ta chỉ expose các cổng cần thiết ra bên ngoài (ví dụ: 5173 cho frontend, 9000 cho API Gateway) và giữ các dịch vụ nội bộ (database, redis, rabbitmq) chỉ có thể truy cập từ trong mạng Docker.
 
-Với cấu hình này, mọi thành viên chỉ cần cài đặt Docker và chạy lệnh docker
-compose up để có được một môi trường phát triển đầy đủ, bao gồm cơ sở dữ liệu đã được
-khởi tạo dữ liệu mẫu. Các biến cấu hình nhạy cảm (kết nối cơ sở dữ liệu, API key) được quản
-lý qua file .env riêng cho từng service, không được đưa lên repository.
+Với cấu hình này, mọi thành viên chỉ cần cài đặt Docker và chạy lệnh `docker
+compose up` để có được một môi trường phát triển đầy đủ, bao gồm cơ sở dữ liệu đã được
+khởi tạo dữ liệu mẫu. Frontend chạy bằng Vite trong container Node.js và bind mount trực
+tiếp thư mục `./frontend`, nên thay đổi trong source hiện tại được container sử dụng ngay,
+không phụ thuộc vào image nginx/static build cũ. Các biến cấu hình nhạy cảm (kết nối cơ sở dữ
+liệu, API key) được quản lý qua file .env riêng cho từng service, không được đưa lên repository.
 
 Cloudinary hoạt động như một dịch vụ bên ngoài có chức năng lưu trữ hình ảnh nhận diện thuốc. Các container trong hệ thống sẽ kết nối với Cloudinary qua API để upload và truy xuất hình ảnh, đảm bảo tính linh hoạt và mở rộng của hệ thống.
 

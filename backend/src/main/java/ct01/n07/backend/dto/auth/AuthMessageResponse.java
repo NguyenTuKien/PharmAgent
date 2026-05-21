@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class AuthMessageResponse {
     private String message;
     private String email;
+    private String onboardingToken;
 }

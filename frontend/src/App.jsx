@@ -5,6 +5,7 @@ import { AppShell } from './layout/AppShell.jsx'
 import { useAuthStore } from './modules/auth/authStore.js'
 import { DashboardPage } from './pages/DashboardPage.jsx'
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.jsx'
+import { ElderlySetupPage } from './pages/auth/ElderlySetupPage.jsx'
 import { LoginPage } from './pages/auth/LoginPage.jsx'
 import { RegisterPage } from './pages/auth/RegisterPage.jsx'
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage.jsx'
@@ -44,6 +45,7 @@ function App() {
         <Route element={<GuestRoute />}>
           <Route element={<LoginPage />} path="/login" />
           <Route element={<RegisterPage />} path="/register" />
+          <Route element={<ElderlySetupPage />} path="/register/elderly" />
           <Route element={<ForgotPasswordPage />} path="/forgot-password" />
           <Route element={<ResetPasswordPage />} path="/reset-password" />
           <Route element={<VerifyEmailPage />} path="/verify-email" />
