@@ -343,49 +343,49 @@ jobs:
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
 
-  # update_config:
-  #   name: Update Config (Frontend)
-  #   needs: [filter, tag_job, helm_lint_job, integration_test_job, security_scan]
-  #   runs-on: ubuntu-latest
-  #   if: >
-  #     always() &&
-  #     needs.filter.outputs.frontend == 'true' &&
-  #     needs.tag_job.result == 'success' &&
-  #     needs.helm_lint_job.result == 'success' &&
-  #     needs.integration_test_job.result == 'success' &&
-  #     (
-  #       github.ref == 'refs/heads/main' ||
-  #       startsWith(github.ref, 'refs/tags/') ||
-  #       github.event_name == 'pull_request'
-  #     )
-  #   env:
-  #     TAG: ${{ needs.tag_job.outputs.docker_tag }}
-  #     REPO_CONFIG: ${{ vars.REPO_CONFIG }}
-  #   steps:
-  #     - name: Checkout Source Code (GitHub)
-  #       uses: actions/checkout@v4
+  update_config:
+    name: Update Config (Frontend)
+    needs: [filter, tag_job, helm_lint_job, integration_test_job, security_scan]
+    runs-on: ubuntu-latest
+    if: >
+      always() &&
+      needs.filter.outputs.frontend == 'true' &&
+      needs.tag_job.result == 'success' &&
+      needs.helm_lint_job.result == 'success' &&
+      needs.integration_test_job.result == 'success' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.event_name == 'pull_request'
+      )
+    env:
+      TAG: ${{ needs.tag_job.outputs.docker_tag }}
+      REPO_CONFIG: ${{ vars.REPO_CONFIG }}
+    steps:
+      - name: Checkout Source Code (GitHub)
+        uses: actions/checkout@v4
 
-  #     - name: Setup SSH Agent
-  #       uses: webfactory/ssh-agent@v0.9.0
-  #       with:
-  #         ssh-private-key: ${{ secrets.SSH_KEY }}
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
 
-  #     - name: Clone Config Repo (GitLab)
-  #       run: |
-  #         mkdir -p ~/.ssh
-  #         ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
-  #         git clone ${REPO_CONFIG} Config
+      - name: Clone Config Repo (GitLab)
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
+          git clone ${REPO_CONFIG} Config
 
-  #     - name: Update Frontend Config Tag for Staging
-  #       run: |
-  #         cd Config
-  #         FRONTEND_TARGET_FILE="app/frontend/values-prod.yaml"
+      - name: Update Frontend Config Tag for Staging
+        run: |
+          cd Config
+          FRONTEND_TARGET_FILE="app/frontend/values-prod.yaml"
 
-  #         yq -i '.image.tag = strenv(TAG)' "$FRONTEND_TARGET_FILE"
-  #         git add "$FRONTEND_TARGET_FILE"
+          yq -i '.image.tag = strenv(TAG)' "$FRONTEND_TARGET_FILE"
+          git add "$FRONTEND_TARGET_FILE"
 
-  #         git config user.name "github-actions[bot]"
-  #         git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-  #         git commit -m "CD: Update frontend image tag to ${{ env.TAG }}" || echo "No changes to commit"
-  #         git push origin main --force
+          git commit -m "CD: Update frontend image tag to ${{ env.TAG }}" || echo "No changes to commit"
+          git push origin main --force

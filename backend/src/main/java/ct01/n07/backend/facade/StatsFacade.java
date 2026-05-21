@@ -4,12 +4,10 @@ import ct01.n07.backend.dto.stats.AdherenceResponse;
 import ct01.n07.backend.dto.stats.InventoryWarningResponse;
 import ct01.n07.backend.dto.stats.MedicationDoseStatsResponse;
 import ct01.n07.backend.dto.medication.MedicationResponse;
-import ct01.n07.backend.model.Pill;
 import ct01.n07.backend.model.UserProfile;
 import ct01.n07.backend.model.enums.DoseStatus;
 import ct01.n07.backend.service.EventDoseService;
 import ct01.n07.backend.service.MedicationCoreService;
-import ct01.n07.backend.service.PillService;
 import ct01.n07.backend.service.UserProfileService;
 import ct01.n07.backend.security.MedicationPermissionValidator;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +33,6 @@ public class StatsFacade {
     // Facade chỉ được giao tiếp trực tiếp với các Service (Clean Architecture)
     private final EventDoseService eventDoseService;
     private final MedicationCoreService medicationCoreService;
-    private final PillService pillService;
 
     // [REFACTOR FIX]: Thêm Relationship để kiểm tra phân quyền (Security) thông qua
     // Validator
@@ -132,20 +129,11 @@ public class StatsFacade {
                         && med.getTotalQuantity() <= INVENTORY_WARNING_THRESHOLD)
                 .toList();
 
-        // [REFACTOR FIX]: Loại bỏ Query N+1. Lấy tất cả ID tiến hành query 1 lần vào DB
-        List<String> pillIds = warnings.stream().map(MedicationResponse::getPillId).distinct().toList();
-
-        Map<String, String> pillNameMap = pillService.getPillsByIds(pillIds).stream()
-                .collect(Collectors.toMap(Pill::getId, Pill::getName));
-
         return warnings.stream()
                 .map(med -> {
-                    // [REFACTOR FIX]: Try-catch chỉ in warning chứ không nuốt lỗi, sử dụng
-                    // Dictionary cache (Map) phía trên
-                    String pillName = pillNameMap.getOrDefault(med.getPillId(), "Thuốc không xác định");
-                    if (pillName.equals("Thuốc không xác định")) {
-                        log.warn("System consistency warning: Pill metadata not found for pillId={}", med.getPillId());
-                    }
+                    String pillName = med.getNickname() != null && !med.getNickname().isBlank() 
+                            ? med.getNickname() 
+                            : "Thuốc (không xác định tên)";
                     return InventoryWarningResponse.builder()
                             .pillName(pillName)
                             .remainingQuantity(med.getTotalQuantity())

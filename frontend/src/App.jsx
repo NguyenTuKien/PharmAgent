@@ -3,6 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppShell } from './layout/AppShell.jsx'
 import { useAuthStore } from './modules/auth/authStore.js'
+import { AdminLayout } from './pages/admin/AdminLayout.jsx'
+import { AdminPillsPage } from './pages/admin/AdminPillsPage.jsx'
+import { AdminUsersPage } from './pages/admin/AdminUsersPage.jsx'
 import { DashboardPage } from './pages/DashboardPage.jsx'
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.jsx'
 import { ElderlySetupPage } from './pages/auth/ElderlySetupPage.jsx'
@@ -92,15 +95,11 @@ function App() {
             </Route>
 
             <Route element={<RoleRoute roles={['ADMIN']} />}>
-              <Route
-                element={
-                  <WorkspacePage
-                    description="Khu vuc quan tri danh cho role ADMIN va cac endpoint /api/admin."
-                    title="Quan tri"
-                  />
-                }
-                path="/admin"
-              />
+              <Route element={<AdminLayout />} path="/admin">
+                <Route index element={<Navigate replace to="users" />} />
+                <Route element={<AdminUsersPage />} path="users" />
+                <Route element={<AdminPillsPage />} path="pills" />
+              </Route>
             </Route>
 
             <Route element={<UnauthorizedPage />} path="/unauthorized" />

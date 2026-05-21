@@ -68,7 +68,7 @@ httpRoute:
   - matches:
     - path:
         type: PathPrefix
-        value: /headers
+        value: /
 
 # Default environment variables for the FastAPI Agent
 env: []
@@ -85,7 +85,7 @@ resources: {}
 
 livenessProbe:
   httpGet:
-    path: /ws/health
+    path: /health
     port: http
   initialDelaySeconds: 15
   periodSeconds: 10
@@ -94,7 +94,7 @@ livenessProbe:
 
 readinessProbe:
   httpGet:
-    path: /ws/health
+    path: /health
     port: http
   initialDelaySeconds: 10
   periodSeconds: 10
