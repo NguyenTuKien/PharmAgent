@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -122,22 +123,20 @@ public class AuthFacade {
     }
 
     // ==========================================
-    // API 3: REFRESH TOKEN (STATELESS ROTATION)
+    // API 3: REFRESH TOKEN (SERVER-MANAGED SESSION)
     // ==========================================
     public TokenRefreshResponse refresh(TokenRefreshRequest request) {
         String token = normalizeToken(request.getRefreshToken());
 
-        // 1. Kiểm tra tính hợp lệ và loại Token
-        String userId;
-        try {
-            userId = jwtService.extractUserId(token);
-            if (!jwtService.isTokenValid(token, userId) || !jwtService.isRefreshToken(token)) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
-            }
-        } catch (Exception ex) {
-            log.warn("refresh rejected due to invalid refresh token: {}", ex.getClass().getSimpleName());
+        // 1. Kiểm tra refresh session token. Token mới là opaque token lưu hash ở server;
+        // legacy JWT refresh token còn hợp lệ sẽ được migrate ở cuối hàm.
+        boolean serverManagedRefreshToken = jwtService.isServerManagedRefreshToken(token);
+        Optional<String> resolvedUserId = jwtService.resolveRefreshTokenUserId(token);
+        if (resolvedUserId.isEmpty()) {
+            log.warn("refresh rejected due to invalid refresh token");
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
         }
+        String userId = resolvedUserId.get();
 
         // 2. Kiểm tra quyền truy cập Profile
         UserProfile profile = userProfileService.findById(request.getProfileId());
@@ -145,17 +144,20 @@ public class AuthFacade {
             throw new AccessDeniedException("Dữ liệu không khớp. Vui lòng đăng nhập lại.");
         }
 
-        // 3. Rotation
+        // 3. Cấp lại token truy cập ngắn hạn. Refresh token server-managed được giữ nguyên
+        // để session chỉ mất khi logout hoặc người dùng xoá storage.
         String newAuthToken = jwtService.generateAuthToken(userId);
         String newAccessToken = jwtService.generateAccessToken(userId, profile.getId(), profile.getRole().name());
-        String newRefreshToken = jwtService.generateRefreshToken(userId);
-
-        jwtService.blacklistTokens(List.of(token));
+        String refreshToken = token;
+        if (!serverManagedRefreshToken) {
+            refreshToken = jwtService.generateRefreshToken(userId);
+            jwtService.blacklistTokens(List.of(token));
+        }
 
         return TokenRefreshResponse.builder()
                 .authToken(newAuthToken)
                 .accessToken(newAccessToken)
-                .refreshToken(newRefreshToken)
+                .refreshToken(refreshToken)
                 .build();
     }
 

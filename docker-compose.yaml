@@ -18,7 +18,7 @@ services:
     image: redis:7-alpine
     restart: always
     env_file: .env
-    command: /bin/sh -c 'redis-server --requirepass "$${SPRING_DATA_REDIS_PASSWORD}"'
+    command: /bin/sh -c 'redis-server --requirepass "$${SPRING_DATA_REDIS_PASSWORD}" --appendonly yes --appendfsync everysec'
     healthcheck:
       test: [ "CMD-SHELL", "redis-cli -a \"$${SPRING_DATA_REDIS_PASSWORD}\" ping | grep PONG" ]
       interval: 10s
@@ -100,14 +100,22 @@ services:
       - pharmagent-network
 
   frontend:
-    build: ./frontend
-    image: ${DOCKER_REGISTRY:-ghcr.io/nguyentukien}/pharmagent-frontend:${TAG:-latest}
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     restart: always
+    environment:
+      VITE_GATEWAY_PROXY_TARGET: http://gateway:9000
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "100"
     ports:
       - "5173:5173"
     depends_on:
       gateway:
         condition: service_healthy
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:5173/ || exit 1" ]
       interval: 15s
@@ -121,6 +129,7 @@ volumes:
   redis_data:
   rabbitmq_data:
   backend_logs:
+  frontend_node_modules:
 
 networks:
   pharmagent-network:

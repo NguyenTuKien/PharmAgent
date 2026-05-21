@@ -1,37 +1,83 @@
 import {
   Activity,
   BarChart3,
-  Camera,
+  Bell,
+  CalendarClock,
+  CalendarDays,
+  ClipboardList,
+  History,
   LayoutDashboard,
+  MessageCircle,
   Pill,
-  ShieldCheck,
+  ScanSearch,
+  Settings,
+  UserCog,
+  UserRound,
   Users,
 } from 'lucide-react'
+
+import { canAccessRoles } from '../modules/auth/session.js'
 
 export const navigationItems = [
   {
     to: '/dashboard',
-    label: 'Tong quan',
-    icon: LayoutDashboard,
-    roles: ['ELDERLY', 'CAREGIVER'],
+    label: 'Lịch uống thuốc',
+    icon: CalendarClock,
+    roles: ['ELDERLY'],
+  },
+  {
+    to: '/dose-history',
+    label: 'Lịch sử uống thuốc',
+    icon: History,
+    roles: ['ELDERLY'],
   },
   {
     to: '/medications',
-    label: 'Don thuoc',
+    label: 'Thuốc của tôi',
     icon: Pill,
-    roles: ['ELDERLY', 'CAREGIVER'],
+    roles: ['ELDERLY'],
   },
   {
     to: '/scan',
-    label: 'Quet thuoc',
-    icon: Camera,
-    roles: ['ELDERLY', 'CAREGIVER'],
+    label: 'Tìm thuốc',
+    icon: ScanSearch,
+    roles: ['ELDERLY'],
   },
   {
     to: '/relationships',
-    label: 'Nguoi cham soc',
+    label: 'Người chăm sóc',
     icon: Users,
-    roles: ['CAREGIVER', 'ELDERLY'],
+    roles: ['ELDERLY'],
+  },
+  {
+    to: '/relationships',
+    label: 'Người thân',
+    icon: Users,
+    roles: ['CAREGIVER'],
+  },
+  {
+    to: '/medications',
+    label: 'Quản lý thuốc',
+    icon: ClipboardList,
+    roles: ['CAREGIVER'],
+  },
+  {
+    to: '/dashboard',
+    label: 'Lịch uống',
+    icon: CalendarDays,
+    roles: ['CAREGIVER'],
+  },
+  {
+    to: '/scan',
+    label: 'Tìm thuốc',
+    icon: ScanSearch,
+    roles: ['CAREGIVER'],
+  },
+  {
+    to: '/reports',
+    label: 'Thống kê',
+    icon: BarChart3,
+    roles: ['CAREGIVER'],
   },
   {
     to: '/admin',
@@ -42,13 +88,13 @@ export const navigationItems = [
   },
   {
     to: '/admin/users',
-    label: 'Tai khoan',
-    icon: Users,
+    label: 'Quản lý users',
+    icon: UserCog,
     roles: ['ADMIN'],
   },
   {
     to: '/admin/pills',
-    label: 'Thu vien thuoc',
+    label: 'Quản lý thuốc',
     icon: Pill,
     roles: ['ADMIN'],
   },
@@ -59,3 +105,30 @@ export const navigationItems = [
     roles: ['ADMIN'],
   },
 ]
+
+export function getNavigationItemsForRole(activeRole) {
+  return navigationItems.filter((item) => canAccessRoles(activeRole, item.roles ?? []))
+}
+
+export const headerUtilityItems = [
+  {
+    key: 'chat',
+    label: 'Chat',
+    icon: MessageCircle,
+    to: '/chat',
+  },
+  {
+    key: 'notifications',
+    label: 'Thông báo',
+    icon: Bell,
+  },
+  {
+    key: 'profile',
+    label: 'Avatar',
+    icon: UserRound,
+  },
+]
+
+export function getHeaderUtilityItems() {
+  return headerUtilityItems
+}

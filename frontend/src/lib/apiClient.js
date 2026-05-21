@@ -8,6 +8,8 @@ const authHandlers = {
   clearSession: undefined,
 }
 
+let refreshSessionRequest = null
+
 export const apiClient = axios.create({
   baseURL: env.apiBaseUrl,
   timeout: 30000,
@@ -18,6 +20,18 @@ export const apiClient = axios.create({
 
 export function setApiAuthHandlers(handlers) {
   Object.assign(authHandlers, handlers)
+}
+
+function refreshAccessToken() {
+  if (!refreshSessionRequest) {
+    refreshSessionRequest = Promise.resolve()
+      .then(() => authHandlers.refreshSession?.())
+      .finally(() => {
+        refreshSessionRequest = null
+      })
+  }
+
+  return refreshSessionRequest
 }
 
 export function getApiErrorMessage(error) {
@@ -65,7 +79,7 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        const accessToken = await authHandlers.refreshSession?.()
+        const accessToken = await refreshAccessToken()
         if (accessToken) {
           originalRequest.headers.Authorization = `Bearer ${accessToken}`
           return apiClient(originalRequest)

@@ -44,9 +44,30 @@ Các service sẽ khởi động:
 | `database` | 27017 | MongoDB |
 | `redis` | 6379 | Cache + rate limiting |
 | `rabbitmq` | 5672 / 15672 | Message broker (email async) |
-| `frontend` | 5173 | Nginx (chạy trong Docker) |
+| `frontend` | 5173 | Vite dev server (Docker bind mount + hot-reload) |
 
-### 2. Chạy frontend ở chế độ dev (hot-reload)
+### 2. Frontend hot-reload trong Docker
+
+```bash
+# Từ thư mục gốc PharmAgent/
+docker compose up -d frontend
+```
+
+Service `frontend` trong `docker-compose.yaml` chạy Vite trực tiếp trên thư mục `./frontend`
+được bind mount vào container. Khi sửa file trong `frontend/src` và save, Vite sẽ nhận thay
+đổi ngay; không cần build lại Docker image.
+
+Vite dev server chạy tại `http://localhost:5173` và **tự động proxy** mọi request:
+- `/api/*` → `http://localhost:9000`  (REST)
+- `/ws/*` → `http://localhost:9000`   (WebSocket / STOMP)
+
+Trong Docker Compose, proxy target là `http://gateway:9000` để container frontend gọi đúng
+service gateway nội bộ. Nếu chạy Vite trực tiếp trên máy host thì mặc định vẫn là
+`http://localhost:9000`.
+
+### 3. Chạy frontend trực tiếp trên máy host (tuỳ chọn)
+
+Nếu không muốn chạy frontend trong Docker, có thể chạy Vite local:
 
 ```bash
 cd frontend
@@ -54,13 +75,9 @@ npm install
 npm run dev
 ```
 
-Vite dev server chạy tại `http://localhost:5173` và **tự động proxy** mọi request:
-- `/api/*` → `http://localhost:9000`  (REST)
-- `/ws/*` → `http://localhost:9000`   (WebSocket / STOMP)
-
 > Cấu hình proxy nằm trong `vite.config.js`, đọc từ biến `VITE_GATEWAY_PROXY_TARGET`.
 
-### 3. Biến môi trường
+### 4. Biến môi trường
 
 Copy file mẫu nếu cần override:
 
@@ -220,7 +237,7 @@ npm run test      # Chạy unit tests (nếu đã cấu hình)
 
 ```bash
 # Build image thủ công
-docker build -t pharmagent-frontend ./frontend
+docker build -f ./frontend/dockerfile -t pharmagent-frontend ./frontend
 
 # Chạy standalone (cần gateway đang chạy tại host:9000)
 docker run -p 5173:5173 pharmagent-frontend

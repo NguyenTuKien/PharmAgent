@@ -62,13 +62,7 @@ async def check_token_blacklist(token: str, payload: dict) -> None:
 
 # ── Core dependency ───────────────────────────────────────────────────────────
 
-async def get_current_user(
-    authorization: Annotated[Optional[str], Header()] = None,
-) -> TokenUser:
-    """
-    FastAPI dependency: bắt buộc có JWT Bearer token hợp lệ.
-    Sử dụng: user: TokenUser = Depends(get_current_user)
-    """
+async def require_access_payload(authorization: Optional[str]) -> dict:
     token = extract_bearer_token(authorization)
     if not token:
         raise HTTPException(
@@ -76,6 +70,7 @@ async def get_current_user(
             detail="Thiếu token xác thực",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
     payload = decode_token(token)
     await check_token_blacklist(token, payload)
     return TokenUser(

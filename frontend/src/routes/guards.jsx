@@ -3,11 +3,25 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../modules/auth/authStore.js'
 import { canAccessRoles } from '../modules/auth/session.js'
 
+function RestoringSession() {
+  return (
+    <div className="empty-state compact" role="status">
+      <h2>Dang khoi phuc phien</h2>
+      <p>Vui long doi trong giay lat.</p>
+    </div>
+  )
+}
+
 export function GuestRoute() {
   const location = useLocation()
   const accessToken = useAuthStore((state) => state.accessToken)
   const activeProfile = useAuthStore((state) => state.activeProfile)
   const authToken = useAuthStore((state) => state.authToken)
+  const status = useAuthStore((state) => state.status)
+
+  if (status === 'restoring') {
+    return <RestoringSession />
+  }
 
   if (accessToken && activeProfile) {
     return <Navigate replace to={location.state?.from?.pathname ?? '/dashboard'} />
@@ -25,6 +39,11 @@ export function ProfileSelectionRoute() {
   const activeProfile = useAuthStore((state) => state.activeProfile)
   const authToken = useAuthStore((state) => state.authToken)
   const refreshToken = useAuthStore((state) => state.refreshToken)
+  const status = useAuthStore((state) => state.status)
+
+  if (status === 'restoring') {
+    return <RestoringSession />
+  }
 
   if (accessToken && activeProfile) {
     return <Navigate replace to="/dashboard" />
@@ -42,6 +61,12 @@ export function ProtectedRoute() {
   const accessToken = useAuthStore((state) => state.accessToken)
   const activeProfile = useAuthStore((state) => state.activeProfile)
   const authToken = useAuthStore((state) => state.authToken)
+  const refreshToken = useAuthStore((state) => state.refreshToken)
+  const status = useAuthStore((state) => state.status)
+
+  if (status === 'restoring' || (!accessToken && activeProfile && refreshToken)) {
+    return <RestoringSession />
+  }
 
   if (!accessToken || !activeProfile) {
     return (

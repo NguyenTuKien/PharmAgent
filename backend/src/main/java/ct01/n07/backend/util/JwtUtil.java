@@ -21,14 +21,11 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.auth-expiration-ms:60000}") // Token bước 1: 5 phút
+    @Value("${jwt.auth-expiration-ms:300000}") // Token bước 1: 5 phút
     private long authExpirationMs;
 
-    @Value("${jwt.access-expiration-ms:300000}") // Token bước 2 (Gọi API): 1 ngày
+    @Value("${jwt.access-expiration-ms:900000}") // Token bước 2 (gọi API): 15 phút
     private long accessExpirationMs;
-
-    @Value("${jwt.refresh-expiration-ms:6480000}") // Token làm mới: 7 ngày
-    private long refreshExpirationMs;
 
     // ==========================================
     // 1. TRÍCH XUẤT THÔNG TIN CHUNG
@@ -87,13 +84,6 @@ public class JwtUtil {
         claims.put("profileId", profileId);
         claims.put("role", role);
         return buildToken(claims, userId, accessExpirationMs);
-    }
-
-    // Bước 3: Tạo Refresh Token (Bây giờ là JWT, có hạn sử dụng dài)
-    public String generateRefreshToken(String userId) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("type", "refresh");
-        return buildToken(claims, userId, refreshExpirationMs);
     }
 
     // ==========================================

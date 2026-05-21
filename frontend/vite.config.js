@@ -5,7 +5,12 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const gatewayTarget = env.VITE_GATEWAY_PROXY_TARGET || 'http://localhost:9000'
+  const gatewayTarget =
+    process.env.VITE_GATEWAY_PROXY_TARGET ||
+    env.VITE_GATEWAY_PROXY_TARGET ||
+    'http://localhost:9000'
+  const usePolling = (process.env.CHOKIDAR_USEPOLLING || env.CHOKIDAR_USEPOLLING) === 'true'
+  const pollInterval = Number(process.env.CHOKIDAR_INTERVAL || env.CHOKIDAR_INTERVAL || 100)
 
   return {
     plugins: [react(), tailwindcss()],
@@ -16,7 +21,8 @@ export default defineConfig(({ mode }) => {
         clientPort: 5173,
       },
       watch: {
-        usePolling: env.CHOKIDAR_USEPOLLING === 'true',
+        usePolling,
+        interval: pollInterval,
       },
       proxy: {
         '/actuator': {

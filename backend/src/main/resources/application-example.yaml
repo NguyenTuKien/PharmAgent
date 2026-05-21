@@ -29,7 +29,6 @@ jwt:
   secret: dummy_base64_encoded_secret_key_here=
   auth-expiration-ms: 300000
   access-expiration-ms: 900000
-  refresh-expiration-ms: 604800000
 
 app:
   # Public frontend origin used in verification/reset emails.

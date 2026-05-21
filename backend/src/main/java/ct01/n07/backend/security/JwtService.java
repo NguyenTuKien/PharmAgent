@@ -2,6 +2,7 @@ package ct01.n07.backend.security;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import ct01.n07.backend.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ public class JwtService {
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
+    private final RefreshTokenService refreshTokenService;
 
     // ==========================================
     // 1. CÁC HÀM TẠO TOKEN
@@ -30,9 +32,9 @@ public class JwtService {
         return jwtUtil.generateAccessToken(userId, profileId, role);
     }
 
-    // Bước 3: Tạo Refresh Token dạng JWT (Đã bổ sung truyền userId)
+    // Bước 3: Tạo refresh session token ngẫu nhiên, lưu hash phía server
     public String generateRefreshToken(String userId) {
-        return jwtUtil.generateRefreshToken(userId);
+        return refreshTokenService.createToken(userId);
     }
 
     // ==========================================
@@ -88,6 +90,28 @@ public class JwtService {
         return jwtUtil.isRefreshToken(token);
     }
 
+    public Optional<String> resolveRefreshTokenUserId(String token) {
+        Optional<String> managedUserId = refreshTokenService.resolveUserId(token);
+        if (managedUserId.isPresent()) {
+            return managedUserId;
+        }
+
+        try {
+            String userId = extractUserId(token);
+            if (isTokenValid(token, userId) && isRefreshToken(token)) {
+                return Optional.of(userId);
+            }
+        } catch (Exception ex) {
+            log.warn("Refresh token rejected: {}", ex.getClass().getSimpleName());
+        }
+
+        return Optional.empty();
+    }
+
+    public boolean isServerManagedRefreshToken(String token) {
+        return refreshTokenService.resolveUserId(token).isPresent();
+    }
+
     // ==========================================
     // 4. CHỨC NĂNG ĐĂNG XUẤT / HỦY NHIỀU TOKEN
     // ==========================================
@@ -100,6 +124,9 @@ public class JwtService {
 
         for (String token : tokens) {
             if (token != null && !token.isBlank()) {
+                if (refreshTokenService.revoke(token)) {
+                    continue;
+                }
                 blacklistSingleToken(token);
             }
         }
