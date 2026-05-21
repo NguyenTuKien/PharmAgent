@@ -95,11 +95,6 @@ env:
   - name: CORS_ORIGINS
     value: "*"
   - name: APP_FRONTEND_URL
-<<<<<<< HEAD
-    # Public frontend origin used for account verification/reset links in email.
-    # Override this in production values, e.g. https://app.your-domain.com
-=======
->>>>>>> 47c6a2b (add: Add helm chart)
     value: "http://localhost:5173"
   - name: CLOUDINARY_CLOUD_NAME
     value: "dlvhrlfyt"

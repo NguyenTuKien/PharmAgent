@@ -12,16 +12,19 @@ export const navigationItems = [
     to: '/dashboard',
     label: 'Tong quan',
     icon: LayoutDashboard,
+    roles: ['ELDERLY', 'CAREGIVER'],
   },
   {
     to: '/medications',
     label: 'Don thuoc',
     icon: Pill,
+    roles: ['ELDERLY', 'CAREGIVER'],
   },
   {
     to: '/scan',
     label: 'Quet thuoc',
     icon: Camera,
+    roles: ['ELDERLY', 'CAREGIVER'],
   },
   {
     to: '/relationships',
@@ -36,9 +39,15 @@ export const navigationItems = [
     roles: ['CAREGIVER', 'ADMIN'],
   },
   {
-    to: '/admin',
-    label: 'Quan tri',
-    icon: ShieldCheck,
+    to: '/admin/users',
+    label: 'Tai khoan',
+    icon: Users,
+    roles: ['ADMIN'],
+  },
+  {
+    to: '/admin/pills',
+    label: 'Thu vien thuoc',
+    icon: Pill,
     roles: ['ADMIN'],
   },
 ]

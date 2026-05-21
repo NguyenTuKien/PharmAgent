@@ -56,8 +56,6 @@ public class MailConsumerService {
         helper.setSubject(emailContent.subject());
 
         helper.setText(emailContent.html(), true);
-        helper.addInline(LOGO_CONTENT_ID, new ClassPathResource("mail/assets/logo.svg"), SVG_CONTENT_TYPE);
-        helper.addInline(TITLE_CONTENT_ID, new ClassPathResource("mail/assets/title.svg"), SVG_CONTENT_TYPE);
         mailSender.send(mimeMessage);
     }
 }

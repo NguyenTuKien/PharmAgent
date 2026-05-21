@@ -13,6 +13,7 @@ public class PillCatalogResponse {
     private String name;
     private String description;
     private List<String> imageUrls;
+    private List<PillResponse.PillImageResponse> images;
     private Instant createdAt;
 }
 

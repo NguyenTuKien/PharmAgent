@@ -167,11 +167,23 @@ public class PillServiceImpl implements PillService {
                 ? List.of()
                 : pill.getImages().stream().map(PillImage::getImageUrl).toList();
 
+        List<PillResponse.PillImageResponse> images = pill.getImages() == null
+                ? List.of()
+                : pill.getImages().stream()
+                        .map(img -> PillResponse.PillImageResponse.builder()
+                                .id(img.getId())
+                                .imageUrl(img.getImageUrl())
+                                .viewType(img.getViewType() != null ? img.getViewType().name() : "OTHER")
+                                .isPrimary(img.isPrimary())
+                                .build())
+                        .toList();
+
         return PillCatalogResponse.builder()
                 .id(pill.getId())
                 .name(pill.getName())
                 .description(pill.getDescription())
                 .imageUrls(imageUrls)
+                .images(images)
                 .createdAt(pill.getCreatedAt())
                 .build();
     }
