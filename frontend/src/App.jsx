@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppShell } from './layout/AppShell.jsx'
 import { useAuthStore } from './modules/auth/authStore.js'
+import { ActiveSessionsPage } from './pages/admin/ActiveSessionsPage.jsx'
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.jsx'
 import { AdminLayout } from './pages/admin/AdminLayout.jsx'
 import { AdminPillsPage } from './pages/admin/AdminPillsPage.jsx'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage.jsx'
@@ -96,9 +98,10 @@ function App() {
 
             <Route element={<RoleRoute roles={['ADMIN']} />}>
               <Route element={<AdminLayout />} path="/admin">
-                <Route index element={<Navigate replace to="users" />} />
+                <Route index element={<AdminDashboardPage />} />
                 <Route element={<AdminUsersPage />} path="users" />
                 <Route element={<AdminPillsPage />} path="pills" />
+                <Route element={<ActiveSessionsPage />} path="sessions" />
               </Route>
             </Route>
 

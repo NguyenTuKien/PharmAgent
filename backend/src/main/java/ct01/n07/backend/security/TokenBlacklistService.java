@@ -37,4 +37,22 @@ public class TokenBlacklistService {
         }
         return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
     }
+
+    public void blacklistUser(String userId) {
+        if (userId == null) return;
+        // Set blacklist timestamp for the user (Valid for 7 days, max refresh token lifetime)
+        redisTemplate.opsForValue()
+                .set("blacklist_user:" + userId, String.valueOf(System.currentTimeMillis()), Duration.ofDays(7));
+    }
+
+    public boolean isUserBlacklisted(String userId, Date issuedAt) {
+        if (userId == null || issuedAt == null) return false;
+        String blacklistedAtStr = redisTemplate.opsForValue().get("blacklist_user:" + userId);
+        if (blacklistedAtStr != null) {
+            long blacklistedAt = Long.parseLong(blacklistedAtStr);
+            // If the token was issued BEFORE the user was blacklisted, it is invalid
+            return issuedAt.getTime() <= blacklistedAt;
+        }
+        return false;
+    }
 }

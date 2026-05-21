@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   Camera,
   LayoutDashboard,
@@ -33,10 +34,11 @@ export const navigationItems = [
     roles: ['CAREGIVER', 'ELDERLY'],
   },
   {
-    to: '/reports',
-    label: 'Bao cao',
-    icon: BarChart3,
-    roles: ['CAREGIVER', 'ADMIN'],
+    to: '/admin',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    roles: ['ADMIN'],
+    exact: true,
   },
   {
     to: '/admin/users',
@@ -48,6 +50,12 @@ export const navigationItems = [
     to: '/admin/pills',
     label: 'Thu vien thuoc',
     icon: Pill,
+    roles: ['ADMIN'],
+  },
+  {
+    to: '/admin/sessions',
+    label: 'Quan ly Session',
+    icon: ShieldCheck,
     roles: ['ADMIN'],
   },
 ]
