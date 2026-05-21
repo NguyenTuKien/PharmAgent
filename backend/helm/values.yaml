@@ -95,6 +95,8 @@ env:
   - name: CORS_ORIGINS
     value: "*"
   - name: APP_FRONTEND_URL
+    # Public frontend origin used for account verification/reset links in email.
+    # Override this in production values, e.g. https://app.your-domain.com
     value: "http://localhost:5173"
   - name: CLOUDINARY_CLOUD_NAME
     value: "dlvhrlfyt"

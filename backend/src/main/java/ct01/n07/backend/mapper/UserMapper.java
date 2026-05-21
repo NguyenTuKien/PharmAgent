@@ -12,6 +12,7 @@ public interface UserMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "email", source = "loginRequest.email")
     @Mapping(target = "password", source = "loginRequest.password")
+    @Mapping(target = "googleSubject", ignore = true)
     @Mapping(target = "userStatus", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
@@ -20,6 +21,7 @@ public interface UserMapper {
     AdminUserResponse toAdminResponse(User user);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "googleSubject", ignore = true)
     @Mapping(target = "userStatus", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

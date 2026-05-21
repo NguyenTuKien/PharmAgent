@@ -96,6 +96,11 @@ async def _proxy_stomp_ws(websocket: WebSocket, path: str = ""):
 
 # ── Auth (public) ─────────────────────────────────────────────────────────────
 
+@router.api_route("/api/auth/oauth/google/{path:path}", methods=["GET", "POST", "OPTIONS"])
+async def proxy_google_oauth(request: Request, path: str):
+    return await proxy_http_request(request, _BACKEND, follow_redirects=False)
+
+
 @router.api_route("/api/auth/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy_auth(request: Request, path: str):
     return await proxy_http_request(request, _BACKEND)

@@ -10,12 +10,20 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OtpMailMessage implements Serializable {
+    public static final String EMAIL_VERIFICATION = "EMAIL_VERIFICATION";
+    public static final String PASSWORD_RESET = "PASSWORD_RESET";
+
     private String email;
     private String otpCode;
     private String purpose;
     private String actionUrl;
+    private String recipientName;
 
     public OtpMailMessage(String email, String otpCode) {
-        this(email, otpCode, "PASSWORD_RESET", null);
+        this(email, otpCode, PASSWORD_RESET, null, null);
+    }
+
+    public OtpMailMessage(String email, String otpCode, String purpose, String actionUrl) {
+        this(email, otpCode, purpose, actionUrl, null);
     }
 }

@@ -18,11 +18,15 @@ public class MailProducerService {
     }
 
     public void sendOtpToQueue(String email, String otpCode) {
-        sendOtpToQueue(email, otpCode, "PASSWORD_RESET", null);
+        sendOtpToQueue(email, otpCode, OtpMailMessage.PASSWORD_RESET, null, null);
     }
 
     public void sendOtpToQueue(String email, String otpCode, String purpose, String actionUrl) {
-        OtpMailMessage message = new OtpMailMessage(email, otpCode, purpose, actionUrl);
+        sendOtpToQueue(email, otpCode, purpose, actionUrl, null);
+    }
+
+    public void sendOtpToQueue(String email, String otpCode, String purpose, String actionUrl, String recipientName) {
+        OtpMailMessage message = new OtpMailMessage(email, otpCode, purpose, actionUrl, recipientName);
 
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.EXCHANGE_NAME,

@@ -2,9 +2,11 @@ package ct01.n07.backend.controller;
 
 import ct01.n07.backend.dto.auth.*;
 import ct01.n07.backend.facade.AuthFacade;
+import ct01.n07.backend.facade.GoogleOAuthFacade;
 import ct01.n07.backend.facade.PasswordFacade;
 import ct01.n07.backend.facade.RegistrationFacade;
 import jakarta.validation.Valid;
+import java.net.URI;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/auth")
 public class AuthController {
     private final AuthFacade authFacade;
+    private final GoogleOAuthFacade googleOAuthFacade;
     private final RegistrationFacade registrationFacade;
     private final PasswordFacade passwordFacade;
 
@@ -27,6 +30,33 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             @PageableDefault(page = 0, size = 10) Pageable pageable) {
         return ResponseEntity.ok(authFacade.login(request, pageable));
+    }
+
+    @GetMapping("/oauth/google/start")
+    public ResponseEntity<Void> startGoogleOAuth() {
+        return redirect(googleOAuthFacade.buildAuthorizationRedirect());
+    }
+
+    @GetMapping("/oauth/google/callback")
+    public ResponseEntity<Void> completeGoogleOAuth(
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String state,
+            @RequestParam(required = false) String error) {
+        if (error != null && !error.isBlank()) {
+            return redirect(googleOAuthFacade.buildFailureRedirect(error));
+        }
+
+        try {
+            return redirect(googleOAuthFacade.completeCallback(code, state));
+        } catch (Exception ex) {
+            return redirect(googleOAuthFacade.buildFailureRedirect("oauth_failed"));
+        }
+    }
+
+    @PostMapping("/oauth/google/session")
+    public ResponseEntity<LoginResponse> exchangeGoogleOAuthCode(
+            @Valid @RequestBody OAuthCodeExchangeRequest request) {
+        return ResponseEntity.ok(googleOAuthFacade.exchangeHandoffCode(request.getCode()));
     }
 
     @PostMapping("/profiles/{profileId}/select")
@@ -47,6 +77,13 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(registrationFacade.register(registerRequest));
     }
 
+    @PostMapping("/register/elderly")
+    public ResponseEntity<AuthMessageResponse> registerElderlyProfile(
+            @RequestHeader("Authorization") String authorization,
+            @Valid @RequestBody RegisterElderlyRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(registrationFacade.registerElderlyProfile(authorization, request));
+    }
 
     @PostMapping("/verify-email")
     public ResponseEntity<AuthMessageResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
@@ -77,7 +114,7 @@ public class AuthController {
         passwordFacade.processForgotPassword(targetEmail);
         return ResponseEntity.ok(AuthMessageResponse.builder()
                 .email(targetEmail.trim().toLowerCase())
-                .message("Nếu email tồn tại, mã OTP đặt lại mật khẩu đã được gửi.")
+                .message("Liên kết đặt lại mật khẩu đã được gửi.")
                 .build());
     }
 
@@ -93,5 +130,9 @@ public class AuthController {
             java.security.Principal principal) {
         passwordFacade.changePassword(principal.getName(), request);
         return ResponseEntity.ok().build();
+    }
+
+    private ResponseEntity<Void> redirect(URI location) {
+        return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
     }
 }

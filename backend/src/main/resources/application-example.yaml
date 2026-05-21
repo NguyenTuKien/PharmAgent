@@ -32,7 +32,18 @@ jwt:
   refresh-expiration-ms: 604800000
 
 app:
-  frontend-url: http://localhost:5173
+  # Public frontend origin used in verification/reset emails.
+  # Set APP_FRONTEND_URL in production, for example: https://app.your-domain.com
+  frontend-url: ${APP_FRONTEND_URL:${FRONTEND_URL:http://localhost:5173}}
+
+google:
+  client-id: ${GOOGLE_CLIENT_ID:}
+  client-secret: ${GOOGLE_CLIENT_SECRET:}
+
+oauth:
+  google:
+    # Optional. Defaults to ${app.frontend-url}/api/auth/oauth/google/callback.
+    redirect-uri: ""
 
 server:
   port: 8080

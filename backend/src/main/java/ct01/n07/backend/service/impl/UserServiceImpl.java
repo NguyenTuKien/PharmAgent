@@ -26,8 +26,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public User verifyUserCredentials(String email, String password){
         User user = userRepository.findByEmail(normalizeEmail(email))
-                .filter(foundUser -> passwordEncoder.matches(password, foundUser.getPassword()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tài khoản chưa tồn tại"));
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Mật khẩu không đúng");
+        }
 
         if (user.getUserStatus() == UserStatus.INACTIVE) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Vui lòng xác minh email trước khi đăng nhập");
@@ -50,7 +53,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findByEmail(String mail) {
         return userRepository.findByEmail(normalizeEmail(mail))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tài khoản chưa tồn tại"));
     }
 
     @Override

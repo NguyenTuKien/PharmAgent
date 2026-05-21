@@ -10,6 +10,14 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     server: {
+      host: '0.0.0.0',
+      hmr: {
+        host: 'localhost',
+        clientPort: 5173,
+      },
+      watch: {
+        usePolling: env.CHOKIDAR_USEPOLLING === 'true',
+      },
       proxy: {
         '/api': {
           target: gatewayTarget,
