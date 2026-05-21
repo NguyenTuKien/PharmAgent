@@ -63,7 +63,18 @@ public class JwtService {
         if (tokenBlacklistService.isBlacklisted(token)) {
             return false;
         }
-        // 2. Kiểm tra chữ ký và hạn sử dụng bằng JJWT
+        
+        // 2. Kiểm tra xem toàn bộ user session có bị thu hồi không
+        try {
+            Date issuedAt = jwtUtil.extractIssuedAt(token);
+            if (tokenBlacklistService.isUserBlacklisted(userId, issuedAt)) {
+                return false;
+            }
+        } catch (Exception e) {
+            return false; // Token hỏng
+        }
+
+        // 3. Kiểm tra chữ ký và hạn sử dụng bằng JJWT
         return jwtUtil.isTokenValid(token, userId);
     }
 
@@ -119,6 +130,10 @@ public class JwtService {
                 blacklistSingleToken(token);
             }
         }
+    }
+
+    public void blacklistUser(String userId) {
+        tokenBlacklistService.blacklistUser(userId);
     }
 
     // Xử lý đưa từng token vào Blacklist

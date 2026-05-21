@@ -34,7 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String userId;
 
-        // 1. Kiểm tra Header
+        // 1. Kiểm tra Header - không có token thì bỏ qua, để Spring Security xử lý anonymous
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -43,43 +43,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
 
         try {
-            // 2. Lấy userId từ JWT thay vì username
+            // 2. Lấy userId từ JWT
             userId = jwtService.extractUserId(jwt);
         } catch (Exception ex) {
-            filterChain.doFilter(request, response);
+            // Token không parse được → 401 ngay
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
             return;
         }
 
         // 3. Nếu có userId và chưa được xác thực trong Context
         if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            // 4. Validate Token (Check hạn và Blacklist)
-            if (jwtService.isTokenValid(jwt, userId) && jwtService.isAccessToken(jwt)) {
-                List<GrantedAuthority> authorities = new ArrayList<>();
+            // 4. Validate Token: hạn sử dụng + chữ ký + blacklist token + user-level revocation
+            if (!jwtService.isTokenValid(jwt, userId)) {
+                // Token hợp lệ về cú pháp nhưng đã bị thu hồi hoặc hết hạn
+                // Trả về 401 để frontend interceptor kích hoạt refresh hoặc logout
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token revoked or expired");
+                return;
+            }
+
+            List<GrantedAuthority> authorities = new ArrayList<>();
+
+            // 5. Phân loại Token và Cấp quyền
+            if (jwtService.isAccessToken(jwt)) {
                 String role = jwtService.extractRole(jwt);
                 String profileId = jwtService.extractProfileId(jwt);
-
-                if (role == null || role.isBlank() || profileId == null || profileId.isBlank()) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-
-                // Thêm tiền tố "ROLE_" theo chuẩn của Spring Security
                 authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-
-                // Gắn profileId vào Request để Controller dùng, không cần bóc JWT lại.
                 request.setAttribute("profileId", profileId);
-
-                // 6. Tạo Authentication object (Principal bây giờ là userId)
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userId, // principal
-                        null,   // credentials (không cần mật khẩu)
-                        authorities // roles
-                );
-
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
+            // Auth Token → authorities rỗng (chỉ dùng được ở /select-profile)
+
+            // 6. Tạo và ghi Authentication vào SecurityContext
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    userId,
+                    null,
+                    authorities
+            );
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         filterChain.doFilter(request, response);

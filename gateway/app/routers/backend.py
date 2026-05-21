@@ -136,6 +136,14 @@ async def proxy_elderly(request: Request, path: str, user: TokenUser = Depends(r
     )
 
 
+# ── Actuator (public) ─────────────────────────────────────────────────────────
+
+@router.api_route("/api/actuator/{path:path}", methods=["GET"])
+async def proxy_api_actuator(request: Request, path: str):
+    """Actuator accessible via /api/actuator/* (strip /api prefix)"""
+    return await proxy_http_request(request, _BACKEND, strip_prefix="/api")
+
+
 # ── Generic API (authenticated) ───────────────────────────────────────────────
 
 @router.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
@@ -145,8 +153,6 @@ async def proxy_api(request: Request, path: str, user: TokenUser = Depends(get_c
         extra_headers={"X-User-Id": user.user_id, "X-User-Roles": ",".join(user.roles)},
     )
 
-
-# ── Actuator (public) ─────────────────────────────────────────────────────────
 
 @router.api_route("/actuator/{path:path}", methods=["GET"])
 async def proxy_actuator(request: Request, path: str):

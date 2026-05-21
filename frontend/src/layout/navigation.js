@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   Bell,
   CalendarClock,
@@ -79,10 +80,11 @@ export const navigationItems = [
     roles: ['CAREGIVER'],
   },
   {
-    to: '/admin/dashboard',
+    to: '/admin',
     label: 'Dashboard',
     icon: LayoutDashboard,
     roles: ['ADMIN'],
+    exact: true,
   },
   {
     to: '/admin/users',
@@ -97,15 +99,9 @@ export const navigationItems = [
     roles: ['ADMIN'],
   },
   {
-    to: '/scan',
-    label: 'Tìm thuốc',
-    icon: ScanSearch,
-    roles: ['ADMIN'],
-  },
-  {
     to: '/admin/sessions',
-    label: 'Quản lý session',
-    icon: Settings,
+    label: 'Quan ly Session',
+    icon: ShieldCheck,
     roles: ['ADMIN'],
   },
 ]

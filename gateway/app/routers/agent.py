@@ -35,23 +35,18 @@ async def agent_health():
         return {"status": "DOWN", "error": str(exc)}
 
 
-async def _proxy_agent_http(request: Request):
+@router.post("/api/agent/analyze")
+async def agent_analyze(request: Request, user: TokenUser = Depends(get_current_user)):
+    """Upload ảnh thuốc lên Agent /analyze để OCR + match database."""
     from app.routers.proxy import proxy_http_request
-
-    await require_access_payload(request.headers.get("authorization"))
     return await proxy_http_request(request, _AGENT, strip_prefix="/api/agent")
 
 
-@router.post("/api/agent/analyze")
-async def agent_analyze(request: Request):
-    """Upload ảnh thuốc lên Agent /analyze để OCR + match database."""
-    return await _proxy_agent_http(request)
-
-
 @router.post("/api/agent/search")
-async def agent_search(request: Request):
+async def agent_search(request: Request, user: TokenUser = Depends(get_current_user)):
     """Nhận text người dùng nhập và tìm thuốc trong database, độc lập với scan ảnh."""
-    return await _proxy_agent_http(request)
+    from app.routers.proxy import proxy_http_request
+    return await proxy_http_request(request, _AGENT, strip_prefix="/api/agent")
 
 
 # ── Proxy Pills CRUD to Agent ─────────────────────────────────────────────────

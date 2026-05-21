@@ -7,6 +7,8 @@ import {
   Trash2,
   UserCheck,
   UserX,
+  Search,
+  SlidersHorizontal,
 } from 'lucide-react'
 
 import { Button } from '../../components/ui/Button.jsx'
@@ -21,58 +23,100 @@ import {
 } from '../../modules/admin/adminApi.js'
 import { notify } from '../../lib/toast.js'
 
-// ─── Badge trạng thái tài khoản ──────────────────────────────────────────────
-function StatusBadge({ locked }) {
-  return locked ? (
-    <span className="admin-badge admin-badge--danger">
-      <UserX size={12} /> Đã khóa
-    </span>
-  ) : (
+// ─── Status Badge ────────────────────────────────────────────────────────────
+function StatusBadge({ status }) {
+  if (status === 'LOCKED') {
+    return (
+      <span className="admin-badge admin-badge--danger">
+        <UserX size={12} /> Đã khóa
+      </span>
+    )
+  }
+  if (status === 'INACTIVE') {
+    return (
+      <span className="admin-badge admin-badge--warning">
+        <UserX size={12} /> Chưa kích hoạt
+      </span>
+    )
+  }
+  return (
     <span className="admin-badge admin-badge--success">
       <UserCheck size={12} /> Hoạt động
     </span>
   )
 }
 
-// ─── Form Thêm / Sửa tài khoản ───────────────────────────────────────────────
+// ─── Form Thêm / Sửa tài khoản (Drawer) ───────────────────────────────────────
 function UserFormDrawer({ editTarget, open, onClose, onSaved }) {
   const isEdit = Boolean(editTarget)
   const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
     email: '',
     password: '',
-    role: 'ELDERLY',
+    userStatus: 'ACTIVE',
   })
+  const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (editTarget) {
       setForm({
-        firstName: editTarget.firstName ?? '',
-        lastName: editTarget.lastName ?? '',
         email: editTarget.email ?? '',
         password: '',
-        role: editTarget.role ?? 'ELDERLY',
+        userStatus: editTarget.userStatus ?? 'ACTIVE',
       })
     } else {
-      setForm({ firstName: '', lastName: '', email: '', password: '', role: 'ELDERLY' })
+      setForm({ email: '', password: '', userStatus: 'ACTIVE' })
     }
+    setErrors({})
   }, [editTarget, open])
 
-  const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
+  const set = (field) => (e) => {
+    setForm((prev) => ({ ...prev, [field]: e.target.value }))
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: null }))
+    }
+  }
+
+  function validate() {
+    const nextErrors = {}
+    if (!form.email) {
+      nextErrors.email = 'Email không được để trống'
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+      nextErrors.email = 'Email không đúng định dạng'
+    }
+
+    if (!isEdit) {
+      if (!form.password) {
+        nextErrors.password = 'Mật khẩu không được để trống'
+      } else if (form.password.length < 6) {
+        nextErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
+      }
+    } else if (form.password && form.password.length < 6) {
+      nextErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
+    }
+
+    setErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!validate()) return
+
     setLoading(true)
     try {
-      const payload = { ...form }
-      if (isEdit && !payload.password) delete payload.password
       if (isEdit) {
+        const payload = {
+          email: form.email,
+          userStatus: form.userStatus,
+        }
         await updateUser(editTarget.id, payload)
         notify.success('Cập nhật tài khoản thành công')
       } else {
-        await createUser(payload)
+        await createUser({
+          email: form.email,
+          password: form.password,
+        })
         notify.success('Tạo tài khoản thành công')
       }
       onSaved()
@@ -96,39 +140,47 @@ function UserFormDrawer({ editTarget, open, onClose, onSaved }) {
             ✕
           </button>
         </div>
-        <form className="admin-form" onSubmit={handleSubmit}>
-          <div className="admin-form-row">
-            <div className="admin-field">
-              <label>Họ</label>
-              <input required value={form.lastName} onChange={set('lastName')} placeholder="Nguyễn" />
-            </div>
-            <div className="admin-field">
-              <label>Tên</label>
-              <input required value={form.firstName} onChange={set('firstName')} placeholder="Văn A" />
-            </div>
-          </div>
+        <form className="admin-form" onSubmit={handleSubmit} noValidate>
           <div className="admin-field">
             <label>Email</label>
-            <input type="email" required value={form.email} onChange={set('email')} placeholder="user@example.com" disabled={isEdit} />
-          </div>
-          <div className="admin-field">
-            <label>{isEdit ? 'Mật khẩu mới (để trống nếu không đổi)' : 'Mật khẩu'}</label>
             <input
-              type="password"
-              required={!isEdit}
-              value={form.password}
-              onChange={set('password')}
-              placeholder={isEdit ? '••••••••' : 'Ít nhất 8 ký tự'}
+              type="email"
+              required
+              className={errors.email ? 'has-error' : ''}
+              value={form.email}
+              onChange={set('email')}
+              placeholder="user@example.com"
+              disabled={isEdit}
             />
+            {errors.email && <span className="admin-field-error">{errors.email}</span>}
           </div>
-          <div className="admin-field">
-            <label>Vai trò</label>
-            <select value={form.role} onChange={set('role')}>
-              <option value="ELDERLY">Người dùng (ELDERLY)</option>
-              <option value="CAREGIVER">Người chăm sóc (CAREGIVER)</option>
-              <option value="ADMIN">Quản trị viên (ADMIN)</option>
-            </select>
-          </div>
+
+          {!isEdit && (
+            <div className="admin-field">
+              <label>Mật khẩu</label>
+              <input
+                type="password"
+                required
+                className={errors.password ? 'has-error' : ''}
+                value={form.password}
+                onChange={set('password')}
+                placeholder="Ít nhất 6 ký tự"
+              />
+              {errors.password && <span className="admin-field-error">{errors.password}</span>}
+            </div>
+          )}
+
+          {isEdit && (
+            <div className="admin-field">
+              <label>Trạng thái tài khoản</label>
+              <select value={form.userStatus} onChange={set('userStatus')}>
+                <option value="ACTIVE">Hoạt động (ACTIVE)</option>
+                <option value="INACTIVE">Chưa kích hoạt (INACTIVE)</option>
+                <option value="LOCKED">Đã khóa (LOCKED)</option>
+              </select>
+            </div>
+          )}
+
           <div className="admin-drawer-actions">
             <Button variant="ghost" type="button" onClick={onClose}>Hủy</Button>
             <Button variant="primary" type="submit" disabled={loading}>
@@ -161,22 +213,19 @@ function Pagination({ page, totalPages, onChange }) {
 export function AdminUsersPage() {
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 })
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
   const [loading, setLoading] = useState(false)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
+  const [lockTarget, setLockTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
 
   const fetchUsers = useCallback(async (p = page) => {
     setLoading(true)
     try {
       const result = await getAllUsers({ page: p, size: 10 })
-      if (result && result.content) {
-        result.content = result.content.map((u) => ({
-          ...u,
-          locked: u.userStatus === 'LOCKED',
-        }))
-      }
       setData(result)
     } catch (err) {
       notify.apiError(err, 'Không thể tải danh sách người dùng')
@@ -185,31 +234,45 @@ export function AdminUsersPage() {
     }
   }, [page])
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchUsers(page) }, [page])
+  useEffect(() => {
+    fetchUsers(page)
+  }, [page, fetchUsers])
 
-  async function handleLockToggle(user) {
+  // Lọc cục bộ trên page hiện tại
+  const filteredUsers = (data.content || []).filter((user) => {
+    const matchesSearch = user.email?.toLowerCase().includes(search.toLowerCase())
+    const matchesFilter = statusFilter === 'ALL' || user.userStatus === statusFilter
+    return matchesSearch && matchesFilter
+  })
+
+  async function handleLockConfirm() {
+    if (!lockTarget) return
     try {
-      if (user.locked) {
-        await unlockUser(user.id)
-        notify.success(`Đã mở khóa tài khoản ${user.email}`)
+      if (lockTarget.userStatus === 'LOCKED') {
+        await unlockUser(lockTarget.id)
+        notify.success(`Đã mở khóa tài khoản ${lockTarget.email}`)
       } else {
-        await lockUser(user.id)
-        notify.warning(`Đã khóa tài khoản ${user.email}`)
+        await lockUser(lockTarget.id)
+        notify.warning(`Đã khóa tài khoản ${lockTarget.email}`)
       }
       fetchUsers(page)
     } catch (err) {
       notify.apiError(err, 'Thao tác thất bại')
+    } finally {
+      setLockTarget(null)
     }
   }
 
   async function handleDelete() {
+    if (!deleteTarget) return
     try {
       await deleteUser(deleteTarget.id)
       notify.success('Đã xóa tài khoản thành công')
       fetchUsers(page)
     } catch (err) {
       notify.apiError(err, 'Không thể xóa tài khoản')
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -221,6 +284,17 @@ export function AdminUsersPage() {
   function openEdit(user) {
     setEditTarget(user)
     setDrawerOpen(true)
+  }
+
+  function formatDate(isoString) {
+    if (!isoString) return '—'
+    return new Date(isoString).toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   }
 
   return (
@@ -239,7 +313,33 @@ export function AdminUsersPage() {
         </Button>
       </div>
 
-      {/* Bảng dữ liệu */}
+      {/* Toolbar lọc / tìm kiếm */}
+      <div className="admin-filter-bar">
+        <div className="admin-search-wrap" style={{ flex: 1, minWidth: '240px' }}>
+          <Search size={16} className="admin-search-icon" />
+          <input
+            className="admin-search-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm theo email tài khoản…"
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <SlidersHorizontal size={16} className="admin-muted" />
+          <select
+            className="admin-status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">Tất cả trạng thái</option>
+            <option value="ACTIVE">Hoạt động</option>
+            <option value="INACTIVE">Chưa kích hoạt</option>
+            <option value="LOCKED">Đã khóa</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Bảng dữ liệu (Desktop) */}
       <div className="admin-table-wrap">
         {loading ? (
           <div className="admin-loading">
@@ -250,46 +350,41 @@ export function AdminUsersPage() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Người dùng</th>
-                <th>Email</th>
-                <th>Vai trò</th>
+                <th>Email tài khoản</th>
                 <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Cập nhật cuối</th>
                 <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {data.content.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="admin-empty-row">Không có tài khoản nào</td>
+                  <td colSpan={5} className="admin-empty-row">
+                    Không tìm thấy tài khoản nào khớp điều kiện
+                  </td>
                 </tr>
               ) : (
-                data.content.map((user) => (
+                filteredUsers.map((user) => (
                   <tr key={user.id} className="admin-table-row">
+                    <td className="admin-pill-name">{user.email}</td>
                     <td>
-                      <div className="admin-user-cell">
-                        <div className="avatar-circle admin-avatar">
-                          <span>{(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}</span>
-                        </div>
-                        <span className="admin-user-name">
-                          {user.lastName} {user.firstName}
-                        </span>
-                      </div>
+                      <StatusBadge status={user.userStatus} />
                     </td>
-                    <td className="admin-muted">{user.email}</td>
-                    <td>
-                      <span className="admin-role-badge">{user.role}</span>
-                    </td>
-                    <td>
-                      <StatusBadge locked={user.locked} />
-                    </td>
+                    <td className="admin-muted">{formatDate(user.createdAt)}</td>
+                    <td className="admin-muted">{formatDate(user.updatedAt)}</td>
                     <td>
                       <div className="inline-actions">
                         <button
                           className="icon-button"
-                          title={user.locked ? 'Mở khóa' : 'Khóa tài khoản'}
-                          onClick={() => handleLockToggle(user)}
+                          title={user.userStatus === 'LOCKED' ? 'Mở khóa' : 'Khóa tài khoản'}
+                          onClick={() => setLockTarget(user)}
                         >
-                          {user.locked ? <LockKeyholeOpen size={16} /> : <LockKeyhole size={16} />}
+                          {user.userStatus === 'LOCKED' ? (
+                            <LockKeyholeOpen size={16} />
+                          ) : (
+                            <LockKeyhole size={16} />
+                          )}
                         </button>
                         <button
                           className="icon-button"
@@ -315,8 +410,59 @@ export function AdminUsersPage() {
         )}
       </div>
 
+      {/* Mobile responsive view (Cards) */}
+      <div className="admin-card-grid">
+        {loading ? (
+          <div className="admin-loading">
+            <span className="admin-spinner" />
+            Đang tải…
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="admin-empty-row">Không tìm thấy tài khoản nào khớp điều kiện</div>
+        ) : (
+          filteredUsers.map((user) => (
+            <div key={user.id} className="admin-card">
+              <div className="admin-card-header" style={{ justifyContent: 'space-between' }}>
+                <strong style={{ wordBreak: 'break-all' }}>{user.email}</strong>
+                <StatusBadge status={user.userStatus} />
+              </div>
+              <div className="admin-card-body" style={{ marginTop: 8 }}>
+                <dt>Ngày tạo:</dt>
+                <dd>{formatDate(user.createdAt)}</dd>
+                <dt>Cập nhật:</dt>
+                <dd>{formatDate(user.updatedAt)}</dd>
+              </div>
+              <div className="admin-card-actions">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLockTarget(user)}
+                >
+                  {user.userStatus === 'LOCKED' ? 'Mở khóa' : 'Khóa'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openEdit(user)}
+                >
+                  Sửa
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setDeleteTarget(user)}
+                >
+                  Xóa
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
       <Pagination page={page} totalPages={data.totalPages} onChange={setPage} />
 
+      {/* Drawer */}
       <UserFormDrawer
         editTarget={editTarget}
         open={drawerOpen}
@@ -324,13 +470,30 @@ export function AdminUsersPage() {
         onSaved={() => fetchUsers(page)}
       />
 
+      {/* Confirm lock dialog */}
+      <ConfirmDialog
+        open={Boolean(lockTarget)}
+        title={lockTarget?.userStatus === 'LOCKED' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+        description={`Bạn có chắc chắn muốn ${
+          lockTarget?.userStatus === 'LOCKED' ? 'mở khóa' : 'khóa'
+        } tài khoản "${lockTarget?.email}"?`}
+        confirmLabel="Xác nhận"
+        onConfirm={handleLockConfirm}
+        onOpenChange={(v) => {
+          if (!v) setLockTarget(null)
+        }}
+      />
+
+      {/* Confirm delete dialog */}
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title="Xóa tài khoản"
         description={`Bạn có chắc chắn muốn xóa tài khoản "${deleteTarget?.email}"? Thao tác này không thể hoàn tác.`}
         confirmLabel="Xóa"
         onConfirm={handleDelete}
-        onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null)
+        }}
       />
     </div>
   )

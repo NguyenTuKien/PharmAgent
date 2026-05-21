@@ -25,6 +25,10 @@ export default defineConfig(({ mode }) => {
         interval: pollInterval,
       },
       proxy: {
+        '/actuator': {
+          target: gatewayTarget,
+          changeOrigin: true,
+        },
         '/api': {
           target: gatewayTarget,
           changeOrigin: true,

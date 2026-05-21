@@ -47,7 +47,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/change-password").authenticated()
-                        .requestMatchers("/api/auth/**", "/actuator/**", "/ws/**").permitAll()
+                    .requestMatchers("/api/auth/**", "/actuator/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/caregiver/**").hasRole("CAREGIVER")
                         .requestMatchers("/api/elderly/**").hasRole("ELDERLY")

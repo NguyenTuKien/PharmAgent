@@ -12,7 +12,8 @@ from typing import Annotated, Optional
 from fastapi import Depends, Header, HTTPException, status
 from pydantic import BaseModel
 
-from app.utils.jwt_utils import decode_token, extract_bearer_token, get_roles, get_subject, is_token_blacklisted
+from app.utils.jwt_utils import decode_token, extract_bearer_token, get_roles, get_subject
+from app.utils.redis_client import get_redis
 
 logger = logging.getLogger("gateway.auth")
 
@@ -23,6 +24,40 @@ class TokenUser(BaseModel):
     user_id: str
     roles: list[str]
     raw_payload: dict
+
+
+# ── Blacklist Verification ────────────────────────────────────────────────────
+
+async def check_token_blacklist(token: str, payload: dict) -> None:
+    """ Kiểm tra xem token hoặc user có nằm trong danh sách blacklist ở Redis không. """
+    try:
+        redis = await get_redis()
+        # 1. Kiểm tra blacklist cho từng token cụ thể
+        if await redis.exists(f"blacklist:{token}"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token đã bị thu hồi (blacklist)",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # 2. Kiểm tra xem toàn bộ các session của user có bị thu hồi không (revoke all)
+        user_id = get_subject(payload)
+        if user_id:
+            blacklisted_at_str = await redis.get(f"blacklist_user:{user_id}")
+            if blacklisted_at_str:
+                blacklisted_at = int(blacklisted_at_str)
+                iat = payload.get("iat", 0)
+                # iat trong JWT là giây, blacklisted_at trong Redis là mili giây
+                if iat * 1000 <= blacklisted_at:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Phiên làm việc đã bị thu hồi",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Lỗi khi kiểm tra token blacklist từ Redis: %s", exc)
 
 
 # ── Core dependency ───────────────────────────────────────────────────────────
@@ -37,37 +72,7 @@ async def require_access_payload(authorization: Optional[str]) -> dict:
         )
 
     payload = decode_token(token)
-    if payload.get("type") != "access":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access token required",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if await is_token_blacklisted(token):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if not get_subject(payload) or not get_roles(payload):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return payload
-
-async def get_current_user(
-    authorization: Annotated[Optional[str], Header()] = None,
-) -> TokenUser:
-    """
-    FastAPI dependency: bắt buộc có JWT Bearer token hợp lệ.
-    Sử dụng: user: TokenUser = Depends(get_current_user)
-    """
-    payload = await require_access_payload(authorization)
+    await check_token_blacklist(token, payload)
     return TokenUser(
         user_id=get_subject(payload),
         roles=get_roles(payload),
@@ -85,7 +90,8 @@ async def optional_user(
     if not token:
         return None
     try:
-        payload = await require_access_payload(authorization)
+        payload = decode_token(token)
+        await check_token_blacklist(token, payload)
         return TokenUser(
             user_id=get_subject(payload),
             roles=get_roles(payload),
