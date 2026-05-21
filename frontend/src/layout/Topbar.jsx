@@ -256,6 +256,7 @@ function SendNotificationDialog({ open, onClose, activeProfile }) {
           setSelectedReceiverId(accepted[0].id || accepted[0].profileId || accepted[0].relationshipId)
         }
       } catch (err) {
+        console.error(err)
         notify.error('Không thể tải danh sách liên kết')
       } finally {
         setLoading(false)
@@ -290,6 +291,7 @@ function SendNotificationDialog({ open, onClose, activeProfile }) {
       onClose()
       setContent('')
     } catch (err) {
+      console.error(err)
       notify.error('Không thể gửi thông báo')
     } finally {
       setSubmitting(false)
