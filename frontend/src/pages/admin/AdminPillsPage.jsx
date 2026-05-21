@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camera, ImagePlus, Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react'
 import { uploadImageToCloudinary } from '../../lib/uploadImage.js'
+import { compressImage } from '../../lib/imageCompressor.js'
 
 import { Button } from '../../components/ui/Button.jsx'
 import { ConfirmDialog } from '../../components/ui/Modal.jsx'
@@ -114,7 +115,8 @@ function PillImagePanel({ pill, open, onClose, onUpdated }) {
   async function handleFileUpload(file) {
     setUploading(true)
     try {
-      const url = await uploadImageToCloudinary(file, 'pill')
+      const compressed = await compressImage(file, { maxWidth: 1024, quality: 0.8 })
+      const url = await uploadImageToCloudinary(compressed, 'pill')
       await addPillImage(pill.id, { imageUrl: url, viewType: 'OTHER', isPrimary: false })
       notify.success('Upload và thêm ảnh thành công')
       onUpdated()
