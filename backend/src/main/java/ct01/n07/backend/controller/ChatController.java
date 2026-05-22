@@ -1,5 +1,6 @@
 package ct01.n07.backend.controller;
 
+import ct01.n07.backend.dto.chat.ChatPayload;
 import ct01.n07.backend.dto.chat.ChatRoomSummaryResponse;
 import ct01.n07.backend.model.ChatMessage;
 import ct01.n07.backend.model.ChatRoom;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -26,6 +28,7 @@ public class ChatController {
 
     private final ChatRoomService chatRoomService;
     private final ChatMessageService chatMessageService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private String getCurrentProfileId(HttpServletRequest request) {
         String profileId = (String) request.getAttribute(PROFILE_ID_ATTR);
@@ -82,5 +85,32 @@ public class ChatController {
 
         chatMessageService.markRoomAsRead(roomId, profileId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/rooms/{roomId}/messages")
+    public ResponseEntity<ChatMessage> sendMessage(
+            HttpServletRequest request,
+            @PathVariable String roomId,
+            @RequestBody ChatPayload payload) {
+
+        String profileId = getCurrentProfileId(request);
+
+        if (!chatRoomService.isUserInRoom(roomId, profileId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        payload.setRoomId(roomId);
+        payload.setSenderId(profileId);
+
+        ChatMessage saved = chatMessageService.saveMessage(payload);
+
+        // Broadcast to WebSockets if peer is listening in real time
+        try {
+            messagingTemplate.convertAndSend("/topic/room." + roomId, saved);
+        } catch (Exception e) {
+            // Ignore broadcast failures during offline mode
+        }
+
+        return ResponseEntity.ok(saved);
     }
 }

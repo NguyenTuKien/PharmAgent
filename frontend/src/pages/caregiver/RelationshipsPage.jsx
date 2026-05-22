@@ -763,6 +763,14 @@ function ProfileDrawer({
 }
 
 function RelationshipCard({ profile }) {
+  const navigate = useNavigate()
+  const handleChat = () => {
+    const targetProfileId = profile?.profileId || profile?.id
+    if (targetProfileId) {
+      navigate(`/chat?profileId=${targetProfileId}`)
+    }
+  }
+
   return (
     <article className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="flex min-w-0 items-start gap-3">
@@ -777,7 +785,13 @@ function RelationshipCard({ profile }) {
           ) : null}
         </div>
       </div>
-      <RelationChip profile={profile} />
+      <div className="flex items-center gap-2">
+        <AppButton size="sm" tone="ghost" onClick={handleChat}>
+          <MessageCircle size={14} />
+          Trò chuyện
+        </AppButton>
+        <RelationChip profile={profile} />
+      </div>
     </article>
   )
 }

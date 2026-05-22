@@ -29,11 +29,16 @@ public class StompChannelInterceptor implements ChannelInterceptor {
 
             if (StompCommand.CONNECT.equals(accessor.getCommand())) {
                 String authHeader = accessor.getFirstNativeHeader("Authorization");
+                if (authHeader == null) {
+                    // Try case-insensitive fallback
+                    authHeader = accessor.getFirstNativeHeader("authorization");
+                }
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
                     String token = authHeader.substring(7);
                     try {
                         String userId = jwtService.extractUserId(token);
-                        if (jwtService.isTokenValid(token, userId)) {
+                        boolean isValid = jwtService.isTokenValid(token, userId);
+                        if (isValid) {
                             accessor.setUser(new java.security.Principal() {
                                 @Override
                                 public String getName() {
@@ -41,7 +46,9 @@ public class StompChannelInterceptor implements ChannelInterceptor {
                                 }
                             });
                             userPresenceService.setOnline(userId, sessionId);
+                            log.info("STOMP CONNECT - Authentication successful for user: {}", userId);
                         } else {
+                            log.error("STOMP CONNECT - Token is invalid or blacklisted");
                             throw new org.springframework.messaging.MessageDeliveryException("Invalid JWT token in STOMP connection");
                         }
                     } catch (Exception e) {
@@ -49,10 +56,12 @@ public class StompChannelInterceptor implements ChannelInterceptor {
                         throw new org.springframework.messaging.MessageDeliveryException("Authentication failed");
                     }
                 } else {
+                    log.error("STOMP CONNECT - Missing or invalid format of Authorization header");
                     throw new org.springframework.messaging.MessageDeliveryException("Missing Authorization header in STOMP connection");
                 }
             } else if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
                 if (accessor.getUser() != null) {
+                    log.info("STOMP DISCONNECT - User offline: {}", accessor.getUser().getName());
                     userPresenceService.setOffline(accessor.getUser().getName());
                 }
             }

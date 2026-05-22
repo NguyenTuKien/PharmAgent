@@ -65,14 +65,24 @@ async def _proxy_stomp_ws(websocket: WebSocket, path: str = ""):
     if websocket.url.query:
         upstream_url = f"{upstream_url}?{websocket.url.query}"
 
+    logger.debug("WS proxy: client → %s", upstream_url)
+
     try:
-        async with ws_lib.connect(upstream_url) as upstream:
+        subprotocols = None
+        raw_sub = websocket.headers.get("sec-websocket-protocol")
+        if raw_sub:
+            subprotocols = [s.strip() for s in raw_sub.split(",")]
+
+        async with ws_lib.connect(
+            upstream_url,
+            subprotocols=subprotocols,
+        ) as upstream:
             async def to_upstream():
                 try:
                     async for msg in websocket.iter_text():
                         await upstream.send(msg)
                 except (WebSocketDisconnect, ws_lib.ConnectionClosed):
-                    logger.debug("Client websocket closed while proxying to upstream: %s", upstream_url)
+                    pass
 
             async def to_client():
                 try:
@@ -82,7 +92,7 @@ async def _proxy_stomp_ws(websocket: WebSocket, path: str = ""):
                         else:
                             await websocket.send_text(msg)
                 except (WebSocketDisconnect, ws_lib.ConnectionClosed):
-                    logger.debug("Upstream websocket closed while proxying to client: %s", upstream_url)
+                    pass
 
             await asyncio.gather(to_upstream(), to_client(), return_exceptions=True)
     except Exception as exc:

@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
         '/ws': {
-          target: gatewayTarget,
+          target: process.env.VITE_WS_PROXY_TARGET || env.VITE_WS_PROXY_TARGET || gatewayTarget,
           changeOrigin: true,
           ws: true,
         },
