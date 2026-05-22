@@ -45,6 +45,7 @@ import {
   refuseCaregiverInvitation,
   searchElderlyProfiles,
   updateCaregiverRelationship,
+  updateElderlyCaregiverTitle,
   updateManagedElderlyProfile,
 } from '../../modules/profile/profileApi.js'
 
@@ -94,6 +95,7 @@ const STATUS_LABELS = {
 }
 
 const RELATIONSHIP_FILTERS = [
+  { value: 'ALL', label: 'Tất cả người thân' },
   { value: 'ACCEPTED', label: 'Đã xác nhận' },
   { value: 'PENDING', label: 'Đang chờ' },
   { value: 'LOCAL', label: 'Hồ sơ đã tạo' },
@@ -179,6 +181,10 @@ function relationshipLabel(profile) {
   return profile.relationLabel || FAMILY_RELATION_LABELS[relation] || profile.elderlyTitle || profile.caregiverTitle || 'Chưa cập nhật'
 }
 
+function caregiverTitleLabel(profile) {
+  return normalizeOptional(profile?.caregiverTitle) || normalizeOptional(profile?.relationLabel) || 'Người hỗ trợ'
+}
+
 function relationLabelFromPayload(relation, customRelation, fallback) {
   const normalizedRelation = relation || 'OTHER'
   const normalizedCustomRelation = normalizeOptional(customRelation)
@@ -236,6 +242,20 @@ function profileKey(profile) {
 
 function relationshipKey(profile) {
   return profileKey(profile) ?? profile?.relationshipId
+}
+
+function relationshipSelectionKey(profile) {
+  const profileId = relationshipKey(profile)
+
+  if (profile?.source === 'local') {
+    return profileId ? `local:${profileId}` : null
+  }
+
+  if (profile?.relationshipId) {
+    return `relationship:${profile.relationshipId}`
+  }
+
+  return profileId ? `profile:${profileId}` : null
 }
 
 function profileQuery(profile, action) {
@@ -509,7 +529,7 @@ function ContactLine({ icon: Icon, children, className }) {
   )
 }
 
-function RelationshipMobileCard({ isLoading = false, isSelected = false, onView, profile }) {
+function RelationshipMobileCard({ isLoading = false, isSelected = false, onOpenDetail, onSelect, profile }) {
   if (isLoading) {
     return (
       <article className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
@@ -539,7 +559,12 @@ function RelationshipMobileCard({ isLoading = false, isSelected = false, onView,
         isSelected ? 'border-emerald-300 bg-emerald-50/70' : 'border-slate-200',
       )}
     >
-      <button className="flex min-w-0 items-start gap-3 text-left" type="button" onClick={() => onView(profile)}>
+      <button
+        aria-pressed={isSelected}
+        className="flex min-w-0 items-start gap-3 text-left"
+        type="button"
+        onClick={() => onSelect(profile)}
+      >
         <ProfileBadge profile={profile} />
         <span className="min-w-0 flex-1">
           <strong className="block break-words text-base font-black leading-tight text-slate-950">{fullName(profile)}</strong>
@@ -561,7 +586,7 @@ function RelationshipMobileCard({ isLoading = false, isSelected = false, onView,
         <StatusPill status={profile.status} />
       </div>
 
-      <AppButton className="w-full" tone="ghost" onClick={() => onView(profile)}>
+      <AppButton className="w-full" tone="ghost" onClick={() => onOpenDetail(profile)}>
         <Eye size={16} />
         Mở chi tiết
       </AppButton>
@@ -762,40 +787,6 @@ function ProfileDrawer({
   )
 }
 
-function RelationshipCard({ profile }) {
-  const navigate = useNavigate()
-  const handleChat = () => {
-    const targetProfileId = profile?.profileId || profile?.id
-    if (targetProfileId) {
-      navigate(`/chat?profileId=${targetProfileId}`)
-    }
-  }
-
-  return (
-    <article className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-      <div className="flex min-w-0 items-start gap-3">
-        <ProfileBadge profile={profile} />
-        <div className="min-w-0">
-          <strong className="block truncate text-sm font-black text-slate-950">{fullName(profile)}</strong>
-          <span className="mt-1 block truncate text-sm font-bold text-slate-600">
-            {profile.phone || profile.address || 'Chưa cập nhật thông tin liên hệ'}
-          </span>
-          {relationshipLabel(profile) ? (
-            <span className="mt-1 block text-xs font-bold text-slate-500">{relationshipLabel(profile)}</span>
-          ) : null}
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <AppButton size="sm" tone="ghost" onClick={handleChat}>
-          <MessageCircle size={14} />
-          Trò chuyện
-        </AppButton>
-        <RelationChip profile={profile} />
-      </div>
-    </article>
-  )
-}
-
 function RelationshipQuickActions({ profile, onNavigate }) {
   const hasProfile = Boolean(profile)
   const phoneHref = profile?.phone ? `tel:${profile.phone}` : undefined
@@ -806,7 +797,7 @@ function RelationshipQuickActions({ profile, onNavigate }) {
         <Pill size={16} />
         Thêm thuốc
       </AppButton>
-      <AppButton disabled={!hasProfile} tone="ghost" onClick={() => onNavigate('/dashboard', 'schedule')}>
+      <AppButton disabled={!hasProfile} tone="ghost" onClick={() => onNavigate('/schedule', 'schedule')}>
         <CalendarClock size={16} />
         Sửa lịch
       </AppButton>
@@ -849,21 +840,21 @@ function RelationshipTimeline({ profile }) {
       tone: 'emerald',
     },
     {
-      body: 'Cách gọi này giúp phân biệt từng người thân trong danh sách chăm sóc.',
+      body: '',
       icon: HeartHandshake,
       meta: 'Quan hệ',
       title: relationshipLabel(profile),
       tone: 'sky',
     },
     {
-      body: 'Chưa có sự kiện mới từ dữ liệu backend. Khu vực này đã sẵn sàng để hiển thị khi API bổ sung.',
+      body: '',
       icon: CalendarClock,
       meta: 'Sự kiện gần đây',
       title: 'Chưa có sự kiện mới',
       tone: 'amber',
     },
     {
-      body: 'Chưa có ghi chú mới từ dữ liệu backend. Có thể kết nối phần ghi chú sau khi backend có endpoint.',
+      body: '',
       icon: NotebookText,
       meta: 'Ghi chú gần đây',
       title: 'Chưa có ghi chú mới',
@@ -1011,9 +1002,9 @@ function ProfileDetailCard({ onClose, onDelete, onEdit, open, profile }) {
   )
 }
 
-function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
+function RelationshipTable({ isLoading, onOpenDetail, onSelect, relationships, selectedKey }) {
   if (!isLoading && !relationships.length) {
-    return <EmptyState>Không có người thân trong trạng thái này.</EmptyState>
+    return <EmptyState>Không có người thân trong danh sách này.</EmptyState>
   }
 
   return (
@@ -1024,14 +1015,15 @@ function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
               <RelationshipMobileCard isLoading key={`relationship-mobile-skeleton-${index}`} />
             ))
           : relationships.map((profile) => {
-              const key = relationshipKey(profile)
+              const key = relationshipSelectionKey(profile)
 
               return (
                 <RelationshipMobileCard
                   isSelected={key === selectedKey}
-                  key={profile.relationshipId ?? key}
+                  key={key}
                   profile={profile}
-                  onView={onView}
+                  onOpenDetail={onOpenDetail}
+                  onSelect={onSelect}
                 />
               )
             })}
@@ -1089,14 +1081,14 @@ function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
               ))
             ) : (
               relationships.map((profile) => {
-                const key = relationshipKey(profile)
+                const key = relationshipSelectionKey(profile)
                 const isSelected = key === selectedKey
 
                 return (
                   <tr
                     className={cx('cursor-pointer align-top transition hover:bg-emerald-50/50', isSelected && 'bg-emerald-50/70')}
-                    key={profile.relationshipId ?? key}
-                    onClick={() => onView(profile)}
+                    key={key}
+                    onClick={() => onSelect(profile)}
                   >
                     <td className="px-5 py-4">
                       <button
@@ -1104,7 +1096,7 @@ function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation()
-                          onView(profile)
+                          onSelect(profile)
                         }}
                       >
                         <ProfileBadge profile={profile} size="sm" />
@@ -1134,7 +1126,7 @@ function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div onClick={(event) => event.stopPropagation()}>
-                        <IconActionButton label={`Mở chi tiết ${fullName(profile)}`} onClick={() => onView(profile)}>
+                        <IconActionButton label={`Mở chi tiết ${fullName(profile)}`} onClick={() => onOpenDetail(profile)}>
                           <Eye size={16} />
                         </IconActionButton>
                       </div>
@@ -1364,7 +1356,7 @@ function CaregiverRelationshipsPage() {
   const [localProfiles, setLocalProfiles] = useState([])
   const [acceptedRelationships, setAcceptedRelationships] = useState([])
   const [pendingRelationships, setPendingRelationships] = useState([])
-  const [relationshipFilter, setRelationshipFilter] = useState('ACCEPTED')
+  const [relationshipFilter, setRelationshipFilter] = useState('ALL')
   const [selectedRelationshipId, setSelectedRelationshipId] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -1620,8 +1612,12 @@ function CaregiverRelationshipsPage() {
     navigate(`${path}${profileQuery(targetProfile, action)}`)
   }
 
-  function handleViewRelationship(profile) {
-    setSelectedRelationshipId(relationshipKey(profile))
+  function handleSelectRelationship(profile) {
+    setSelectedRelationshipId(relationshipSelectionKey(profile))
+  }
+
+  function handleOpenRelationshipDetail(profile) {
+    handleSelectRelationship(profile)
     setDetailTarget(profile)
   }
 
@@ -1669,14 +1665,20 @@ function CaregiverRelationshipsPage() {
   const relationshipCounts = useMemo(
     () =>
       RELATIONSHIP_FILTERS.reduce((counts, filter) => {
-        counts[filter.value] = allRelationships.filter((profile) => profile.status === filter.value).length
+        counts[filter.value] =
+          filter.value === 'ALL'
+            ? allRelationships.length
+            : allRelationships.filter((profile) => profile.status === filter.value).length
         return counts
       }, {}),
     [allRelationships],
   )
 
   const filteredRelationships = useMemo(
-    () => allRelationships.filter((profile) => profile.status === relationshipFilter),
+    () =>
+      relationshipFilter === 'ALL'
+        ? allRelationships
+        : allRelationships.filter((profile) => profile.status === relationshipFilter),
     [allRelationships, relationshipFilter],
   )
 
@@ -1691,7 +1693,7 @@ function CaregiverRelationshipsPage() {
   )
 
   useEffect(() => {
-    const availableIds = allRelationships.map((profile) => relationshipKey(profile)).filter(Boolean)
+    const availableIds = allRelationships.map((profile) => relationshipSelectionKey(profile)).filter(Boolean)
 
     if (!availableIds.length) {
       if (selectedRelationshipId) {
@@ -1705,7 +1707,7 @@ function CaregiverRelationshipsPage() {
     }
   }, [allRelationships, selectedRelationshipId])
 
-  const selectedRelationship = allRelationships.find((profile) => relationshipKey(profile) === selectedRelationshipId)
+  const selectedRelationship = allRelationships.find((profile) => relationshipSelectionKey(profile) === selectedRelationshipId)
   const selectedProfile = selectedRelationship ?? null
 
   return (
@@ -1716,7 +1718,7 @@ function CaregiverRelationshipsPage() {
             <p className="text-xs font-black uppercase text-emerald-700">Không gian chăm sóc</p>
             <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">Người thân của tôi</h1>
             <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-slate-600 sm:text-base">
-              Xem danh sách kết nối, cập nhật quan hệ gia đình và đi nhanh đến thuốc, lịch uống, chat hoặc gọi điện.
+              Xem danh sách những người thân mà bạn đang kết nối.
             </p>
           </div>
         </div>
@@ -1746,7 +1748,7 @@ function CaregiverRelationshipsPage() {
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Lọc trạng thái người thân">
+        <div className="grid gap-2 sm:grid-cols-4" role="tablist" aria-label="Lọc trạng thái người thân">
           {RELATIONSHIP_FILTERS.map((filter) => {
             const isActive = relationshipFilter === filter.value
 
@@ -1776,8 +1778,9 @@ function CaregiverRelationshipsPage() {
         <RelationshipTable
           isLoading={loading}
           relationships={filteredRelationships}
-          selectedKey={relationshipKey(selectedProfile)}
-          onView={handleViewRelationship}
+          selectedKey={relationshipSelectionKey(selectedProfile)}
+          onOpenDetail={handleOpenRelationshipDetail}
+          onSelect={handleSelectRelationship}
         />
       </section>
 
@@ -1837,7 +1840,10 @@ function ElderlyRelationshipsPage() {
   const [profile, setProfile] = useState(null)
   const [acceptedCaregivers, setAcceptedCaregivers] = useState([])
   const [pendingCaregivers, setPendingCaregivers] = useState([])
+  const [selectedCaregiverId, setSelectedCaregiverId] = useState(null)
+  const [caregiverTitleForm, setCaregiverTitleForm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [savingTitle, setSavingTitle] = useState(false)
 
   const loadElderlyData = useCallback(async () => {
     setLoading(true)
@@ -1848,8 +1854,8 @@ function ElderlyRelationshipsPage() {
         getPendingElderlyRelationships(),
       ])
       setProfile(profileData)
-      setAcceptedCaregivers(Array.isArray(accepted) ? accepted : [])
-      setPendingCaregivers(Array.isArray(pending) ? pending : [])
+      setAcceptedCaregivers(Array.isArray(accepted) ? accepted.map((item) => normalizeRelationship(item, 'ACCEPTED')) : [])
+      setPendingCaregivers(Array.isArray(pending) ? pending.map((item) => normalizeRelationship(item, 'PENDING')) : [])
     } catch (err) {
       notify.apiError(err, 'Không thể tải danh sách người hỗ trợ')
     } finally {
@@ -1860,6 +1866,27 @@ function ElderlyRelationshipsPage() {
   useEffect(() => {
     loadElderlyData()
   }, [loadElderlyData])
+
+  const selectedCaregiver = useMemo(
+    () => acceptedCaregivers.find((caregiver) => relationshipKey(caregiver) === selectedCaregiverId) ?? acceptedCaregivers[0] ?? null,
+    [acceptedCaregivers, selectedCaregiverId],
+  )
+
+  useEffect(() => {
+    if (!acceptedCaregivers.length) {
+      setSelectedCaregiverId(null)
+      return
+    }
+
+    const availableIds = acceptedCaregivers.map((caregiver) => relationshipKey(caregiver)).filter(Boolean)
+    if (!selectedCaregiverId || !availableIds.includes(selectedCaregiverId)) {
+      setSelectedCaregiverId(availableIds[0])
+    }
+  }, [acceptedCaregivers, selectedCaregiverId])
+
+  useEffect(() => {
+    setCaregiverTitleForm(selectedCaregiver ? caregiverTitleLabel(selectedCaregiver) : '')
+  }, [selectedCaregiver])
 
   async function handleAccept(relationshipId) {
     try {
@@ -1881,67 +1908,179 @@ function ElderlyRelationshipsPage() {
     }
   }
 
+  async function handleSaveCaregiverTitle(event) {
+    event.preventDefault()
+
+    if (!selectedCaregiver?.relationshipId) {
+      notify.warning('Chọn một người hỗ trợ trước khi lưu cách gọi')
+      return
+    }
+
+    const nextTitle = normalizeOptional(caregiverTitleForm)
+    if (!nextTitle) {
+      notify.warning('Nhập cách bạn muốn gọi người hỗ trợ')
+      return
+    }
+
+    setSavingTitle(true)
+    try {
+      await updateElderlyCaregiverTitle(selectedCaregiver.relationshipId, nextTitle)
+      setAcceptedCaregivers((current) =>
+        current.map((caregiver) =>
+          caregiver.relationshipId === selectedCaregiver.relationshipId
+            ? { ...caregiver, caregiverTitle: nextTitle, relationLabel: nextTitle }
+            : caregiver,
+        ),
+      )
+      notify.success('Đã cập nhật cách gọi người hỗ trợ')
+    } catch (err) {
+      notify.apiError(err, 'Không thể cập nhật cách gọi người hỗ trợ')
+    } finally {
+      setSavingTitle(false)
+    }
+  }
+
   if (loading) {
     return <LoadingState>Đang tải danh sách người hỗ trợ...</LoadingState>
   }
 
+  const acceptedCount = acceptedCaregivers.length
+  const pendingCount = pendingCaregivers.length
+
   return (
-    <div className="mx-auto grid w-full max-w-[1480px] gap-4 sm:gap-5">
-      <section className="overflow-hidden rounded-lg border border-sky-100 bg-gradient-to-br from-emerald-50 via-sky-50 to-violet-50 p-4 shadow-lg shadow-slate-200/60 sm:p-5 lg:p-7">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+    <div className="mx-auto grid w-full max-w-[1480px] gap-5">
+      <section className="overflow-hidden rounded-lg border border-emerald-100 bg-[radial-gradient(circle_at_top_left,rgba(31,138,112,0.14),transparent_28rem),linear-gradient(135deg,#f6fbf8,#eef7f3_48%,#fbf7ed)] p-4 shadow-lg shadow-slate-200/60 sm:p-5 lg:p-7">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <p className="text-xs font-black uppercase text-emerald-700">Hồ sơ cá nhân</p>
+            <p className="text-xs font-black uppercase text-emerald-700">Không gian chăm sóc</p>
             <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">Người hỗ trợ của tôi</h1>
             <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-slate-600 sm:text-base">
-              Xem thông tin cá nhân, danh sách người đã kết nối và xử lý các lời mời đang chờ xác nhận.
+              Xem thông tin những người thân đang chăm sóc bạn.
             </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-emerald-200 bg-white/80 px-3 text-sm font-black text-emerald-800">
+                <HeartHandshake size={15} />
+                {acceptedCount} người đang hỗ trợ
+              </span>
+              <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-amber-200 bg-white/80 px-3 text-sm font-black text-amber-800">
+                <ShieldCheck size={15} />
+                {pendingCount} lời mời đang chờ
+              </span>
+            </div>
           </div>
-          <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 text-sm font-black text-emerald-800">
-            <UserRound size={16} />
-            Chỉ xem hồ sơ
+          <div className="grid gap-2 rounded-lg border border-white/80 bg-white/75 p-4 text-sm font-bold text-slate-600 shadow-sm shadow-emerald-100/70">
+            <span className="inline-flex items-center gap-2 text-xs font-black uppercase text-emerald-700">
+              <UserRound size={15} />
+              Hồ sơ đang dùng
+            </span>
+            <strong className="text-lg font-black leading-tight text-slate-950">{fullName(profile)}</strong>
+            <span className="break-words">{profile?.phone || 'Chưa cập nhật số điện thoại'}</span>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-        <article className={cx(panelClass, 'grid content-start gap-4 p-4 sm:p-5')}>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase text-emerald-700">Hồ sơ của tôi</p>
-              <h2 className="mt-1 text-xl font-black text-slate-950">{fullName(profile)}</h2>
-            </div>
-            <ProfileBadge profile={profile} />
-          </div>
-          <div className="grid gap-3">
-            {[
-              ['Số điện thoại', profile?.phone || 'Chưa cập nhật'],
-              ['Ngày sinh', profile?.dateOfBirth || 'Chưa cập nhật'],
-              ['Giới tính', GENDER_LABELS[profile?.gender] || 'Chưa cập nhật'],
-              ['Địa chỉ', profile?.address || 'Chưa cập nhật'],
-            ].map(([label, value]) => (
-              <div className="flex items-start justify-between gap-4 rounded-lg bg-slate-50 p-3" key={label}>
-                <span className="text-sm font-bold text-slate-500">{label}</span>
-                <strong className="text-right text-sm font-black text-slate-900">{value}</strong>
-              </div>
-            ))}
-          </div>
-        </article>
-
+      <section className="grid gap-5 xl:grid-cols-[minmax(340px,0.9fr)_minmax(0,1.1fr)]">
         <article className={cx(panelClass, 'grid content-start gap-4 p-4 sm:p-5')}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase text-emerald-700">Đã xác nhận</p>
-              <h2 className="mt-1 text-xl font-black text-slate-950">Người đang hỗ trợ</h2>
+              <h2 className="mt-1 text-xl font-black text-slate-950">Những người đang hỗ trợ bạn</h2>
             </div>
-            <HeartHandshake className="text-emerald-600" size={22} />
+            <span className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">
+              Bấm để xem hồ sơ
+            </span>
           </div>
-          <div className="grid gap-3">
+          <div className="grid gap-3" role="list">
             {acceptedCaregivers.length ? (
-              acceptedCaregivers.map((caregiver) => <RelationshipCard key={caregiver.relationshipId} profile={caregiver} />)
+              acceptedCaregivers.map((caregiver) => {
+                const isSelected = relationshipKey(caregiver) === relationshipKey(selectedCaregiver)
+
+                return (
+                  <button
+                    className={cx(
+                      'grid gap-3 rounded-lg border p-4 text-left transition focus:outline-none focus:ring-4 focus:ring-emerald-100 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center',
+                      isSelected
+                        ? 'border-emerald-300 bg-emerald-50 shadow-md shadow-emerald-100/70'
+                        : 'border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/50',
+                    )}
+                    key={caregiver.relationshipId}
+                    role="listitem"
+                    type="button"
+                    onClick={() => setSelectedCaregiverId(relationshipKey(caregiver))}
+                  >
+                    <ProfileBadge profile={caregiver} />
+                    <span className="min-w-0">
+                      <strong className="block truncate text-base font-black text-slate-950">{fullName(caregiver)}</strong>
+                      <span className="mt-1 block truncate text-sm font-bold text-slate-600">
+                        {caregiver.phone || caregiver.address || 'Chưa cập nhật thông tin liên hệ'}
+                      </span>
+                      <span className="mt-2 inline-flex max-w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-black text-amber-800">
+                        <HeartHandshake size={13} />
+                        <span className="truncate">{caregiverTitleLabel(caregiver)}</span>
+                      </span>
+                    </span>
+                    <span className="inline-flex items-center justify-end gap-2 text-sm font-black text-emerald-700">
+                      <Eye size={16} />
+                      Xem
+                    </span>
+                  </button>
+                )
+              })
             ) : (
               <EmptyState>Chưa có người hỗ trợ nào được xác nhận.</EmptyState>
             )}
           </div>
+        </article>
+
+        <article className={cx(panelClass, 'grid content-start gap-5 p-4 sm:p-5')}>
+          {selectedCaregiver ? (
+            <>
+              <div className="grid gap-4 rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+                <ProfileBadge profile={selectedCaregiver} size="xl" />
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase text-emerald-700">Hồ sơ người hỗ trợ</p>
+                  <h2 className="mt-1 break-words text-2xl font-black leading-tight text-slate-950">
+                    {fullName(selectedCaregiver)}
+                  </h2>
+                  <span className="mt-2 inline-flex rounded-lg border border-white/80 bg-white px-3 py-1 text-sm font-black text-emerald-800">
+                    {caregiverTitleLabel(selectedCaregiver)}
+                  </span>
+                </div>
+                <StatusPill status={selectedCaregiver.status} />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DetailInfoRow icon={Phone} label="Số điện thoại" value={selectedCaregiver.phone} />
+                <DetailInfoRow icon={MapPin} label="Địa chỉ" value={selectedCaregiver.address} />
+              </div>
+
+              <form className="grid gap-4 rounded-lg border border-amber-100 bg-amber-50/80 p-4" onSubmit={handleSaveCaregiverTitle}>
+                <div>
+                  <p className="text-xs font-black uppercase text-amber-700">Quan hệ</p>
+                  <h3 className="mt-1 text-base font-black text-slate-950">Cách tôi gọi người hỗ trợ này</h3>
+                  
+                </div>
+                <Field label="Cách gọi">
+                  <input
+                    className={inputClass}
+                    placeholder="Ví dụ: Con gái, Cháu, Điều dưỡng Lan"
+                    value={caregiverTitleForm}
+                    onChange={(event) => setCaregiverTitleForm(event.target.value)}
+                  />
+                </Field>
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <AppButton disabled={savingTitle} type="submit">
+                    {savingTitle ? <LoaderCircle className="animate-spin" size={16} /> : <Check size={16} />}
+                    Lưu cách gọi
+                  </AppButton>
+                </div>
+              </form>
+
+              
+            </>
+          ) : (
+            <EmptyState>Chọn một người hỗ trợ để xem hồ sơ và đặt cách gọi.</EmptyState>
+          )}
         </article>
       </section>
 

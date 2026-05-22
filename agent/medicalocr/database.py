@@ -8,6 +8,7 @@ from .catalog import CatalogProduct
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "medicalocr.sqlite3"
 
 PRODUCT_COLUMNS = (
+    "id",
     "source_url",
     "display_name",
     "normalized_name",

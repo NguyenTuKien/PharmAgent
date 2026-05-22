@@ -20,7 +20,7 @@ import { canAccessRoles } from '../modules/auth/session.js'
 
 export const navigationItems = [
   {
-    to: '/dashboard',
+    to: '/schedule',
     label: 'Lịch uống thuốc',
     icon: CalendarClock,
     roles: ['ELDERLY'],
@@ -62,7 +62,7 @@ export const navigationItems = [
     roles: ['CAREGIVER'],
   },
   {
-    to: '/dashboard',
+    to: '/schedule',
     label: 'Lịch uống',
     icon: CalendarDays,
     roles: ['CAREGIVER'],

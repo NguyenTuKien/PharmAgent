@@ -175,7 +175,21 @@ export function requiresProfileSelection(profiles = []) {
 }
 
 export function getProfileLandingPath(profile) {
-  return normalizeRole(profile?.role) === 'ADMIN' ? '/admin' : '/dashboard'
+  const role = normalizeRole(profile?.role)
+
+  if (role === 'ADMIN') {
+    return '/admin'
+  }
+
+  if (role === 'CAREGIVER') {
+    return '/schedule'
+  }
+
+  if (role === 'ELDERLY') {
+    return '/schedule'
+  }
+
+  return '/dashboard'
 }
 
 function getDefaultSessionStorage() {

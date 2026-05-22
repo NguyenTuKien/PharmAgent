@@ -1,9 +1,12 @@
 import {
   AlertTriangle,
   CalendarClock,
+  CalendarDays,
   Camera,
   CheckCircle2,
+  ChevronDown,
   Clock3,
+  ExternalLink,
   FilePenLine,
   Loader2,
   PackageCheck,
@@ -17,7 +20,9 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { DayPicker } from 'react-day-picker'
 import { useSearchParams } from 'react-router-dom'
+import 'react-day-picker/style.css'
 
 import { Button } from '../components/ui/Button.jsx'
 import { CameraCapture } from '../components/ui/CameraCapture.jsx'
@@ -33,16 +38,19 @@ import {
   analyzeMedicationImage,
   analyzeMedicationText,
   asPageContent,
+  canFetchPillById,
   createCaregiverMedication,
   deleteCaregiverMedication,
   getMedications,
   getPillById,
+  isPharmacityUrl,
   normalizeCatalogPill,
   normalizePillId,
   searchPills,
   updateCaregiverMedication,
 } from '../modules/medication/medicationApi.js'
 import '../styles/caregiver/medications.css'
+import '../styles/elderly/medications.css'
 
 const MEAL_OPTIONS = [
   { value: 'BEFORE_MEAL', label: 'Trước bữa ăn' },
@@ -82,6 +90,9 @@ const WEEKDAY_OPTIONS = [
 
 const UNIT_OPTIONS = ['Viên', 'ml', 'mg', 'gói', 'ống', 'giọt', 'lần']
 const ROUTE_OPTIONS = ['Uống', 'Ngậm', 'Bôi', 'Tiêm', 'Nhỏ mắt', 'Xịt']
+const TIME_HOURS = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, '0'))
+const TIME_MINUTES = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0'))
+const QUICK_TIME_OPTIONS = ['06:00', '08:00', '12:00', '18:00', '20:00', '22:00']
 
 const fieldClass =
   'min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-100 disabled:bg-slate-50 disabled:text-slate-400'
@@ -95,6 +106,53 @@ function localDateInput() {
   const date = new Date()
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset())
   return date.toISOString().slice(0, 10)
+}
+
+function dateFromInputValue(value) {
+  if (!value) {
+    return undefined
+  }
+
+  const [year, month, day] = String(value).split('-').map(Number)
+  if (!year || !month || !day) {
+    return undefined
+  }
+
+  return new Date(year, month - 1, day)
+}
+
+function toDateInputValue(date) {
+  if (!(date instanceof Date)) {
+    return ''
+  }
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatDateDisplay(value, fallback = 'Chọn ngày') {
+  const date = dateFromInputValue(value)
+  if (!date) {
+    return fallback
+  }
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+}
+
+function oneDecimalInput(value, fallback = '1.0') {
+  const amount = Number.parseFloat(value)
+  return Number.isFinite(amount) && amount > 0 ? amount.toFixed(1) : fallback
+}
+
+function externalUrl(value) {
+  const url = typeof value === 'string' ? value.trim() : ''
+  return /^https?:\/\//i.test(url) && !isPharmacityUrl(url) ? url : ''
 }
 
 function localId(prefix) {
@@ -117,14 +175,18 @@ function patientInitials(profile) {
 
 function primaryPillImage(pill) {
   const images = pill?.images ?? []
-  return (
+  return [
     images.find((image) => image.isPrimary)?.imageUrl ||
+      images.find((image) => image.isPrimary)?.image_url,
     images[0]?.imageUrl ||
+      images[0]?.image_url ||
+      images[0]?.url,
     pill?.imageUrls?.[0] ||
-    pill?.primary_image_url ||
-    pill?.primaryImageUrl ||
-    ''
-  )
+      pill?.primary_image_url ||
+      pill?.primaryImageUrl ||
+      pill?.image_url ||
+      pill?.imageUrl,
+  ].map(externalUrl).find(Boolean) ?? ''
 }
 
 function pillName(pill, fallback = 'Chưa có tên thuốc') {
@@ -143,8 +205,23 @@ function pillManufacturer(pill) {
   return pill?.manufacturer || pill?.manufacturer_name || pill?.brand_name || ''
 }
 
+function pillDetailUrl(pill) {
+  return [
+    pill?.detailUrl,
+    pill?.detail_url,
+    pill?.sourceUrl,
+    pill?.source_url,
+    pill?.productUrl,
+    pill?.product_url,
+    pill?.url,
+    pill?.id,
+  ].map(externalUrl).find(Boolean) ?? ''
+}
+
 function pillIdFromCandidate(candidate) {
-  return normalizePillId(candidate?.id ?? candidate?.product_id ?? candidate?.source_url)
+  return [candidate?.id, candidate?.product_id]
+    .map(normalizePillId)
+    .find(canFetchPillById) ?? ''
 }
 
 function candidateToPill(candidate) {
@@ -214,7 +291,7 @@ function optionalText(value) {
   return trimmed || null
 }
 
-function newSchedule(startDate = localDateInput(), doseAmount = '1') {
+function newSchedule(startDate = localDateInput(), doseAmount = '1.0') {
   return {
     localId: localId('schedule'),
     frequencyType: 'DAILY',
@@ -225,15 +302,15 @@ function newSchedule(startDate = localDateInput(), doseAmount = '1') {
     note: '',
     startDate,
     endDate: '',
-    times: [newDoseTime('08:00', doseAmount)],
+    times: [newDoseTime('08:00', oneDecimalInput(doseAmount))],
   }
 }
 
-function newDoseTime(timeOfDay = '08:00', doseAmount = '1') {
+function newDoseTime(timeOfDay = '08:00', doseAmount = '1.0') {
   return {
     localId: localId('dose'),
     timeOfDay,
-    doseAmount,
+    doseAmount: oneDecimalInput(doseAmount),
   }
 }
 
@@ -255,12 +332,13 @@ function emptyMedicationForm(patientProfile) {
     startDate,
     endDate: '',
     totalQuantity: '30',
-    schedules: [newSchedule(startDate, '1')],
+    schedules: [newSchedule(startDate, '1.0')],
   }
 }
 
 function medicationToForm(medication, patientProfile, pill) {
   const startDate = medication?.startDate ?? localDateInput()
+  const normalizedPillId = normalizePillId(medication?.pillId)
   const schedules = (medication?.schedules ?? []).map((schedule) => ({
     localId: schedule.id ?? localId('schedule'),
     id: schedule.id,
@@ -276,13 +354,13 @@ function medicationToForm(medication, patientProfile, pill) {
       localId: dose.id ?? localId('dose'),
       id: dose.id,
       timeOfDay: normalizeTimeInput(timeValue(dose)),
-      doseAmount: String(quantityValue(dose) || medication?.dosageAmount || '1'),
+      doseAmount: oneDecimalInput(quantityValue(dose) || medication?.dosageAmount || '1'),
     })),
   }))
 
   return {
     patientId: medication?.patientId ?? patientId(patientProfile) ?? '',
-    pillId: normalizePillId(medication?.pillId),
+    pillId: canFetchPillById(normalizedPillId) ? normalizedPillId : '',
     selectedPill: pill ?? null,
     pillQuery: pillName(pill, ''),
     nickname: medication?.nickname ?? '',
@@ -296,7 +374,7 @@ function medicationToForm(medication, patientProfile, pill) {
     startDate,
     endDate: medication?.endDate ?? '',
     totalQuantity: String(medication?.totalQuantity ?? '30'),
-    schedules: schedules.length ? schedules : [newSchedule(startDate, String(medication?.dosageAmount ?? '1'))],
+    schedules: schedules.length ? schedules : [newSchedule(startDate, oneDecimalInput(medication?.dosageAmount ?? '1'))],
   }
 }
 
@@ -431,12 +509,286 @@ function PatientAvatar({ profile, size = 'md' }) {
   )
 }
 
-function PillThumb({ pill }) {
+function PillThumb({ pill, size = 'md' }) {
   const imageUrl = primaryPillImage(pill)
+  const sizeClass = size === 'lg' ? 'h-24 w-24' : 'h-12 w-12'
+  const fallbackIconSize = size === 'lg' ? 42 : 22
+
   return (
-    <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-teal-700 shadow-sm">
-      {imageUrl ? <img alt="" className="h-full w-full object-cover" src={imageUrl} /> : <Pill size={22} />}
+    <span className={cx('grid shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-teal-700 shadow-sm', sizeClass)}>
+      {imageUrl ? (
+        <img alt={pillName(pill, 'Ảnh thuốc')} className="h-full w-full object-cover" src={imageUrl} />
+      ) : (
+        <Pill size={fallbackIconSize} />
+      )}
     </span>
+  )
+}
+
+function PillDetailLink({ pill, className = '' }) {
+  const detailUrl = pillDetailUrl(pill)
+
+  if (!detailUrl) {
+    return null
+  }
+
+  return (
+    <a
+      className={cx('inline-flex min-h-9 items-center gap-2 rounded-lg border border-teal-200 bg-white px-3 py-2 text-sm font-black text-teal-800 transition hover:border-teal-300 hover:bg-teal-50', className)}
+      href={detailUrl}
+      rel="noreferrer"
+      target="_blank"
+    >
+      <ExternalLink size={16} />
+      Xem chi tiết thuốc
+    </a>
+  )
+}
+
+function usePickerOverlay(open, onClose, { preferredPlacement = 'bottom', popoverWidth = 352 } = {}) {
+  const triggerRef = useRef(null)
+  const popoverRef = useRef(null)
+  const [floatingStyle, setFloatingStyle] = useState({ visibility: 'hidden' })
+
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) {
+      return
+    }
+
+    const triggerRect = trigger.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const margin = viewportWidth < 640 ? 8 : 12
+    const gap = 8
+    const width = Math.max(240, Math.min(popoverWidth, viewportWidth - margin * 2))
+    const measuredHeight = popoverRef.current?.offsetHeight || (preferredPlacement === 'top' ? 360 : 390)
+    const spaceAbove = Math.max(0, triggerRect.top - margin - gap)
+    const spaceBelow = Math.max(0, viewportHeight - triggerRect.bottom - margin - gap)
+    const shouldOpenTop =
+      preferredPlacement === 'top'
+        ? spaceAbove >= 220 || spaceAbove >= spaceBelow
+        : spaceBelow < Math.min(measuredHeight, 300) && spaceAbove > spaceBelow
+    const availableHeight = Math.max(220, (shouldOpenTop ? spaceAbove : spaceBelow) || viewportHeight - margin * 2)
+    const height = Math.min(measuredHeight, availableHeight)
+    const top = shouldOpenTop
+      ? Math.max(margin, triggerRect.top - gap - height)
+      : Math.min(triggerRect.bottom + gap, viewportHeight - margin - height)
+    const left = Math.min(
+      Math.max(margin, triggerRect.left),
+      Math.max(margin, viewportWidth - margin - width),
+    )
+
+    setFloatingStyle({
+      left: `${left}px`,
+      maxHeight: `${availableHeight}px`,
+      top: `${top}px`,
+      visibility: 'visible',
+      width: `${width}px`,
+      '--med-picker-transform-origin': shouldOpenTop ? 'bottom left' : 'top left',
+    })
+  }, [popoverWidth, preferredPlacement])
+
+  useEffect(() => {
+    if (!open) {
+      return undefined
+    }
+
+    const frameId = window.requestAnimationFrame(updatePosition)
+
+    const handlePointerDown = (event) => {
+      const target = event.target
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(target) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(target)
+      ) {
+        onClose()
+      }
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, onClose, updatePosition])
+
+  return { floatingStyle, popoverRef, triggerRef }
+}
+
+function DatePickerField({ allowClear = false, label, value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  const { floatingStyle, popoverRef, triggerRef } = usePickerOverlay(open, close, {
+    preferredPlacement: 'bottom',
+    popoverWidth: 360,
+  })
+  const selectedDate = useMemo(() => dateFromInputValue(value), [value])
+
+  const selectDate = (date) => {
+    if (!date) {
+      return
+    }
+
+    onChange(toDateInputValue(date))
+    setOpen(false)
+  }
+
+  return (
+    <div className="medication-picker-field">
+      <span className="medication-picker-label">{label}</span>
+      <button
+        aria-expanded={open}
+        className="medication-picker-trigger"
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <CalendarDays size={18} />
+        <span>{formatDateDisplay(value)}</span>
+        <ChevronDown className={cx('medication-picker-chevron', open && 'is-open')} size={16} />
+      </button>
+      {open ? createPortal(
+        <div
+          className="medication-picker-popover medication-date-popover"
+          ref={popoverRef}
+          style={floatingStyle}
+        >
+          <div className="medication-picker-scroll">
+            <DayPicker
+              captionLayout="dropdown"
+              mode="single"
+              selected={selectedDate}
+              weekStartsOn={1}
+              onSelect={selectDate}
+            />
+            <div className="medication-picker-actions">
+              <button type="button" onClick={() => selectDate(new Date())}>Hôm nay</button>
+              {allowClear ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange('')
+                    setOpen(false)
+                  }}
+                >
+                  Xóa ngày
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
+    </div>
+  )
+}
+
+function TimePickerField({ label, value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  const { floatingStyle, popoverRef, triggerRef } = usePickerOverlay(open, close, {
+    preferredPlacement: 'top',
+    popoverWidth: 340,
+  })
+  const normalizedValue = normalizeTimeInput(value) || '08:00'
+  const [selectedHour = '08', selectedMinute = '00'] = normalizedValue.split(':')
+
+  const updateTime = (hour, minute, shouldClose = false) => {
+    onChange(`${hour}:${minute}`)
+    if (shouldClose) {
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div className="medication-picker-field">
+      <span className="medication-picker-label">{label}</span>
+      <button
+        aria-expanded={open}
+        className="medication-picker-trigger"
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <Clock3 size={18} />
+        <span>{normalizedValue}</span>
+        <ChevronDown className={cx('medication-picker-chevron', open && 'is-open')} size={16} />
+      </button>
+      {open ? createPortal(
+        <div
+          className="medication-picker-popover medication-time-popover"
+          ref={popoverRef}
+          style={floatingStyle}
+        >
+          <div className="medication-picker-scroll">
+            <div className="medication-time-presets">
+              {QUICK_TIME_OPTIONS.map((time) => (
+                <button
+                  className={cx(time === normalizedValue && 'is-selected')}
+                  key={time}
+                  type="button"
+                  onClick={() => {
+                    const [hour, minute] = time.split(':')
+                    updateTime(hour, minute, true)
+                  }}
+                >
+                  {time}
+                </button>
+              ))}
+            </div>
+            <div className="medication-time-columns">
+              <div>
+                <span>Giờ</span>
+                <div className="medication-time-grid medication-time-grid--hours">
+                  {TIME_HOURS.map((hour) => (
+                    <button
+                      className={cx(hour === selectedHour && 'is-selected')}
+                      key={hour}
+                      type="button"
+                      onClick={() => updateTime(hour, selectedMinute)}
+                    >
+                      {hour}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <span>Phút</span>
+                <div className="medication-time-grid">
+                  {TIME_MINUTES.map((minute) => (
+                    <button
+                      className={cx(minute === selectedMinute && 'is-selected')}
+                      key={minute}
+                      type="button"
+                      onClick={() => updateTime(selectedHour, minute)}
+                    >
+                      {minute}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
+    </div>
   )
 }
 
@@ -472,6 +824,296 @@ function scheduleLabel(schedule) {
     return `Mỗi ${interval} ngày`
   }
   return SCHEDULE_LABELS[type] ?? type
+}
+
+function medicationTimes(medication) {
+  return (medication?.schedules ?? [])
+    .flatMap((schedule, scheduleIndex) =>
+      medicationDoseTimes(schedule).map((dose, doseIndex) => ({
+        amount: quantityValue(dose),
+        key: `${schedule.id ?? scheduleIndex}-${dose.id ?? doseIndex}-${normalizeTimeInput(timeValue(dose))}`,
+        schedule,
+        time: normalizeTimeInput(timeValue(dose)),
+      })),
+    )
+    .filter((dose) => dose.time)
+    .sort((first, second) => first.time.localeCompare(second.time))
+}
+
+function medicationDisplayName(medication, pill) {
+  return medication?.nickname || pillName(pill, 'Thuốc chưa đặt tên')
+}
+
+function medicationDateRange(medication) {
+  const startDate = medication?.startDate || 'Chưa có ngày bắt đầu'
+  const endDate = medication?.endDate || 'Không đặt ngày kết thúc'
+  return `${startDate} - ${endDate}`
+}
+
+function ElderlyStatCard({ icon: Icon, label, value, note, tone = 'green' }) {
+  return (
+    <article className={cx('elderly-stat-card', `elderly-stat-card--${tone}`)}>
+      <span className="elderly-stat-card__icon">
+        <Icon size={26} />
+      </span>
+      <span className="elderly-stat-card__label">{label}</span>
+      <strong>{value}</strong>
+      {note ? <span className="elderly-stat-card__note">{note}</span> : null}
+    </article>
+  )
+}
+
+function ElderlyMedicationCard({ medication, pill, active, onClick }) {
+  const times = medicationTimes(medication)
+  const lowStock = Number(medication.totalQuantity ?? 0) <= 7
+  const visibleTimes = times.slice(0, 3)
+
+  return (
+    <button
+      className={cx('elderly-medication-card', active && 'is-active')}
+      type="button"
+      onClick={onClick}
+    >
+      <div className="elderly-medication-card__main">
+        <PillThumb pill={pill} />
+        <span className="min-w-0">
+          <strong>{medicationDisplayName(medication, pill)}</strong>
+          <small>{pillName(pill, medication.pillId)}</small>
+        </span>
+      </div>
+
+      <div className="elderly-medication-card__facts">
+        <span>{medication.dosageAmount} {medication.dosageUnit}</span>
+        <span>{MEAL_LABELS[medication.mealRelation] ?? medication.mealRelation ?? 'Theo chỉ dẫn'}</span>
+      </div>
+
+      <div className="elderly-medication-card__times">
+        {visibleTimes.length ? (
+          visibleTimes.map((dose) => (
+            <span key={`${medication.id}-${dose.key}`}>
+              <Clock3 size={18} />
+              {dose.time}
+            </span>
+          ))
+        ) : (
+          <span>
+            <Clock3 size={18} />
+            Khi cần
+          </span>
+        )}
+        {times.length > visibleTimes.length ? <span>+{times.length - visibleTimes.length} giờ</span> : null}
+      </div>
+
+      {lowStock ? (
+        <div className="elderly-medication-card__warning">
+          <AlertTriangle size={18} />
+          Sắp hết thuốc
+        </div>
+      ) : null}
+    </button>
+  )
+}
+
+function ElderlyMedicationDetail({ medication, patient, pill }) {
+  if (!medication) {
+    return (
+      <article className="elderly-medication-detail elderly-medication-detail--empty">
+        <span>
+          <Pill size={42} />
+        </span>
+        <h2>Chọn một thuốc để xem giờ uống</h2>
+        <p>Danh sách bên trái có các thuốc trong hồ sơ của {fullName(patient)}.</p>
+      </article>
+    )
+  }
+
+  const schedules = medication.schedules ?? []
+  const times = medicationTimes(medication)
+
+  return (
+    <article className="elderly-medication-detail">
+      <header className="elderly-medication-detail__header">
+        <div className="elderly-medication-detail__title">
+          <PillThumb pill={pill} size="lg" />
+          <div>
+            <p>{fullName(patient)}</p>
+            <h2>{medicationDisplayName(medication, pill)}</h2>
+            <span>{pillName(pill, medication.pillId)}</span>
+            <PillDetailLink className="mt-3" pill={pill} />
+          </div>
+        </div>
+        <div className="elderly-readonly-badge">Chỉ xem</div>
+      </header>
+
+      <section className="elderly-dose-summary" aria-label="Thông tin chính">
+        <InfoChip label="Mỗi lần uống" value={`${medication.dosageAmount} ${medication.dosageUnit}`} />
+        <InfoChip label="Cách dùng" value={medication.route || 'Theo chỉ dẫn'} />
+        <InfoChip label="Bữa ăn" value={MEAL_LABELS[medication.mealRelation] ?? medication.mealRelation ?? 'Theo chỉ dẫn'} />
+        <InfoChip label="Còn lại" value={`${medication.totalQuantity ?? 0} ${medication.dosageUnit ?? 'đơn vị'}`} />
+      </section>
+
+      <section className="elderly-time-panel">
+        <div className="elderly-section-heading">
+          <h3>Giờ uống thuốc</h3>
+          <span>{times.length ? `${times.length} giờ` : 'Khi cần'}</span>
+        </div>
+
+        <div className="elderly-time-grid">
+          {times.length ? (
+            times.map((dose) => (
+              <div className="elderly-time-chip" key={`${medication.id}-${dose.key}`}>
+                <Clock3 size={22} />
+                <strong>{dose.time}</strong>
+                <span>{dose.amount || medication.dosageAmount} {medication.dosageUnit}</span>
+              </div>
+            ))
+          ) : (
+            <p className="elderly-empty-note">Thuốc này dùng khi cần hoặc chưa có giờ nhắc cố định.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="elderly-simple-info">
+        <div className="elderly-section-heading">
+          <h3>Thông tin thêm</h3>
+        </div>
+        <dl>
+          <DetailRow label="Mục đích" value={medication.purpose || 'Chưa cập nhật'} />
+          <DetailRow label="Người kê đơn" value={medication.prescribedBy || 'Chưa cập nhật'} />
+          <DetailRow label="Thời gian dùng" value={medicationDateRange(medication)} />
+          <DetailRow label="Ghi chú" value={medication.instruction || 'Không có ghi chú'} />
+        </dl>
+      </section>
+
+      {schedules.length ? (
+        <section className="elderly-simple-info">
+          <div className="elderly-section-heading">
+            <h3>Lịch lặp</h3>
+          </div>
+          <div className="elderly-schedule-list">
+            {schedules.map((schedule, index) => (
+              <div key={schedule.id ?? `${scheduleLabel(schedule)}-${index}`}>
+                <strong>{scheduleLabel(schedule)}</strong>
+                <span>{schedule.startDate || medication.startDate || 'Chưa đặt'} - {schedule.endDate || medication.endDate || 'Không đặt'}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </article>
+  )
+}
+
+function ElderlyMedicationsView({
+  activeFilter,
+  filteredMedications,
+  medicationsLoading,
+  onFilterChange,
+  onRefresh,
+  pillMap,
+  searchLabel,
+  selectedMedication,
+  selectedMedicationId,
+  selectedPatient,
+  setSelectedMedicationId,
+  summary,
+}) {
+  const selectedPill = selectedMedication ? pillMap[normalizePillId(selectedMedication.pillId)] : null
+
+  return (
+    <div className="elderly-medications-page mx-auto grid w-full max-w-[1280px] gap-5 pb-6 text-slate-950">
+      <section className="elderly-medications-hero">
+        <div>
+          <p>Thuốc của tôi</p>
+          <h1>Danh sách thuốc đang sử dụng</h1>
+          <span>Danh sách này để xem. Người chăm sóc sẽ cập nhật thuốc khi cần.</span>
+        </div>
+        <div className="elderly-profile-strip">
+          <PatientAvatar profile={selectedPatient} size="lg" />
+          <span>
+            <small>Hồ sơ của tôi</small>
+            <strong>{fullName(selectedPatient)}</strong>
+          </span>
+        </div>
+      </section>
+
+      <section className="elderly-summary-grid" aria-label="Tổng quan thuốc">
+        <ElderlyStatCard icon={Pill} label="Đang uống" note="thuốc" value={summary.activeCount} />
+        <ElderlyStatCard icon={CalendarClock} label="Giờ nhắc" note="trong ngày" tone="blue" value={summary.scheduleTimes} />
+        <ElderlyStatCard icon={PackageCheck} label="Sắp hết" note="cần nhắc người chăm sóc" tone={summary.lowStock ? 'amber' : 'green'} value={summary.lowStock} />
+      </section>
+
+      <section className="elderly-readonly-note">
+        <CheckCircle2 size={22} />
+        <span>Thông tin về các loại thuốc mà bạn đang sử dụng</span>
+        <Button variant="ghost" onClick={onRefresh}>
+          <RefreshCcw size={18} />
+          Làm mới
+        </Button>
+      </section>
+
+      <section className="elderly-medications-layout">
+        <aside className="elderly-medication-list-panel">
+          <div className="elderly-list-header">
+            <div>
+              <p>Danh sách thuốc</p>
+              <h2>Chọn thuốc để xem chi tiết</h2>
+            </div>
+            <div className="elderly-filter-tabs">
+              {[
+                { value: 'active', label: 'Đang dùng' },
+                { value: 'all', label: 'Tất cả' },
+              ].map((filter) => (
+                <button
+                  className={cx(activeFilter === filter.value && 'is-active')}
+                  key={filter.value}
+                  type="button"
+                  onClick={() => onFilterChange(filter.value)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {searchLabel ? (
+            <p className="elderly-search-note">Đang lọc theo "{searchLabel}"</p>
+          ) : null}
+
+          <div className="elderly-medication-list">
+            {medicationsLoading ? (
+              <div className="elderly-loading-state">
+                <Loader2 className="animate-spin" size={30} />
+                <span>Đang tải thuốc</span>
+              </div>
+            ) : filteredMedications.length ? (
+              filteredMedications.map((medication) => (
+                <ElderlyMedicationCard
+                  active={medication.id === selectedMedicationId}
+                  key={medication.id}
+                  medication={medication}
+                  pill={pillMap[normalizePillId(medication.pillId)]}
+                  onClick={() => setSelectedMedicationId(medication.id)}
+                />
+              ))
+            ) : (
+              <div className="elderly-empty-state">
+                <Pill size={42} />
+                <h3>Chưa có thuốc trong hồ sơ</h3>
+                <p>Nhờ người chăm sóc thêm thuốc để lịch uống hiện ở đây.</p>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <ElderlyMedicationDetail
+          medication={selectedMedication}
+          patient={selectedPatient}
+          pill={selectedPill}
+        />
+      </section>
+    </div>
+  )
 }
 
 function MedicationRow({ medication, pill, active, onClick }) {
@@ -513,7 +1155,7 @@ function MedicationRow({ medication, pill, active, onClick }) {
   )
 }
 
-function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
+function MedicationDetail({ canManage = true, medication, patient, pill, onEdit, onDelete }) {
   if (!medication) {
     return (
       <article className="caregiver-medication-detail grid min-h-[420px] content-center justify-items-center rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
@@ -521,9 +1163,6 @@ function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
           <Pill size={34} />
         </span>
         <h2 className="mt-4 text-xl font-black text-slate-950">Chọn một thuốc để xem chi tiết</h2>
-        <p className="mt-2 max-w-md text-sm font-bold text-slate-500">
-          Bảng bên trái hiển thị thuốc, lịch nhắc và tồn kho theo hồ sơ đang chọn.
-        </p>
       </article>
     )
   }
@@ -535,7 +1174,7 @@ function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
     <article className="caregiver-medication-detail rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100 lg:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50/80 p-4">
         <div className="flex min-w-0 items-start gap-3">
-          <PillThumb pill={pill} />
+          <PillThumb pill={pill} size="lg" />
           <div className="min-w-0">
             <p className="text-xs font-black uppercase text-teal-700">{fullName(patient)}</p>
             <h2 className="mt-1 break-words text-2xl font-black leading-tight text-slate-950">
@@ -547,18 +1186,21 @@ function MedicationDetail({ medication, patient, pill, onEdit, onDelete }) {
               {pillDosage(pill) ? <span className="rounded-full bg-white px-3 py-1">{pillDosage(pill)}</span> : null}
               {pillManufacturer(pill) ? <span className="rounded-full bg-white px-3 py-1">{pillManufacturer(pill)}</span> : null}
             </div>
+            <PillDetailLink className="mt-3" pill={pill} />
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" onClick={onEdit}>
-            <FilePenLine size={16} />
-            Sửa
-          </Button>
-          <Button size="sm" variant="danger" onClick={onDelete}>
-            <Trash2 size={16} />
-            Xóa
-          </Button>
-        </div>
+        {canManage ? (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="ghost" onClick={onEdit}>
+              <FilePenLine size={16} />
+              Sửa
+            </Button>
+            <Button size="sm" variant="danger" onClick={onDelete}>
+              <Trash2 size={16} />
+              Xóa
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -644,6 +1286,8 @@ export function MedicationsPage() {
   const [searchParams] = useSearchParams()
   const activeProfile = useAuthStore((state) => state.activeProfile)
   const activeRole = activeProfile?.role
+  const canManageMedications = activeRole === 'CAREGIVER'
+  const isElderlyMedicationView = activeRole === 'ELDERLY'
   const [patients, setPatients] = useState([])
   const [patientsLoading, setPatientsLoading] = useState(true)
   const [selectedPatientId, setSelectedPatientId] = useState('')
@@ -707,6 +1351,12 @@ export function MedicationsPage() {
   }, [loadPatients])
 
   useEffect(() => {
+    if (isElderlyMedicationView && activeFilter === 'inactive') {
+      setActiveFilter('active')
+    }
+  }, [activeFilter, isElderlyMedicationView])
+
+  useEffect(() => {
     if (!patients.length) {
       setSelectedPatientId('')
       return
@@ -727,7 +1377,7 @@ export function MedicationsPage() {
   }, [patients, requestedProfileId, selectedPatientId])
 
   const hydratePills = useCallback(async (items) => {
-    const ids = [...new Set(items.map((item) => normalizePillId(item.pillId)).filter(Boolean))]
+    const ids = [...new Set(items.map((item) => normalizePillId(item.pillId)).filter(canFetchPillById))]
 
     if (!ids.length) {
       return
@@ -777,11 +1427,18 @@ export function MedicationsPage() {
   }, [loadMedicationsForPatient])
 
   const openCreateDrawer = useCallback(async (preset = {}) => {
+    if (!canManageMedications) {
+      return
+    }
+
     let normalizedPillId = normalizePillId(preset.pillId)
+    if (!canFetchPillById(normalizedPillId)) {
+      normalizedPillId = ''
+    }
     const presetPillName = preset.pillName?.trim() ?? ''
     let selectedPill = null
 
-    if (normalizedPillId) {
+    if (canFetchPillById(normalizedPillId)) {
       try {
         selectedPill = await getPillById(normalizedPillId)
         setPillMap((current) => ({ ...current, [normalizedPillId]: selectedPill }))
@@ -790,7 +1447,7 @@ export function MedicationsPage() {
       }
     }
 
-    if (!selectedPill && !normalizedPillId && presetPillName) {
+    if (!selectedPill && presetPillName) {
       try {
         selectedPill = (await searchPills(presetPillName, { limit: 1 }))[0] ?? null
         normalizedPillId = normalizePillId(selectedPill?.id)
@@ -802,7 +1459,7 @@ export function MedicationsPage() {
       }
     }
 
-    if (!selectedPill && normalizedPillId) {
+    if (!selectedPill && canFetchPillById(normalizedPillId)) {
       selectedPill = normalizeCatalogPill({
         id: normalizedPillId,
         name: presetPillName || `Mã thuốc ${normalizedPillId}`,
@@ -817,7 +1474,7 @@ export function MedicationsPage() {
       pillQuery: selectedPill ? pillName(selectedPill, presetPillName) : presetPillName,
     })
     setDrawerMode('create')
-  }, [selectedPatient])
+  }, [canManageMedications, selectedPatient])
 
   useEffect(() => {
     if (!drawerMode) {
@@ -832,10 +1489,20 @@ export function MedicationsPage() {
   }, [drawerMode])
 
   const openEditDrawer = useCallback(async (medication) => {
+    if (!canManageMedications || !medication) {
+      return
+    }
+
     const normalizedPillId = normalizePillId(medication.pillId)
     let pill = pillMap[normalizedPillId]
 
     if (!pill && normalizedPillId) {
+      if (!canFetchPillById(normalizedPillId)) {
+        setForm(medicationToForm(medication, selectedPatient, null))
+        setDrawerMode('edit')
+        return
+      }
+
       try {
         pill = await getPillById(normalizedPillId)
         setPillMap((current) => ({ ...current, [normalizedPillId]: pill }))
@@ -846,15 +1513,15 @@ export function MedicationsPage() {
 
     setForm(medicationToForm(medication, selectedPatient, pill))
     setDrawerMode('edit')
-  }, [pillMap, selectedPatient])
+  }, [canManageMedications, pillMap, selectedPatient])
 
   useEffect(() => {
     const actionKey = `${requestedProfileId ?? ''}:${requestedAction ?? ''}:${selectedPatientId}:${requestedPillId}:${requestedPillName}`
-    if (requestedAction === 'add' && selectedPatientId && actionHandledRef.current !== actionKey) {
+    if (canManageMedications && requestedAction === 'add' && selectedPatientId && actionHandledRef.current !== actionKey) {
       actionHandledRef.current = actionKey
       openCreateDrawer({ pillId: requestedPillId, pillName: requestedPillName })
     }
-  }, [openCreateDrawer, requestedAction, requestedPillId, requestedPillName, requestedProfileId, selectedPatientId])
+  }, [canManageMedications, openCreateDrawer, requestedAction, requestedPillId, requestedPillName, requestedProfileId, selectedPatientId])
 
   const filteredMedications = useMemo(() => {
     if (!searchText) {
@@ -889,6 +1556,11 @@ export function MedicationsPage() {
 
   const submitMedication = async (event) => {
     event.preventDefault()
+    if (!canManageMedications) {
+      notify.warning('Hồ sơ người cao tuổi chỉ được xem danh sách thuốc')
+      return
+    }
+
     const validationMessage = validateMedicationForm(form)
     if (validationMessage) {
       notify.warning(validationMessage)
@@ -923,7 +1595,7 @@ export function MedicationsPage() {
   }
 
   const confirmDeleteMedication = async () => {
-    if (!deleteTarget?.id) {
+    if (!canManageMedications || !deleteTarget?.id) {
       return
     }
 
@@ -939,6 +1611,25 @@ export function MedicationsPage() {
 
   const selectedPill = selectedMedication ? pillMap[normalizePillId(selectedMedication.pillId)] : null
 
+  if (isElderlyMedicationView) {
+    return (
+      <ElderlyMedicationsView
+        activeFilter={activeFilter}
+        filteredMedications={filteredMedications}
+        medicationsLoading={medicationsLoading || patientsLoading}
+        pillMap={pillMap}
+        searchLabel={searchParams.get('q')}
+        selectedMedication={selectedMedication}
+        selectedMedicationId={selectedMedicationId}
+        selectedPatient={selectedPatient}
+        summary={summary}
+        setSelectedMedicationId={setSelectedMedicationId}
+        onFilterChange={setActiveFilter}
+        onRefresh={loadMedicationsForPatient}
+      />
+    )
+  }
+
   return (
     <div className="caregiver-medications-page mx-auto grid w-full max-w-[1500px] gap-4 pb-4 text-slate-950 sm:gap-5 lg:pb-6 xl:gap-6">
       <section className="caregiver-medication-hero rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/70 sm:p-5 lg:p-7">
@@ -951,7 +1642,7 @@ export function MedicationsPage() {
               Trung tâm quản lý thuốc
             </h1>
             <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600 sm:text-base">
-              Theo dõi đơn thuốc, lịch nhắc uống, tồn kho và kết quả nhận diện từ Pill Catalog cho từng hồ sơ chăm sóc.
+              Theo dõi đơn thuốc, tạo lịch nhắc uống thuốc cho từng hồ sơ chăm sóc.
             </p>
             <div className="mt-5 grid gap-3 rounded-lg border border-slate-200 bg-white/85 p-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
               <PatientAvatar profile={selectedPatient} size="lg" />
@@ -982,10 +1673,12 @@ export function MedicationsPage() {
               <RefreshCcw size={17} />
               Làm mới
             </Button>
-            <Button disabled={!selectedPatientId} variant="primary" onClick={() => openCreateDrawer()}>
-              <Plus size={17} />
-              Thêm thuốc
-            </Button>
+            {canManageMedications ? (
+              <Button disabled={!selectedPatientId} variant="primary" onClick={() => openCreateDrawer()}>
+                <Plus size={17} />
+                Thêm thuốc
+              </Button>
+            ) : null}
           </div>
         </div>
       </section>
@@ -1058,6 +1751,7 @@ export function MedicationsPage() {
         </aside>
 
         <MedicationDetail
+          canManage={canManageMedications}
           medication={selectedMedication}
           patient={selectedPatient}
           pill={selectedPill}
@@ -1066,35 +1760,39 @@ export function MedicationsPage() {
         />
       </section>
 
-      <MedicationFormModal
-        activeRole={activeRole}
-        form={form}
-        mode={drawerMode}
-        patients={patients}
-        saving={saving}
-        selectedMedication={selectedMedication}
-        setForm={setForm}
-        onClose={() => setDrawerMode(null)}
-        onSubmit={submitMedication}
-      />
+      {canManageMedications ? (
+        <>
+          <MedicationFormModal
+            activeRole={activeRole}
+            form={form}
+            mode={drawerMode}
+            patients={patients}
+            saving={saving}
+            selectedMedication={selectedMedication}
+            setForm={setForm}
+            onClose={() => setDrawerMode(null)}
+            onSubmit={submitMedication}
+          />
 
-      <ConfirmDialog
-        confirmLabel="Xóa thuốc"
-        description={deleteTarget ? `${deleteTarget.nickname || 'Thuốc này'} sẽ bị xóa khỏi hồ sơ và các nhắc nhở liên quan sẽ dừng lại.` : ''}
-        open={Boolean(deleteTarget)}
-        title="Xóa thuốc khỏi hồ sơ?"
-        onConfirm={confirmDeleteMedication}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeleteTarget(null)
-          }
-        }}
-      />
+          <ConfirmDialog
+            confirmLabel="Xóa thuốc"
+            description={deleteTarget ? `${deleteTarget.nickname || 'Thuốc này'} sẽ bị xóa khỏi hồ sơ và các nhắc nhở liên quan sẽ dừng lại.` : ''}
+            open={Boolean(deleteTarget)}
+            title="Xóa thuốc khỏi hồ sơ?"
+            onConfirm={confirmDeleteMedication}
+            onOpenChange={(open) => {
+              if (!open) {
+                setDeleteTarget(null)
+              }
+            }}
+          />
+        </>
+      ) : null}
     </div>
   )
 }
 
-function MedicationFormModal({
+export function MedicationFormModal({
   activeRole,
   form,
   mode,
@@ -1126,9 +1824,15 @@ function MedicationFormModal({
   }
 
   const selectPill = (pill) => {
+    const selectedPillId = normalizePillId(pill?.id)
+    if (!canFetchPillById(selectedPillId)) {
+      notify.warning('Thuốc này chưa có mã catalog hợp lệ, vui lòng chọn kết quả khác')
+      return
+    }
+
     setForm((current) => ({
       ...current,
-      pillId: normalizePillId(pill.id),
+      pillId: selectedPillId,
       selectedPill: pill,
       pillQuery: pillName(pill, ''),
     }))
@@ -1250,7 +1954,7 @@ function MedicationFormModal({
   const addSchedule = () => {
     setForm((current) => ({
       ...current,
-      schedules: [...current.schedules, newSchedule(current.startDate, current.dosageAmount)],
+      schedules: [...current.schedules, newSchedule(current.startDate, oneDecimalInput(current.dosageAmount))],
     }))
   }
 
@@ -1266,7 +1970,7 @@ function MedicationFormModal({
       ...current,
       schedules: current.schedules.map((schedule) =>
         schedule.localId === scheduleId
-          ? { ...schedule, times: [...schedule.times, newDoseTime('20:00', current.dosageAmount)] }
+          ? { ...schedule, times: [...schedule.times, newDoseTime('20:00', oneDecimalInput(current.dosageAmount))] }
           : schedule,
       ),
     }))
@@ -1491,14 +2195,8 @@ function MedicationFormModal({
                     onChange={(event) => updateField('totalQuantity', event.target.value)}
                   />
                 </label>
-                <label className={labelClass}>
-                  Ngày bắt đầu
-                  <input className={fieldClass} type="date" value={form.startDate} onChange={(event) => updateField('startDate', event.target.value)} />
-                </label>
-                <label className={labelClass}>
-                  Ngày kết thúc
-                  <input className={fieldClass} type="date" value={form.endDate} onChange={(event) => updateField('endDate', event.target.value)} />
-                </label>
+                <DatePickerField label="Ngày bắt đầu" value={form.startDate} onChange={(value) => updateField('startDate', value)} />
+                <DatePickerField allowClear label="Ngày kết thúc" value={form.endDate} onChange={(value) => updateField('endDate', value)} />
                 <label className={labelClass}>
                   Bác sĩ kê đơn
                   <input className={fieldClass} value={form.prescribedBy} onChange={(event) => updateField('prescribedBy', event.target.value)} />
@@ -1576,24 +2274,17 @@ function MedicationFormModal({
                           onChange={(event) => updateSchedule(schedule.localId, { interval: event.target.value })}
                         />
                       </label>
-                      <label className={labelClass}>
-                        Ngày bắt đầu lịch
-                        <input
-                          className={fieldClass}
-                          type="date"
-                          value={schedule.startDate}
-                          onChange={(event) => updateSchedule(schedule.localId, { startDate: event.target.value })}
-                        />
-                      </label>
-                      <label className={labelClass}>
-                        Ngày kết thúc lịch
-                        <input
-                          className={fieldClass}
-                          type="date"
-                          value={schedule.endDate}
-                          onChange={(event) => updateSchedule(schedule.localId, { endDate: event.target.value })}
-                        />
-                      </label>
+                      <DatePickerField
+                        label="Ngày bắt đầu lịch"
+                        value={schedule.startDate}
+                        onChange={(value) => updateSchedule(schedule.localId, { startDate: value })}
+                      />
+                      <DatePickerField
+                        allowClear
+                        label="Ngày kết thúc lịch"
+                        value={schedule.endDate}
+                        onChange={(value) => updateSchedule(schedule.localId, { endDate: value })}
+                      />
                     </div>
 
                     {schedule.frequencyType === 'WEEKLY' ? (
@@ -1648,26 +2339,29 @@ function MedicationFormModal({
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {schedule.times.map((dose) => (
-                          <div className="grid gap-2 rounded-lg border border-slate-200 bg-white p-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" key={dose.localId}>
-                            <input
-                              aria-label="Giờ uống"
-                              className={fieldClass}
-                              type="time"
+                          <div className="medication-dose-row grid gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" key={dose.localId}>
+                            <TimePickerField
+                              label="Khung giờ"
                               value={dose.timeOfDay}
-                              onChange={(event) => updateDose(schedule.localId, dose.localId, { timeOfDay: event.target.value })}
+                              onChange={(value) => updateDose(schedule.localId, dose.localId, { timeOfDay: value })}
                             />
-                            <input
-                              aria-label="Liều lượng"
-                              className={fieldClass}
-                              min="0.01"
-                              step="0.01"
-                              type="number"
-                              value={dose.doseAmount}
-                              onChange={(event) => updateDose(schedule.localId, dose.localId, { doseAmount: event.target.value })}
-                            />
+                            <label className="medication-dose-field">
+                              <span>Số lượng</span>
+                              <input
+                                aria-label="Số lượng"
+                                className={fieldClass}
+                                inputMode="decimal"
+                                min="0.1"
+                                step="0.1"
+                                type="number"
+                                value={dose.doseAmount}
+                                onBlur={(event) => updateDose(schedule.localId, dose.localId, { doseAmount: oneDecimalInput(event.target.value) })}
+                                onChange={(event) => updateDose(schedule.localId, dose.localId, { doseAmount: event.target.value })}
+                              />
+                            </label>
                             <button
                               aria-label="Xóa giờ uống"
-                              className="grid h-11 w-full place-items-center rounded-lg text-rose-700 transition hover:bg-rose-50 sm:w-11"
+                              className="mt-auto grid h-11 w-full place-items-center rounded-lg text-rose-700 transition hover:bg-rose-50 sm:w-11"
                               disabled={schedule.times.length === 1}
                               type="button"
                               onClick={() => removeDose(schedule.localId, dose.localId)}
