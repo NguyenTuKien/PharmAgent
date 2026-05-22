@@ -1414,7 +1414,7 @@ export function SchedulePage() {
     try {
       const payload = {
         status,
-        note: 'Elderly tự cập nhật từ trang lịch uống',
+        note: 'Người dùng tự cập nhật từ trang lịch uống',
       }
 
       if (status === 'TAKEN' || status === 'OVERDUE') {

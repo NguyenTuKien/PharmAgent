@@ -11,6 +11,7 @@ import { AdminPillsPage } from './pages/admin/AdminPillsPage.jsx'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage.jsx'
 import { ChatPage } from './pages/ChatPage.jsx'
 import { DashboardPage } from './pages/DashboardPage.jsx'
+import { DoseHistoryPage } from './pages/DoseHistoryPage.jsx'
 import { MedicationsPage } from './pages/MedicationsPage.jsx'
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.jsx'
 import { ElderlySetupPage } from './pages/auth/ElderlySetupPage.jsx'
@@ -26,7 +27,6 @@ import { RelationshipsPage } from './pages/caregiver/RelationshipsPage.jsx'
 import { ReportsPage } from './pages/caregiver/ReportsPage.jsx'
 import { ScanPage } from './pages/ScanPage.jsx'
 import { UnauthorizedPage } from './pages/UnauthorizedPage.jsx'
-import { WorkspacePage } from './pages/WorkspacePage.jsx'
 import {
   GuestRoute,
   ProfileSelectionRoute,
@@ -103,18 +103,13 @@ function App() {
             <Route element={<ProfileLandingRedirect />} index />
             <Route element={<DashboardRoute />} path="/dashboard" />
             <Route element={<MedicationsPage />} path="/medications" />
-            <Route
-              element={
-                <WorkspacePage
-                  description="Lưu lại các lần uống thuốc, trạng thái xác nhận và ghi chú bất thường."
-                  title="Lịch sử uống thuốc"
-                />
-              }
-              path="/dose-history"
-            />
             <Route element={<ScanPage />} path="/scan" />
             <Route element={<RoleRoute roles={['ELDERLY', 'CAREGIVER']} />}>
               <Route element={<RelationshipsPage />} path="/relationships" />
+            </Route>
+
+            <Route element={<RoleRoute roles={['ELDERLY']} />}>
+              <Route element={<DoseHistoryPage />} path="/dose-history" />
             </Route>
 
             <Route element={<RoleRoute roles={['CAREGIVER', 'ADMIN']} />}>
