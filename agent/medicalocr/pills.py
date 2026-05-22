@@ -37,6 +37,8 @@ class PillCatalogResponse(BaseModel):
     activeIngredient: Optional[str] = ""
     dosage: Optional[str] = ""
     manufacturer: Optional[str] = ""
+    sourceUrl: Optional[str] = ""
+    source_url: Optional[str] = ""
     images: List[PillImageResponse] = []
     imageUrls: List[str] = []
 
@@ -82,6 +84,8 @@ def _build_pill_response(row: sqlite3.Row) -> Dict[str, Any]:
         "activeIngredient": row["active_ingredient"],
         "dosage": row["normalized_dosage"], # Frontend dosage maps to normalized_dosage
         "manufacturer": row["manufacturer_name"],
+        "sourceUrl": source_url,
+        "source_url": source_url,
         "images": images,
         "imageUrls": [img.get("imageUrl") for img in images if img.get("imageUrl")]
     }

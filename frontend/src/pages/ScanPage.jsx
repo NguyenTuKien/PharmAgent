@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button.jsx'
 import { apiClient, getApiErrorMessage } from '../lib/apiClient.js'
 import { useAuthStore } from '../modules/auth/authStore.js'
 import { notify } from '../lib/toast.js'
-import { normalizePillId } from '../modules/medication/medicationApi.js'
+import { canFetchPillById, isPharmacityUrl, normalizePillId } from '../modules/medication/medicationApi.js'
 
 function percent(score) {
   if (typeof score !== 'number') {
@@ -29,7 +29,8 @@ function candidateTitle(candidate) {
 }
 
 function candidateImage(candidate) {
-  return candidate?.primary_image_url ?? candidate?.image_url
+  const url = candidate?.primary_image_url ?? candidate?.image_url ?? ''
+  return isPharmacityUrl(url) ? '' : url
 }
 
 function decisionLabel(decision) {
@@ -165,10 +166,10 @@ export function ScanPage() {
     }
 
     const params = new URLSearchParams({ action: 'add' })
-    const pillId = normalizePillId(primaryCandidate?.product_id ?? primaryCandidate?.id ?? primaryCandidate?.source_url ?? '')
+    const pillId = normalizePillId(primaryCandidate?.product_id ?? primaryCandidate?.id ?? '')
     const title = candidateTitle(primaryCandidate)
 
-    if (pillId) {
+    if (canFetchPillById(pillId)) {
       params.set('pillId', pillId)
     }
     if (title) {

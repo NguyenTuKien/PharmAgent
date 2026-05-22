@@ -6,6 +6,7 @@ import ct01.n07.backend.model.EventDose;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface EventDoseService {
@@ -31,6 +32,11 @@ public interface EventDoseService {
      * Lấy timeline cữ thuốc trong ngày cho một bệnh nhân (phân trang).
      */
     Page<EventDoseResponse> getTodayDoses(String patientId, Pageable pageable);
+
+    /**
+     * Lấy timeline cữ thuốc trong một khoảng ngày cho một bệnh nhân (phân trang).
+     */
+    Page<EventDoseResponse> getDoses(String patientId, LocalDate startDate, LocalDate endDate, Pageable pageable);
 
     /**
      * Lấy danh sách cữ thuốc đang chờ (PENDING) cho một bệnh nhân (phân trang).

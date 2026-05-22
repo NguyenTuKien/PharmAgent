@@ -6,9 +6,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/events")
@@ -16,6 +19,16 @@ import org.springframework.web.bind.annotation.*;
 public class EventDoseController {
 
     private final EventDoseService eventDoseService;
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('CAREGIVER', 'ELDERLY')")
+    public ResponseEntity<Page<EventDoseResponse>> getDoses(
+            @RequestParam String patientId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @PageableDefault(size = 100) Pageable pageable) {
+        return ResponseEntity.ok(eventDoseService.getDoses(patientId, startDate, endDate, pageable));
+    }
 
     @GetMapping("/today")
     @PreAuthorize("hasAnyRole('CAREGIVER', 'ELDERLY')")

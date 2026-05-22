@@ -95,6 +95,7 @@ const STATUS_LABELS = {
 }
 
 const RELATIONSHIP_FILTERS = [
+  { value: 'ALL', label: 'Tất cả người thân' },
   { value: 'ACCEPTED', label: 'Đã xác nhận' },
   { value: 'PENDING', label: 'Đang chờ' },
   { value: 'LOCAL', label: 'Hồ sơ đã tạo' },
@@ -241,6 +242,20 @@ function profileKey(profile) {
 
 function relationshipKey(profile) {
   return profileKey(profile) ?? profile?.relationshipId
+}
+
+function relationshipSelectionKey(profile) {
+  const profileId = relationshipKey(profile)
+
+  if (profile?.source === 'local') {
+    return profileId ? `local:${profileId}` : null
+  }
+
+  if (profile?.relationshipId) {
+    return `relationship:${profile.relationshipId}`
+  }
+
+  return profileId ? `profile:${profileId}` : null
 }
 
 function profileQuery(profile, action) {
@@ -514,7 +529,7 @@ function ContactLine({ icon: Icon, children, className }) {
   )
 }
 
-function RelationshipMobileCard({ isLoading = false, isSelected = false, onView, profile }) {
+function RelationshipMobileCard({ isLoading = false, isSelected = false, onOpenDetail, onSelect, profile }) {
   if (isLoading) {
     return (
       <article className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
@@ -544,7 +559,12 @@ function RelationshipMobileCard({ isLoading = false, isSelected = false, onView,
         isSelected ? 'border-emerald-300 bg-emerald-50/70' : 'border-slate-200',
       )}
     >
-      <button className="flex min-w-0 items-start gap-3 text-left" type="button" onClick={() => onView(profile)}>
+      <button
+        aria-pressed={isSelected}
+        className="flex min-w-0 items-start gap-3 text-left"
+        type="button"
+        onClick={() => onSelect(profile)}
+      >
         <ProfileBadge profile={profile} />
         <span className="min-w-0 flex-1">
           <strong className="block break-words text-base font-black leading-tight text-slate-950">{fullName(profile)}</strong>
@@ -566,7 +586,7 @@ function RelationshipMobileCard({ isLoading = false, isSelected = false, onView,
         <StatusPill status={profile.status} />
       </div>
 
-      <AppButton className="w-full" tone="ghost" onClick={() => onView(profile)}>
+      <AppButton className="w-full" tone="ghost" onClick={() => onOpenDetail(profile)}>
         <Eye size={16} />
         Mở chi tiết
       </AppButton>
@@ -777,7 +797,7 @@ function RelationshipQuickActions({ profile, onNavigate }) {
         <Pill size={16} />
         Thêm thuốc
       </AppButton>
-      <AppButton disabled={!hasProfile} tone="ghost" onClick={() => onNavigate('/dashboard', 'schedule')}>
+      <AppButton disabled={!hasProfile} tone="ghost" onClick={() => onNavigate('/schedule', 'schedule')}>
         <CalendarClock size={16} />
         Sửa lịch
       </AppButton>
@@ -820,21 +840,21 @@ function RelationshipTimeline({ profile }) {
       tone: 'emerald',
     },
     {
-      body: 'Cách gọi này giúp phân biệt từng người thân trong danh sách chăm sóc.',
+      body: '',
       icon: HeartHandshake,
       meta: 'Quan hệ',
       title: relationshipLabel(profile),
       tone: 'sky',
     },
     {
-      body: 'Chưa có sự kiện mới từ dữ liệu backend. Khu vực này đã sẵn sàng để hiển thị khi API bổ sung.',
+      body: '',
       icon: CalendarClock,
       meta: 'Sự kiện gần đây',
       title: 'Chưa có sự kiện mới',
       tone: 'amber',
     },
     {
-      body: 'Chưa có ghi chú mới từ dữ liệu backend. Có thể kết nối phần ghi chú sau khi backend có endpoint.',
+      body: '',
       icon: NotebookText,
       meta: 'Ghi chú gần đây',
       title: 'Chưa có ghi chú mới',
@@ -877,7 +897,7 @@ function RelationshipOverview({ profile, onNavigate }) {
         <div className="flex min-w-0 items-start gap-3">
           <ProfileBadge profile={profile} size="lg" />
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase text-emerald-700">Hồ sơ người thân</p>
+            <p className="text-xs font-black uppercase text-emerald-700">Tổng quan người thân</p>
             <h2 className="mt-1 break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">{profile ? fullName(profile) : 'Chưa chọn hồ sơ'}</h2>
             <span className="mt-1 block text-sm font-bold text-slate-500">{profile ? relationshipLabel(profile) : 'Chưa đặt quan hệ'}</span>
           </div>
@@ -982,9 +1002,9 @@ function ProfileDetailCard({ onClose, onDelete, onEdit, open, profile }) {
   )
 }
 
-function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
+function RelationshipTable({ isLoading, onOpenDetail, onSelect, relationships, selectedKey }) {
   if (!isLoading && !relationships.length) {
-    return <EmptyState>Không có người thân trong trạng thái này.</EmptyState>
+    return <EmptyState>Không có người thân trong danh sách này.</EmptyState>
   }
 
   return (
@@ -995,14 +1015,15 @@ function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
               <RelationshipMobileCard isLoading key={`relationship-mobile-skeleton-${index}`} />
             ))
           : relationships.map((profile) => {
-              const key = relationshipKey(profile)
+              const key = relationshipSelectionKey(profile)
 
               return (
                 <RelationshipMobileCard
                   isSelected={key === selectedKey}
-                  key={profile.relationshipId ?? key}
+                  key={key}
                   profile={profile}
-                  onView={onView}
+                  onOpenDetail={onOpenDetail}
+                  onSelect={onSelect}
                 />
               )
             })}
@@ -1060,14 +1081,14 @@ function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
               ))
             ) : (
               relationships.map((profile) => {
-                const key = relationshipKey(profile)
+                const key = relationshipSelectionKey(profile)
                 const isSelected = key === selectedKey
 
                 return (
                   <tr
                     className={cx('cursor-pointer align-top transition hover:bg-emerald-50/50', isSelected && 'bg-emerald-50/70')}
-                    key={profile.relationshipId ?? key}
-                    onClick={() => onView(profile)}
+                    key={key}
+                    onClick={() => onSelect(profile)}
                   >
                     <td className="px-5 py-4">
                       <button
@@ -1075,7 +1096,7 @@ function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation()
-                          onView(profile)
+                          onSelect(profile)
                         }}
                       >
                         <ProfileBadge profile={profile} size="sm" />
@@ -1105,7 +1126,7 @@ function RelationshipTable({ isLoading, onView, relationships, selectedKey }) {
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div onClick={(event) => event.stopPropagation()}>
-                        <IconActionButton label={`Mở chi tiết ${fullName(profile)}`} onClick={() => onView(profile)}>
+                        <IconActionButton label={`Mở chi tiết ${fullName(profile)}`} onClick={() => onOpenDetail(profile)}>
                           <Eye size={16} />
                         </IconActionButton>
                       </div>
@@ -1335,7 +1356,7 @@ function CaregiverRelationshipsPage() {
   const [localProfiles, setLocalProfiles] = useState([])
   const [acceptedRelationships, setAcceptedRelationships] = useState([])
   const [pendingRelationships, setPendingRelationships] = useState([])
-  const [relationshipFilter, setRelationshipFilter] = useState('ACCEPTED')
+  const [relationshipFilter, setRelationshipFilter] = useState('ALL')
   const [selectedRelationshipId, setSelectedRelationshipId] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -1591,8 +1612,12 @@ function CaregiverRelationshipsPage() {
     navigate(`${path}${profileQuery(targetProfile, action)}`)
   }
 
-  function handleViewRelationship(profile) {
-    setSelectedRelationshipId(relationshipKey(profile))
+  function handleSelectRelationship(profile) {
+    setSelectedRelationshipId(relationshipSelectionKey(profile))
+  }
+
+  function handleOpenRelationshipDetail(profile) {
+    handleSelectRelationship(profile)
     setDetailTarget(profile)
   }
 
@@ -1640,14 +1665,20 @@ function CaregiverRelationshipsPage() {
   const relationshipCounts = useMemo(
     () =>
       RELATIONSHIP_FILTERS.reduce((counts, filter) => {
-        counts[filter.value] = allRelationships.filter((profile) => profile.status === filter.value).length
+        counts[filter.value] =
+          filter.value === 'ALL'
+            ? allRelationships.length
+            : allRelationships.filter((profile) => profile.status === filter.value).length
         return counts
       }, {}),
     [allRelationships],
   )
 
   const filteredRelationships = useMemo(
-    () => allRelationships.filter((profile) => profile.status === relationshipFilter),
+    () =>
+      relationshipFilter === 'ALL'
+        ? allRelationships
+        : allRelationships.filter((profile) => profile.status === relationshipFilter),
     [allRelationships, relationshipFilter],
   )
 
@@ -1662,7 +1693,7 @@ function CaregiverRelationshipsPage() {
   )
 
   useEffect(() => {
-    const availableIds = allRelationships.map((profile) => relationshipKey(profile)).filter(Boolean)
+    const availableIds = allRelationships.map((profile) => relationshipSelectionKey(profile)).filter(Boolean)
 
     if (!availableIds.length) {
       if (selectedRelationshipId) {
@@ -1676,7 +1707,7 @@ function CaregiverRelationshipsPage() {
     }
   }, [allRelationships, selectedRelationshipId])
 
-  const selectedRelationship = allRelationships.find((profile) => relationshipKey(profile) === selectedRelationshipId)
+  const selectedRelationship = allRelationships.find((profile) => relationshipSelectionKey(profile) === selectedRelationshipId)
   const selectedProfile = selectedRelationship ?? null
 
   return (
@@ -1717,7 +1748,7 @@ function CaregiverRelationshipsPage() {
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Lọc trạng thái người thân">
+        <div className="grid gap-2 sm:grid-cols-4" role="tablist" aria-label="Lọc trạng thái người thân">
           {RELATIONSHIP_FILTERS.map((filter) => {
             const isActive = relationshipFilter === filter.value
 
@@ -1747,8 +1778,9 @@ function CaregiverRelationshipsPage() {
         <RelationshipTable
           isLoading={loading}
           relationships={filteredRelationships}
-          selectedKey={relationshipKey(selectedProfile)}
-          onView={handleViewRelationship}
+          selectedKey={relationshipSelectionKey(selectedProfile)}
+          onOpenDetail={handleOpenRelationshipDetail}
+          onSelect={handleSelectRelationship}
         />
       </section>
 
@@ -1952,7 +1984,7 @@ function ElderlyRelationshipsPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase text-emerald-700">Đã xác nhận</p>
-              <h2 className="mt-1 text-xl font-black text-slate-950">Người đang hỗ trợ</h2>
+              <h2 className="mt-1 text-xl font-black text-slate-950">Những người đang hỗ trợ bạn</h2>
             </div>
             <span className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">
               Bấm để xem hồ sơ
@@ -2024,11 +2056,9 @@ function ElderlyRelationshipsPage() {
 
               <form className="grid gap-4 rounded-lg border border-amber-100 bg-amber-50/80 p-4" onSubmit={handleSaveCaregiverTitle}>
                 <div>
-                  <p className="text-xs font-black uppercase text-amber-700">Quan hệ độc lập</p>
+                  <p className="text-xs font-black uppercase text-amber-700">Quan hệ</p>
                   <h3 className="mt-1 text-base font-black text-slate-950">Cách tôi gọi người hỗ trợ này</h3>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-amber-900">
-                    Chỉ thay đổi cách hiển thị ở tài khoản của bạn. Cách người hỗ trợ gọi bạn không bị thay đổi.
-                  </p>
+                  
                 </div>
                 <Field label="Cách gọi">
                   <input
@@ -2046,12 +2076,7 @@ function ElderlyRelationshipsPage() {
                 </div>
               </form>
 
-              <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-4">
-                <p className="text-xs font-black uppercase text-slate-500">Quyền trên trang này</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                  Bạn có thể xem hồ sơ người hỗ trợ và đặt cách gọi riêng. Trang này không cho sửa hồ sơ, xóa kết nối hoặc đổi cách người hỗ trợ gọi bạn.
-                </p>
-              </div>
+              
             </>
           ) : (
             <EmptyState>Chọn một người hỗ trợ để xem hồ sơ và đặt cách gọi.</EmptyState>

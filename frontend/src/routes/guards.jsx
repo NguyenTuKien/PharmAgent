@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuthStore } from '../modules/auth/authStore.js'
-import { canAccessRoles } from '../modules/auth/session.js'
+import { canAccessRoles, getProfileLandingPath } from '../modules/auth/session.js'
 
 function RestoringSession() {
   return (
@@ -24,7 +24,7 @@ export function GuestRoute() {
   }
 
   if (accessToken && activeProfile) {
-    return <Navigate replace to={location.state?.from?.pathname ?? '/dashboard'} />
+    return <Navigate replace to={location.state?.from?.pathname ?? getProfileLandingPath(activeProfile)} />
   }
 
   if (authToken) {
@@ -46,7 +46,7 @@ export function ProfileSelectionRoute() {
   }
 
   if (accessToken && activeProfile) {
-    return <Navigate replace to="/dashboard" />
+    return <Navigate replace to={getProfileLandingPath(activeProfile)} />
   }
 
   if (!authToken && !refreshToken) {
