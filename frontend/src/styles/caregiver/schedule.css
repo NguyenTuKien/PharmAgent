@@ -445,6 +445,38 @@
   text-align: center;
 }
 
+.dose-history-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.dose-history-confirmation strong {
+  color: rgb(15 23 42);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.dose-history-confirmation span {
+  color: rgb(71 85 105);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.dose-history-confirmation--emerald {
+  background: rgb(236 253 245);
+  box-shadow: inset 0 0 0 1px rgb(167 243 208);
+}
+
+.dose-history-confirmation--amber {
+  background: rgb(255 251 235);
+  box-shadow: inset 0 0 0 1px rgb(253 230 138);
+}
+
 .schedule-icon-button {
   padding: 0 12px;
 }
@@ -798,6 +830,15 @@
 
   .schedule-card__time span {
     margin-left: 0;
+  }
+
+  .dose-history-confirmation {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dose-history-confirmation span {
+    text-align: left;
   }
 
   .schedule-icon-button {
