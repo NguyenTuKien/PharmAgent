@@ -12,6 +12,7 @@ export function createStompClient({
   useSockJs = true,
 } = {}) {
   const connectHeaders = accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+
   const clientOptions = {
     connectHeaders,
     debug: () => undefined,
@@ -22,15 +23,33 @@ export function createStompClient({
       onConnect?.(frame)
     },
     onDisconnect,
-    onStompError: onError,
-    onWebSocketError: onError,
+    onStompError: (frame) => {
+      const errorMsg = frame?.headers?.message || ''
+      const isAuthError =
+        errorMsg.includes('Authorization') ||
+        errorMsg.includes('Authentication') ||
+        errorMsg.includes('JWT') ||
+        errorMsg.includes('Missing') ||
+        errorMsg.includes('Invalid') ||
+        errorMsg.includes('blacklisted')
+
+      if (isAuthError) {
+        // Dừng auto-reconnect với token cũ — ChatPage sẽ refresh token rồi tạo client mới
+        client.deactivate()
+      }
+
+      onError?.(frame)
+    },
+    onWebSocketError: (event) => {
+      onError?.(event)
+    },
   }
 
   const client = useSockJs
     ? new Client({
-      ...clientOptions,
-      webSocketFactory: () => new SockJS(getHttpEndpoint(env.wsBaseUrl)),
-    })
+        ...clientOptions,
+        webSocketFactory: () => new SockJS(getHttpEndpoint(env.wsBaseUrl)),
+      })
     : new Client({
         ...clientOptions,
         brokerURL: getWebSocketEndpoint(env.wsBaseUrl),

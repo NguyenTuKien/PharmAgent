@@ -35,6 +35,7 @@ import {
   getChatRooms,
   getRoomMessages,
   markRoomRead,
+  sendChatMessage,
 } from '../modules/chat/chatApi.js'
 
 const MESSAGE_PAGE_SIZE = 60
@@ -258,6 +259,7 @@ function RoomList({
   onSearch,
   onSelectRoom,
 }) {
+  const activeProfile = useAuthStore((state) => state.activeProfile)
   const filteredRooms = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase()
     if (!keyword) return rooms
@@ -316,7 +318,9 @@ function RoomList({
               </div>
               <p className="mt-3 text-sm font-semibold text-slate-900">Chưa có cuộc trò chuyện</p>
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                Chọn Chat từ hồ sơ người thân để bắt đầu cuộc trò chuyện trực tiếp.
+                {activeProfile?.role === 'ELDERLY'
+                  ? 'Chọn Trò chuyện từ danh sách người hỗ trợ để bắt đầu cuộc trò chuyện.'
+                  : 'Chọn Chat từ hồ sơ người thân để bắt đầu cuộc trò chuyện trực tiếp.'}
               </p>
             </div>
           </div>
@@ -408,13 +412,14 @@ function CallLogBubble({ message }) {
   )
 }
 
-function MessageBubble({ message, activeProfileId }) {
+function MessageBubble({ message, activeProfileId, activeProfileRole }) {
   if (message.type === 'CALL_LOG') {
     return <CallLogBubble message={message} />
   }
 
   const mine = message.senderId === activeProfileId
   const readByCount = Array.isArray(message.readBy) ? message.readBy.length : 0
+  const isElderly = activeProfileRole === 'ELDERLY'
 
   return (
     <div className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
@@ -435,7 +440,7 @@ function MessageBubble({ message, activeProfileId }) {
             />
           </a>
         ) : (
-          <p className="whitespace-pre-wrap break-words text-sm leading-6">{message.content}</p>
+          <p className={cn('whitespace-pre-wrap break-words leading-relaxed', isElderly ? 'text-[15px] font-semibold' : 'text-sm')}>{message.content}</p>
         )}
         <div
           className={cn(
@@ -458,6 +463,7 @@ function MessageBubble({ message, activeProfileId }) {
 
 function ChatPanel({
   activeProfileId,
+  activeProfileRole,
   connectionStatus,
   draft,
   imageUploading,
@@ -477,6 +483,10 @@ function ChatPanel({
 
   const peer = getPeerProfile(room, activeProfileId)
   const connected = connectionStatus === 'connected'
+
+  const quickReplies = activeProfileRole === 'ELDERLY'
+    ? ['Tôi khỏe, đừng lo nhé.', 'Tôi cần giúp đỡ!', 'Tôi đã uống thuốc rồi.', 'Hãy gọi video cho tôi.']
+    : ['Cụ thế nào rồi ạ?', 'Đến giờ uống thuốc rồi ạ.', 'Cụ đã ăn cơm chưa?', 'Tôi sẽ qua ngay.']
 
   return (
     <main className="flex min-h-[calc(100vh-13rem)] flex-1 flex-col bg-slate-50">
@@ -543,10 +553,29 @@ function ChatPanel({
 
         <div className="space-y-3">
           {messages.map((message) => (
-            <MessageBubble activeProfileId={activeProfileId} key={message.id ?? message.sentAt} message={message} />
+            <MessageBubble
+              activeProfileId={activeProfileId}
+              activeProfileRole={activeProfileRole}
+              key={message.id ?? message.sentAt}
+              message={message}
+            />
           ))}
           <div ref={messagesEndRef} />
         </div>
+      </div>
+
+      {/* Quick Replies */}
+      <div className="flex gap-2 overflow-x-auto bg-slate-50 px-4 py-2 border-t border-slate-100 scrollbar-none">
+        {quickReplies.map((reply) => (
+          <button
+            key={reply}
+            onClick={() => onDraftChange(reply)}
+            type="button"
+            className="shrink-0 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
+          >
+            {reply}
+          </button>
+        ))}
       </div>
 
       <form
@@ -559,7 +588,7 @@ function ChatPanel({
         <div className="flex items-end gap-2 rounded-3xl border border-slate-200 bg-slate-50 p-2">
           <button
             className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:text-slate-300"
-            disabled={!connected || imageUploading}
+            disabled={imageUploading}
             onClick={onAttach}
             title="Đính kèm ảnh"
             type="button"
@@ -594,7 +623,7 @@ function ChatPanel({
           </button>
           <button
             className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={!connected || !draft.trim()}
+            disabled={!draft.trim()}
             title="Gửi"
             type="submit"
           >
@@ -861,7 +890,6 @@ export function ChatPage() {
     (payload) => {
       const client = clientRef.current
       if (!client?.connected) {
-        notify.warning('Realtime chưa sẵn sàng, vui lòng thử lại sau.')
         return false
       }
       if (!activeProfileId || !payload?.roomId) {
@@ -1226,18 +1254,39 @@ export function ChatPage() {
     [activeProfileId, activeRoomId],
   )
 
-  const submitMessage = useCallback(() => {
+  const submitMessage = useCallback(async () => {
     const content = draft.trim()
     if (!content || !activeRoomId) return
-    const sent = sendChatPayload({
-      roomId: activeRoomId,
-      content,
-      type: 'TEXT',
-    })
-    if (sent) {
-      setDraft('')
+
+    setDraft('')
+
+    const isConnected = connectionStatus === 'connected' && clientRef.current?.connected
+
+    if (isConnected) {
+      const sent = sendChatPayload({
+        roomId: activeRoomId,
+        content,
+        type: 'TEXT',
+      })
+      if (!sent) {
+        try {
+          const savedMsg = await sendChatMessage(activeRoomId, { content, type: 'TEXT' })
+          setMessages((current) => mergeMessages(current, savedMsg))
+        } catch (error) {
+          notify.apiError(error, 'Không thể gửi tin nhắn.')
+          setDraft(content)
+        }
+      }
+    } else {
+      try {
+        const savedMsg = await sendChatMessage(activeRoomId, { content, type: 'TEXT' })
+        setMessages((current) => mergeMessages(current, savedMsg))
+      } catch (error) {
+        notify.apiError(error, 'Không thể gửi tin nhắn.')
+        setDraft(content)
+      }
     }
-  }, [activeRoomId, draft, sendChatPayload])
+  }, [activeRoomId, draft, connectionStatus, sendChatPayload])
 
   const handleImageSelected = useCallback(
     async (event) => {
@@ -1248,18 +1297,29 @@ export function ChatPage() {
       setImageUploading(true)
       try {
         const imageUrl = await uploadImageToCloudinary(file, 'chat')
-        sendChatPayload({
-          roomId: activeRoomId,
-          content: imageUrl,
-          type: 'IMAGE',
-        })
+        const isConnected = connectionStatus === 'connected' && clientRef.current?.connected
+
+        if (isConnected) {
+          const sent = sendChatPayload({
+            roomId: activeRoomId,
+            content: imageUrl,
+            type: 'IMAGE',
+          })
+          if (!sent) {
+            const savedMsg = await sendChatMessage(activeRoomId, { content: imageUrl, type: 'IMAGE' })
+            setMessages((current) => mergeMessages(current, savedMsg))
+          }
+        } else {
+          const savedMsg = await sendChatMessage(activeRoomId, { content: imageUrl, type: 'IMAGE' })
+          setMessages((current) => mergeMessages(current, savedMsg))
+        }
       } catch (error) {
         notify.apiError(error, 'Không thể tải ảnh lên.')
       } finally {
         setImageUploading(false)
       }
     },
-    [activeRoomId, sendChatPayload],
+    [activeRoomId, connectionStatus, sendChatPayload],
   )
 
   const toggleMute = useCallback(() => {
@@ -1334,11 +1394,33 @@ export function ChatPage() {
     }
 
     setConnectionStatus('connecting')
+
+    const handleStompError = (frame) => {
+      const errorMsg = frame?.headers?.message || frame?.message || String(frame) || ''
+      const isAuthError =
+        errorMsg.includes('Authorization') ||
+        errorMsg.includes('Authentication') ||
+        errorMsg.includes('JWT') ||
+        errorMsg.includes('Missing') ||
+        errorMsg.includes('blacklist') ||
+        errorMsg.includes('Invalid') ||
+        errorMsg.includes('token')
+      if (isAuthError) {
+        // Token hết hạn hoặc bị blacklist — thử refresh token rồi reconnect
+        setConnectionStatus('reconnecting')
+        useAuthStore.getState().refreshSession().catch(() => {
+          setConnectionStatus('error')
+        })
+        return
+      }
+      setConnectionStatus((current) => (current === 'connected' ? 'reconnecting' : 'error'))
+    }
+
     const client = createStompClient({
       accessToken,
       onConnect: () => setConnectionStatus('connected'),
       onDisconnect: () => setConnectionStatus('offline'),
-      onError: () => setConnectionStatus((current) => (current === 'connected' ? 'reconnecting' : 'error')),
+      onError: handleStompError,
       onReady: (readyClient) => {
         clientRef.current = readyClient
       },
@@ -1460,6 +1542,7 @@ export function ChatPage() {
           <div className={cn(activeRoomId ? 'flex' : 'hidden lg:flex')}>
             <ChatPanel
               activeProfileId={activeProfileId}
+              activeProfileRole={activeProfile?.role}
               connectionStatus={connectionStatus}
               draft={draft}
               imageUploading={imageUploading}

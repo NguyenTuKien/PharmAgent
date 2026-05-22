@@ -33,6 +33,8 @@ services:
     image: rabbitmq:3.11-management
     restart: always
     env_file: .env
+    environment:
+      RABBITMQ_PLUGINS: "rabbitmq_stomp rabbitmq_management rabbitmq_web_dispatch"
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 10s
@@ -77,6 +79,8 @@ services:
       retries: 5
     volumes:
       - backend_logs:/app/logs
+    ports:
+      - "8080:8080"
     networks:
       - pharmagent-network
 
@@ -110,6 +114,7 @@ services:
     restart: always
     environment:
       VITE_GATEWAY_PROXY_TARGET: http://gateway:9000
+      VITE_WS_PROXY_TARGET: http://backend:8080
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "100"
     ports:
