@@ -87,6 +87,28 @@ public class EventDoseServiceImpl implements EventDoseService {
     }
 
     @Override
+    public Page<EventDoseResponse> getDoses(String patientId, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        log.info("Fetching dose timeline for patientId={}, startDate={}, endDate={}", patientId, startDate, endDate);
+        validateAccessToPatient(patientId);
+
+        List<String> medicationIds = getMedicationIdsForPatient(patientId);
+        if (medicationIds.isEmpty()) return Page.empty(pageable);
+
+        LocalDate safeStartDate = startDate == null ? LocalDate.now() : startDate;
+        LocalDate safeEndDate = endDate == null ? safeStartDate : endDate;
+        if (safeEndDate.isBefore(safeStartDate)) {
+            safeEndDate = safeStartDate;
+        }
+
+        return eventDoseRepository.findByMedicationIdInAndScheduledAtBetweenOrderByScheduledAtAsc(
+                medicationIds,
+                safeStartDate.atStartOfDay(),
+                safeEndDate.atTime(LocalTime.MAX),
+                pageable)
+                .map(eventDoseMapper::toResponse);
+    }
+
+    @Override
     public Page<EventDoseResponse> getPendingDoses(String patientId, Pageable pageable) {
         log.info("Fetching pending doses for patientId={}", patientId);
         validateAccessToPatient(patientId);
@@ -142,7 +164,7 @@ public class EventDoseServiceImpl implements EventDoseService {
         eventDose.setConfirmedBy(confirmedByProfile.getId());
 
         switch (request.getStatus()) {
-            case TAKEN -> {
+            case TAKEN, OVERDUE -> {
                 if (request.getTakenAt() != null) {
                     eventDose.setTakenAt(request.getTakenAt());
                 } else {
@@ -151,7 +173,7 @@ public class EventDoseServiceImpl implements EventDoseService {
             }
             case SKIPPED, MISSED -> eventDose.setTakenAt(null);
             default -> {
-                /* PENDING / OVERDUE: keep takenAt unchanged */
+                /* PENDING: keep takenAt unchanged */
             }
         }
 

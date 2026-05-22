@@ -26,6 +26,7 @@ class CatalogProduct:
     source_url: str
     display_name: str
     normalized_name: str
+    id: str = ""
     normalized_dosage: str = ""
     source_category: str = ""
     brand_name: str = ""
@@ -38,7 +39,7 @@ class CatalogProduct:
 
     @property
     def product_id(self) -> str:
-        return self.source_url
+        return self.id or self.source_url
 
     @classmethod
     def from_json(cls, raw: dict[str, object]) -> "CatalogProduct":
@@ -56,6 +57,7 @@ class CatalogProduct:
             source_url=_normalize_optional_text(raw.get("source_url")),
             display_name=display_name,
             normalized_name=normalized_name,
+            id=_normalize_optional_text(raw.get("id")),
             normalized_dosage=normalized_dosage,
             source_category=source_category,
             brand_name=brand_name,

@@ -21,6 +21,39 @@ export function normalizePillId(rawId) {
   return String(rawId).trim().replace(/^local:\/\/pill\//i, '')
 }
 
+function decodeUrlComponentOnce(value) {
+  const text = String(value ?? '').trim()
+  try {
+    return decodeURIComponent(text)
+  } catch {
+    return text
+  }
+}
+
+export function isHttpUrl(value) {
+  const text = String(value ?? '').trim()
+  return /^https?:\/\//i.test(text) || /^https?:\/\//i.test(decodeUrlComponentOnce(text))
+}
+
+export function isPharmacityUrl(value) {
+  const url = decodeUrlComponentOnce(value)
+  if (!isHttpUrl(url)) {
+    return false
+  }
+
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    return host === 'pharmacity.vn' || host.endsWith('.pharmacity.vn')
+  } catch {
+    return /(^https?:\/\/)?([^/]+\.)?pharmacity\.vn(\/|$)/i.test(url)
+  }
+}
+
+export function canFetchPillById(rawId) {
+  const normalizedId = normalizePillId(rawId)
+  return Boolean(normalizedId) && !isHttpUrl(normalizedId)
+}
+
 export function normalizeCatalogPill(pill, fallbackId = '') {
   if (!pill) {
     return null
@@ -37,6 +70,8 @@ export function normalizeCatalogPill(pill, fallbackId = '') {
     activeIngredient: pill.activeIngredient ?? pill.active_ingredient ?? '',
     dosage: pill.dosage ?? pill.normalized_dosage ?? '',
     manufacturer: pill.manufacturer ?? pill.manufacturer_name ?? pill.brand_name ?? '',
+    sourceUrl: pill.sourceUrl ?? pill.source_url ?? '',
+    source_url: pill.source_url ?? pill.sourceUrl ?? '',
     imageUrls:
       pill.imageUrls ??
       (pill.primary_image_url ? [pill.primary_image_url] : pill.image_url ? [pill.image_url] : []),
@@ -102,6 +137,10 @@ export async function searchPills(keyword, { limit = 10 } = {}) {
 
 export async function getPillById(pillId) {
   const normalizedId = normalizePillId(pillId)
+  if (!canFetchPillById(normalizedId)) {
+    throw new Error('Cannot fetch pill catalog item by external URL')
+  }
+
   const response = await apiClient.get(`/pills/${encodeURIComponent(normalizedId)}`)
   return normalizeCatalogPill(response.data, normalizedId)
 }
@@ -169,6 +208,24 @@ export async function updateMedicationSchedule(medicationId, scheduleId, schedul
 
 export async function deleteMedicationSchedule(medicationId, scheduleId) {
   const response = await apiClient.delete(`/caregiver/medications/${medicationId}/schedules/${scheduleId}`)
+  return response.data
+}
+
+export async function getDoseEvents({ patientId, startDate, endDate, page = 0, size = 1000 }) {
+  const response = await apiClient.get('/events', {
+    params: {
+      patientId,
+      startDate,
+      endDate,
+      page,
+      size,
+    },
+  })
+  return response.data
+}
+
+export async function updateElderlyDoseStatus(eventId, data) {
+  const response = await apiClient.put(`/elderly/events/${eventId}/status`, data)
   return response.data
 }
 

@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppShell } from './layout/AppShell.jsx'
 import { useAuthStore } from './modules/auth/authStore.js'
-import { SESSION_STORAGE_KEY } from './modules/auth/session.js'
+import { getProfileLandingPath, SESSION_STORAGE_KEY } from './modules/auth/session.js'
 import { ActiveSessionsPage } from './pages/admin/ActiveSessionsPage.jsx'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.jsx'
 import { AdminLayout } from './pages/admin/AdminLayout.jsx'
@@ -21,6 +21,7 @@ import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.jsx'
 import { NotFoundPage } from './pages/NotFoundPage.jsx'
 import { ProfileSettingsPage } from './pages/ProfileSettingsPage.jsx'
 import { ProfileSelectPage } from './pages/ProfileSelectPage.jsx'
+import { SchedulePage } from './pages/SchedulePage.jsx'
 import { RelationshipsPage } from './pages/caregiver/RelationshipsPage.jsx'
 import { ReportsPage } from './pages/caregiver/ReportsPage.jsx'
 import { ScanPage } from './pages/ScanPage.jsx'
@@ -60,6 +61,25 @@ function SessionBootstrap() {
   return null
 }
 
+function ProfileLandingRedirect() {
+  const activeProfile = useAuthStore((state) => state.activeProfile)
+  return <Navigate replace to={getProfileLandingPath(activeProfile)} />
+}
+
+function DashboardRoute() {
+  const activeRole = useAuthStore((state) => state.activeProfile?.role?.toUpperCase?.())
+
+  if (activeRole === 'CAREGIVER' || activeRole === 'ELDERLY') {
+    return <Navigate replace to="/schedule" />
+  }
+
+  if (activeRole === 'ADMIN') {
+    return <Navigate replace to="/admin" />
+  }
+
+  return <DashboardPage />
+}
+
 function App() {
   return (
     <>
@@ -80,8 +100,8 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
-            <Route element={<Navigate replace to="/dashboard" />} index />
-            <Route element={<DashboardPage />} path="/dashboard" />
+            <Route element={<ProfileLandingRedirect />} index />
+            <Route element={<DashboardRoute />} path="/dashboard" />
             <Route element={<MedicationsPage />} path="/medications" />
             <Route
               element={
@@ -99,6 +119,10 @@ function App() {
 
             <Route element={<RoleRoute roles={['CAREGIVER', 'ADMIN']} />}>
               <Route element={<ReportsPage />} path="/reports" />
+            </Route>
+
+            <Route element={<RoleRoute roles={['ELDERLY', 'CAREGIVER']} />}>
+              <Route element={<SchedulePage />} path="/schedule" />
             </Route>
 
             <Route element={<RoleRoute roles={['ELDERLY', 'CAREGIVER']} />}>
